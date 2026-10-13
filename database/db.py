@@ -845,7 +845,9 @@ class Database:
                     reseller_price_channel_bdt: float = 0.0, reseller_price_account_bdt: float = 0.0,
                     is_in_stock: int = 1,
                     sales_page_url: Optional[str] = None,
-                    subcategory_id: Optional[int] = None) -> int:
+                    subcategory_id: Optional[int] = None,
+                    channel_title: Optional[str] = None,
+                    channel_verified: int = 0) -> int:
         if reseller_price_bdt <= 0 and price_bdt > 0:
             reseller_price_bdt = round(price_bdt * 0.70, 2) # default 30% discount for resellers
         if reseller_price_usd <= 0 and price_usd > 0:
@@ -859,15 +861,15 @@ class Database:
                 channel_id, drive_link, photo_file_id, reseller_price_bdt, reseller_price_usd,
                 price_channel_bdt, price_channel_usd, price_account_bdt, price_account_usd,
                 reseller_price_channel_bdt, reseller_price_account_bdt, is_in_stock,
-                sales_page_url
+                sales_page_url, channel_title, channel_verified
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 category_id, subcategory_id, title, description, price_bdt, price_usd, product_type,
                 channel_id, drive_link, photo_file_id, reseller_price_bdt, reseller_price_usd,
                 price_channel_bdt, price_channel_usd, price_account_bdt, price_account_usd,
                 reseller_price_channel_bdt, reseller_price_account_bdt, is_in_stock,
-                sales_page_url
+                sales_page_url, channel_title, channel_verified
             ))
             conn.commit()
             return cursor.lastrowid

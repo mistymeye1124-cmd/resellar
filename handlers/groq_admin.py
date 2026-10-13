@@ -922,7 +922,9 @@ async def handle_publish_groq_course(call: CallbackQuery, state: FSMContext, bot
         reseller_price_channel_bdt=r_ch_bdt,
         reseller_price_account_bdt=r_acc_bdt,
         is_in_stock=1,
-        sales_page_url=data.get("sales_page_url")
+        sales_page_url=data.get("sales_page_url"),
+        channel_title=data.get("channel_title"),
+        channel_verified=1 if data.get("channel_verified") else 0
     )
 
     success_text = (
