@@ -258,22 +258,27 @@ async def handle_view_free_drop(call: CallbackQuery):
 
     title_esc = html.escape(drop["title"])
     
-    text = (
-        f"{meta['icon']} <b>{title_esc}</b>\n\n"
-        f"📂 <b>ক্যাটাগরি:</b> <code>{meta['name_bn']}</code>\n"
-        f"🏷️ <b>ডেলিভারি ধরন:</b> <code>{drop_type_display}</code>\n"
-        f"⚡ <b>স্ট্যাটাস:</b> {status_icon}\n"
-        f"👥 <b>মোট কোটা:</b> <code>{drop['max_claims']} জন</code>\n"
-        f"🔥 <b>অবশিষ্ট স্লট:</b> <code>{remaining} জন</code>\n\n"
-    )
+    status_icon = ("🟢 Open" if lang == "en" else "🟢 ওপেন") if drop["is_active"] and remaining > 0 else ("🔴 Ended" if lang == "en" else "🔴 শেষ")
     
-    if site_link:
-        text += f"🌐 <b>অফিসিয়াল ওয়েবসাইট:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n"
+    type_names = {
+        "channel_link": "🔒 Private Channel (1-Time Single-Use Link)",
+        "bulk_combo": "📦 Account Combo / Access Key",
+        "direct_link": "🔗 Direct Cloud Link"
+    }
+    drop_type_display = type_names.get(drop["drop_type"], drop["drop_type"])
+    
+    # Guide preparation
+    guide_text = drop.get("instructions")
+    if not guide_text or not guide_text.strip():
+        guide_text = meta.get("default_guide", "Follow provided instructions after claiming." if lang == "en" else "ক্লেইম করার পর নির্দেশনা অনুযায়ী ব্যবহার করুন।")
+    guide_esc = html.escape(guide_text)
+    
+    # Target Website / Portal Link
+    site_link = (drop.get("site_link") or "").strip()
+    if site_link and not site_link.startswith("http"):
+        site_link = "https://" + site_link
 
-    if drop.get("description"):
-        text += f"📝 <b>বিবরণ ও শর্তাবলী:</b>\n{html.escape(drop['description'])}\n\n"
-        
-    text += f"📖 <b>কিভাবে ব্যবহার করবেন (How to Use):</b>\n{guide_esc}\n\n"
+    title_esc = html.escape(drop["title"])
     
     req_refs = drop.get("required_referrals", 0)
     ref_stats = db.get_referral_stats(user_id)
@@ -288,36 +293,96 @@ async def handle_view_free_drop(call: CallbackQuery):
             bot_uname = bot_info.username or "AllInOneProAccess_bot"
             ref_link = f"https://t.me/{bot_uname}?start=ref_{user_id}"
 
-    if already_claimed:
-        content_esc = html.escape(claim['delivery_content'])
-        text += (
-            "━━━━━━━━━━━━━━━━━━━\n"
-            "✅ <b>আপনি ইতিমধ্যে এই ড্রপটি ক্লেইম করেছেন!</b>\n"
-            "📦 <b>আপনার সংগৃহীত আইটেম/লগইন:</b>\n"
-            f"<pre>{content_esc}</pre>\n"
-            "<i>(আপনার ব্যক্তিগত কপি উপরে সংরক্ষিত আছে। কোডটিতে ট্যাপ করলেই কপি হয়ে যাবে)</i>"
+    if lang == "en":
+        cat_disp = meta.get("name_en", "Giveaways")
+        text = (
+            f"{meta['icon']} <b>{title_esc}</b>\n\n"
+            f"📂 <b>Category:</b> <code>{cat_disp}</code>\n"
+            f"🏷️ <b>Delivery Type:</b> <code>{drop_type_display}</code>\n"
+            f"⚡ <b>Status:</b> {status_icon}\n"
+            f"👥 <b>Total Quota:</b> <code>{drop['max_claims']} slots</code>\n"
+            f"🔥 <b>Remaining Slots:</b> <code>{remaining} slots</code>\n\n"
         )
-    elif remaining <= 0 or not drop["is_active"]:
-        text += "❌ <b>দুঃখিত! এই ড্রপটির সকল স্লট ইতিমধ্যে শেষ হয়ে গেছে।</b>"
-    elif is_locked:
-        needed_refs = max(0, req_refs - user_refs)
-        text += (
-            "━━━━━━━━━━━━━━━━━━━\n"
-            "🔒 <b>এই গিভঅ্যাওয়েটি আনলক করতে রেফারেল প্রয়োজন!</b> 🔒\n\n"
-            f"🎁 এই আইটেমটি ক্লেইম করতে আপনার রেফারেল লিংক দিয়ে ন্যূনতম <b>{req_refs} জন</b> বন্ধুকে বটে জয়েন করাতে হবে।\n\n"
-            f"📊 <b>আপনার রেফারেল অগ্রগতি:</b> <code>{user_refs} / {req_refs} জন</code> সম্পন্ন (বাকি আর <b>{needed_refs} জন</b>)\n\n"
-            "💡 নিচের <b>'📲 বন্ধুদের সাথে শেয়ার করুন'</b> বাটনে চাপ দিয়ে বন্ধুদের ইনভাইট করুন। "
-            "বন্ধুরা বটে স্টার্ট করলেই আপনার ক্লেইম বাটনটি সাথে সাথে আনলক হয়ে যাবে!"
-        )
-    else:
-        unlock_notice = ""
-        if req_refs > 0:
-            unlock_notice = (
+        if site_link:
+            text += f"🌐 <b>Official Website:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n"
+        if drop.get("description"):
+            text += f"📝 <b>Details & Terms:</b>\n{html.escape(drop['description'])}\n\n"
+        text += f"📖 <b>How to Use:</b>\n{guide_esc}\n\n"
+
+        if already_claimed:
+            content_esc = html.escape(claim['delivery_content'])
+            text += (
                 "━━━━━━━━━━━━━━━━━━━\n"
-                f"🎉 <b>অভিনন্দন! আপনার রেফারেল টাস্ক সম্পন্ন হয়েছে ({user_refs}/{req_refs} জন)!</b>\n"
-                "🔓 <b>গিভঅ্যাওয়েটি আপনার জন্য আনলক হয়েছে!</b>\n\n"
+                "✅ <b>You have already claimed this drop!</b>\n"
+                "📦 <b>Your Claimed Item / Access:</b>\n"
+                f"<pre>{content_esc}</pre>\n"
+                "<i>(Saved in your personal vault. Tap code to copy)</i>"
             )
-        text += f"{unlock_notice}🏃‍♂️ নিচের বাটনে চাপ দিয়ে দ্রুত আপনার ফ্রি স্লটটি ক্লেইম করে নিন!"
+        elif remaining <= 0 or not drop["is_active"]:
+            text += "❌ <b>Sorry! All slots for this giveaway have been claimed.</b>"
+        elif is_locked:
+            needed_refs = max(0, req_refs - user_refs)
+            text += (
+                "━━━━━━━━━━━━━━━━━━━\n"
+                "🔒 <b>Referral Required to Unlock Giveaway!</b> 🔒\n\n"
+                f"🎁 To claim this reward, invite at least <b>{req_refs} friends</b> to the bot with your link.\n\n"
+                f"📊 <b>Your Progress:</b> <code>{user_refs} / {req_refs} users</code> completed (Need <b>{needed_refs} more</b>)\n\n"
+                "💡 Tap <b>'📲 Share with Friends'</b> below. When friends start the bot, your claim button unlocks instantly!"
+            )
+        else:
+            unlock_notice = ""
+            if req_refs > 0:
+                unlock_notice = (
+                    "━━━━━━━━━━━━━━━━━━━\n"
+                    f"🎉 <b>Congratulations! Referral task completed ({user_refs}/{req_refs})!</b>\n"
+                    "🔓 <b>Giveaway is unlocked for you!</b>\n\n"
+                )
+            text += f"{unlock_notice}🏃‍♂️ Tap the button below to claim your free reward immediately!"
+    else:
+        text = (
+            f"{meta['icon']} <b>{title_esc}</b>\n\n"
+            f"📂 <b>ক্যাটাগরি:</b> <code>{meta['name_bn']}</code>\n"
+            f"🏷️ <b>ডেলিভারি ধরন:</b> <code>{drop_type_display}</code>\n"
+            f"⚡ <b>স্ট্যাটাস:</b> {status_icon}\n"
+            f"👥 <b>মোট কোটা:</b> <code>{drop['max_claims']} জন</code>\n"
+            f"🔥 <b>অবশিষ্ট স্লট:</b> <code>{remaining} জন</code>\n\n"
+        )
+        if site_link:
+            text += f"🌐 <b>অফিসিয়াল ওয়েবসাইট:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n"
+        if drop.get("description"):
+            text += f"📝 <b>বিবরণ ও শর্তাবলী:</b>\n{html.escape(drop['description'])}\n\n"
+        text += f"📖 <b>কিভাবে ব্যবহার করবেন (How to Use):</b>\n{guide_esc}\n\n"
+
+        if already_claimed:
+            content_esc = html.escape(claim['delivery_content'])
+            text += (
+                "━━━━━━━━━━━━━━━━━━━\n"
+                "✅ <b>আপনি ইতিমধ্যে এই ড্রপটি ক্লেইম করেছেন!</b>\n"
+                "📦 <b>আপনার সংগৃহীত আইটেম/লগইন:</b>\n"
+                f"<pre>{content_esc}</pre>\n"
+                "<i>(আপনার ব্যক্তিগত কপি উপরে সংরক্ষিত আছে। কোডটিতে ট্যাপ করলেই কপি হয়ে যাবে)</i>"
+            )
+        elif remaining <= 0 or not drop["is_active"]:
+            text += "❌ <b>দুঃখিত! এই ড্রপটির সকল স্লট ইতিমধ্যে শেষ হয়ে গেছে।</b>"
+        elif is_locked:
+            needed_refs = max(0, req_refs - user_refs)
+            text += (
+                "━━━━━━━━━━━━━━━━━━━\n"
+                "🔒 <b>এই গিভঅ্যাওয়েটি আনলক করতে রেফারেল প্রয়োজন!</b> 🔒\n\n"
+                f"🎁 এই আইটেমটি ক্লেইম করতে আপনার রেফারেল লিংক দিয়ে ন্যূনতম <b>{req_refs} জন</b> বন্ধুকে বটে জয়েন করাতে হবে।\n\n"
+                f"📊 <b>আপনার রেফারেল অগ্রগতি:</b> <code>{user_refs} / {req_refs} জন</code> সম্পন্ন (বাকি আর <b>{needed_refs} জন</b>)\n\n"
+                "💡 নিচের <b>'📲 বন্ধুদের সাথে শেয়ার করুন'</b> বাটনে চাপ দিয়ে বন্ধুদের ইনভাইট করুন। "
+                "বন্ধুরা বটে স্টার্ট করলেই আপনার ক্লেইম বাটনটি সাথে সাথে আনলক হয়ে যাবে!"
+            )
+        else:
+            unlock_notice = ""
+            if req_refs > 0:
+                unlock_notice = (
+                    "━━━━━━━━━━━━━━━━━━━\n"
+                    f"🎉 <b>অভিনন্দন! আপনার রেফারেল টাস্ক সম্পন্ন হয়েছে ({user_refs}/{req_refs} জন)!</b>\n"
+                    "🔓 <b>গিভঅ্যাওয়েটি আপনার জন্য আনলক হয়েছে!</b>\n\n"
+                )
+            text += f"{unlock_notice}🏃‍♂️ নিচের বাটনে চাপ দিয়ে দ্রুত আপনার ফ্রি স্লটটি ক্লেইম করে নিন!"
 
     kb = get_claim_action_kb(
         drop_id,
@@ -336,27 +401,29 @@ async def handle_view_free_drop(call: CallbackQuery):
 @router.callback_query(F.data.startswith("execute_free_claim:"))
 async def handle_execute_free_claim(call: CallbackQuery, bot: Bot):
     user_id = call.from_user.id
+    user = db.get_user(user_id)
+    lang = user.get("language", "bn") if user else "bn"
     drop_id = int(call.data.split(":")[1])
     drop = db.get_free_drop(drop_id)
     
     if not drop:
-        await call.answer("ড্রপ খুঁজে পাওয়া যায়নি!", show_alert=True)
+        await call.answer("Giveaway not found!" if lang == "en" else "ড্রপ খুঁজে পাওয়া যায়নি!", show_alert=True)
         return
         
     if not drop["is_active"]:
-        await call.answer("এই গিভঅ্যাওয়েটি শেষ হয়ে গেছে!", show_alert=True)
+        await call.answer("This giveaway has ended!" if lang == "en" else "এই গিভঅ্যাওয়েটি শেষ হয়ে গেছে!", show_alert=True)
         return
 
     # Check if user already claimed
     existing_claim = db.get_user_drop_claim(drop_id, user_id)
     if existing_claim:
-        await call.answer("আপনি ইতিমধ্যে এটি ক্লেইম করেছেন!", show_alert=True)
+        await call.answer("You have already claimed this drop!" if lang == "en" else "আপনি ইতিমধ্যে এটি ক্লেইম করেছেন!", show_alert=True)
         return
 
     # Check remaining slots
     remaining = max(0, drop["max_claims"] - drop["claimed_count"])
     if remaining <= 0:
-        await call.answer("দুঃখিত! সব স্লট ইতিমধ্যে শেষ হয়ে গেছে।", show_alert=True)
+        await call.answer("Sorry! All slots are already claimed." if lang == "en" else "দুঃখিত! সব স্লট ইতিমধ্যে শেষ হয়ে গেছে।", show_alert=True)
         return
 
     # Referral Gate Validation
@@ -366,17 +433,15 @@ async def handle_execute_free_claim(call: CallbackQuery, bot: Bot):
         user_refs = ref_stats.get("t1_count", 0)
         if user_refs < req_refs:
             needed = req_refs - user_refs
-            await call.answer(
-                f"🔒 এই ড্রপটি লক করা! ক্লেইম করতে আপনার এখনো {needed} টি রেফারেল বাকি আছে। বন্ধুদের শেয়ার করে আনলক করুন!",
-                show_alert=True
-            )
+            alert_msg = f"🔒 Locked! You need {needed} more referrals to claim. Share your link with friends to unlock!" if lang == "en" else f"🔒 এই ড্রপটি লক করা! ক্লেইম করতে আপনার এখনো {needed} টি রেফারেল বাকি আছে। বন্ধুদের শেয়ার করে আনলক করুন!"
+            await call.answer(alert_msg, show_alert=True)
             return
 
     cat_key = drop.get("giveaway_category", "accounts")
     meta = CATEGORY_META.get(cat_key, CATEGORY_META["accounts"])
     guide_text = drop.get("instructions")
     if not guide_text or not guide_text.strip():
-        guide_text = meta.get("default_guide", "নির্দেশনা অনুযায়ী ব্যবহার করুন।")
+        guide_text = meta.get("default_guide", "Follow instructions after claiming." if lang == "en" else "নির্দেশনা অনুযায়ী ব্যবহার করুন।")
     guide_esc = html.escape(guide_text)
 
     site_link = (drop.get("site_link") or "").strip()
@@ -389,40 +454,58 @@ async def handle_execute_free_claim(call: CallbackQuery, bot: Bot):
     if drop_type == "channel_link":
         channel_target = drop["channel_id"]
         if not channel_target:
-            await call.answer("চ্যানেল লিংক কনফিগারেশন মিসিং!", show_alert=True)
+            await call.answer("Channel link configuration missing!" if lang == "en" else "চ্যানেল লিংক কনফিগারেশন মিসিং!", show_alert=True)
             return
             
-        await call.answer("আপনার জন্য সিঙ্গেল-ইউজ লিংক তৈরি হচ্ছে...", show_alert=False)
+        gen_msg = "Generating your single-use invite link..." if lang == "en" else "আপনার জন্য সিঙ্গেল-ইউজ লিংক তৈরি হচ্ছে..."
+        await call.answer(gen_msg, show_alert=False)
         invite_link = await generate_single_use_invite_link(bot, channel_target, drop["title"])
         
         res = db.claim_free_drop_item(drop_id, user_id, delivery_content=invite_link)
         if not res["success"]:
-            await call.answer(f"❌ {res.get('message', 'ক্লেইম ব্যর্থ হয়েছে!')}", show_alert=True)
+            fail_text = res.get('message', 'Claim failed!') if lang == "en" else res.get('message', 'ক্লেইম ব্যর্থ হয়েছে!')
+            await call.answer(f"❌ {fail_text}", show_alert=True)
             return
             
-        site_line = f"🌐 <b>অফিসিয়াল সাইট:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n" if site_link else ""
+        site_label = "Official Site" if lang == "en" else "অফিসিয়াল সাইট"
+        site_line = f"🌐 <b>{site_label}:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n" if site_link else ""
         
-        success_msg = (
-            "🎉 <b>অভিনন্দন! আপনার ফ্রি ভিআইপি চ্যানেল এক্সেস রেডি!</b> 🎉\n\n"
-            f"📌 <b>ড্রপ:</b> <b>{title_esc}</b>\n"
-            f"📂 <b>ক্যাটাগরি:</b> {meta['icon']} {meta['name_bn']}\n\n"
-            f"{site_line}"
-            f"🔗 <b>আপনার ব্যক্তিগত ১-বার ব্যবহারযোগ্য লিংক:</b>\n"
-            f"<pre>{html.escape(invite_link)}</pre>\n\n"
-            "📖 <b>ব্যবহারের নিয়ম:</b>\n"
-            f"{guide_esc}\n\n"
-            "⚠️ <b>জরুরী সতর্কতা:</b> এই লিংকটি শুধুমাত্র আপনার জন্য ১-বার প্রবেশযোগ্য (Member Limit = 1)। "
-            "অন্য কাউকে দিলে আপনি নিজে আর ঢুকতে পারবেন না!"
-        )
+        if lang == "en":
+            success_msg = (
+                "🎉 <b>Congratulations! Your Free VIP Channel Access is Ready!</b> 🎉\n\n"
+                f"📌 <b>Drop:</b> <b>{title_esc}</b>\n"
+                f"📂 <b>Category:</b> {meta['icon']} {meta['name_en']}\n\n"
+                f"{site_line}"
+                f"🔗 <b>Your Personal 1-Time Invite Link:</b>\n"
+                f"<pre>{html.escape(invite_link)}</pre>\n\n"
+                "📖 <b>Instructions:</b>\n"
+                f"{guide_esc}\n\n"
+                "⚠️ <b>Important Notice:</b> This link is single-use for you only (Member Limit = 1)."
+            )
+        else:
+            success_msg = (
+                "🎉 <b>অভিনন্দন! আপনার ফ্রি ভিআইপি চ্যানেল এক্সেস রেডি!</b> 🎉\n\n"
+                f"📌 <b>ড্রপ:</b> <b>{title_esc}</b>\n"
+                f"📂 <b>ক্যাটাগরি:</b> {meta['icon']} {meta['name_bn']}\n\n"
+                f"{site_line}"
+                f"🔗 <b>আপনার ব্যক্তিগত ১-বার ব্যবহারযোগ্য লিংক:</b>\n"
+                f"<pre>{html.escape(invite_link)}</pre>\n\n"
+                "📖 <b>ব্যবহারের নিয়ম:</b>\n"
+                f"{guide_esc}\n\n"
+                "⚠️ <b>জরুরী সতর্কতা:</b> এই লিংকটি শুধুমাত্র আপনার জন্য ১-বার প্রবেশযোগ্য (Member Limit = 1)। "
+                "অন্য কাউকে দিলে আপনি নিজে আর ঢুকতে পারবেন না!"
+            )
         
+        join_txt = "🚀 Join Channel" if lang == "en" else "🚀 জয়েন করুন (Join Channel)"
         kb_buttons = [
-            [InlineKeyboardButton(text="🚀 জয়েন করুন (Join Channel)", url=invite_link)]
+            [InlineKeyboardButton(text=join_txt, url=invite_link)]
         ]
         if site_link:
-            kb_buttons.append([InlineKeyboardButton(text="🌐 ওয়েবসাইট ভিজিট করুন", url=site_link)])
+            web_txt = "🌐 Visit Website" if lang == "en" else "🌐 ওয়েবসাইট ভিজিট করুন"
+            kb_buttons.append([InlineKeyboardButton(text=web_txt, url=site_link)])
         kb_buttons.append([
-            InlineKeyboardButton(text="🔙 ড্রপ তালিকা (Back)", callback_data=f"claim_cat:{cat_key}"),
-            InlineKeyboardButton(text="🏠 মূল মেনু (Home)", callback_data="main_menu")
+            InlineKeyboardButton(text=t("btn_back", lang), callback_data=f"claim_cat:{cat_key}"),
+            InlineKeyboardButton(text=t("btn_home", lang), callback_data="main_menu")
         ])
         
         kb = InlineKeyboardMarkup(inline_keyboard=kb_buttons)
@@ -431,38 +514,58 @@ async def handle_execute_free_claim(call: CallbackQuery, bot: Bot):
     elif drop_type == "bulk_combo":
         res = db.claim_free_drop_item(drop_id, user_id)
         if not res["success"]:
-            await call.answer(res.get("message", "ক্লেইম ব্যর্থ হয়েছে!"), show_alert=True)
+            fail_text = res.get("message", "Claim failed!") if lang == "en" else res.get("message", "ক্লেইম ব্যর্থ হয়েছে!")
+            await call.answer(fail_text, show_alert=True)
             return
             
         combo_content = res["content"]
         
-        category_title_map = {
-            "cookies": "আপনার ফ্রি ব্রাউজার কুকিজ (JSON Code):",
-            "subscription": "আপনার লাইসেন্স কি / ভাউচার কোড:",
-            "accounts": "আপনার প্রিমিয়াম একাউন্ট ক্রেডেনশিয়াল:"
-        }
-        item_label = category_title_map.get(cat_key, "আপনার সংগৃহীত ড্রপ আইটেম:")
-        
-        site_line = f"🌐 <b>অফিসিয়াল সাইট:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n" if site_link else ""
-        
-        success_msg = (
-            "🎉 <b>অভিনন্দন! আপনার ফ্রি গিভঅ্যাওয়ে ড্রপ ক্লেইম সম্পন্ন হয়েছে!</b> 🎉\n\n"
-            f"📌 <b>ড্রপ:</b> <b>{title_esc}</b>\n"
-            f"📂 <b>ক্যাটাগরি:</b> {meta['icon']} {meta['name_bn']}\n\n"
-            f"{site_line}"
-            f"📦 <b>{item_label}</b>\n"
-            f"<pre>{html.escape(combo_content)}</pre>\n\n"
-            "📖 <b>কিভাবে ব্যবহার করবেন (How to Use Guide):</b>\n"
-            f"{guide_esc}\n\n"
-            "💡 <i>বক্সে ট্যাপ করলেই কোড সরাসরি কপি হয়ে যাবে। কোনো সমস্যা হলে সাপোর্টে যোগাযোগ করুন।</i>"
-        )
+        if lang == "en":
+            category_title_map = {
+                "cookies": "Your Free Browser Cookies (JSON Code):",
+                "subscription": "Your License Key / Voucher Code:",
+                "accounts": "Your Premium Account Credentials:"
+            }
+            item_label = category_title_map.get(cat_key, "Your Claimed Drop Item:")
+            site_line = f"🌐 <b>Official Site:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n" if site_link else ""
+            success_msg = (
+                "🎉 <b>Congratulations! Your Free Giveaway Claim is Complete!</b> 🎉\n\n"
+                f"📌 <b>Drop:</b> <b>{title_esc}</b>\n"
+                f"📂 <b>Category:</b> {meta['icon']} {meta['name_en']}\n\n"
+                f"{site_line}"
+                f"📦 <b>{item_label}</b>\n"
+                f"<pre>{html.escape(combo_content)}</pre>\n\n"
+                "📖 <b>How to Use Guide:</b>\n"
+                f"{guide_esc}\n\n"
+                "💡 <i>Tap the code block above to copy instantly. Contact support if needed.</i>"
+            )
+        else:
+            category_title_map = {
+                "cookies": "আপনার ফ্রি ব্রাউজার কুকিজ (JSON Code):",
+                "subscription": "আপনার লাইসেন্স কি / ভাউচার কোড:",
+                "accounts": "আপনার প্রিমিয়াম একাউন্ট ক্রেডেনশিয়াল:"
+            }
+            item_label = category_title_map.get(cat_key, "আপনার সংগৃহীত ড্রপ আইটেম:")
+            site_line = f"🌐 <b>অফিসিয়াল সাইট:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n" if site_link else ""
+            success_msg = (
+                "🎉 <b>অভিনন্দন! আপনার ফ্রি গিভঅ্যাওয়ে ড্রপ ক্লেইম সম্পন্ন হয়েছে!</b> 🎉\n\n"
+                f"📌 <b>ড্রপ:</b> <b>{title_esc}</b>\n"
+                f"📂 <b>ক্যাটাগরি:</b> {meta['icon']} {meta['name_bn']}\n\n"
+                f"{site_line}"
+                f"📦 <b>{item_label}</b>\n"
+                f"<pre>{html.escape(combo_content)}</pre>\n\n"
+                "📖 <b>কিভাবে ব্যবহার করবেন (How to Use Guide):</b>\n"
+                f"{guide_esc}\n\n"
+                "💡 <i>বক্সে ট্যাপ করলেই কোড সরাসরি কপি হয়ে যাবে। কোনো সমস্যা হলে সাপোর্টে যোগাযোগ করুন।</i>"
+            )
         
         kb_buttons = []
         if site_link:
-            kb_buttons.append([InlineKeyboardButton(text="🌐 ওয়েবসাইটে প্রবেশ করুন (Open Site)", url=site_link)])
+            web_txt = "🌐 Open Website" if lang == "en" else "🌐 ওয়েবসাইটে প্রবেশ করুন (Open Site)"
+            kb_buttons.append([InlineKeyboardButton(text=web_txt, url=site_link)])
         kb_buttons.append([
-            InlineKeyboardButton(text="🔙 ড্রপ তালিকা (Back)", callback_data=f"claim_cat:{cat_key}"),
-            InlineKeyboardButton(text="🏠 মূল মেনু (Home)", callback_data="main_menu")
+            InlineKeyboardButton(text=t("btn_back", lang), callback_data=f"claim_cat:{cat_key}"),
+            InlineKeyboardButton(text=t("btn_home", lang), callback_data="main_menu")
         ])
         
         kb = InlineKeyboardMarkup(inline_keyboard=kb_buttons)
@@ -472,31 +575,47 @@ async def handle_execute_free_claim(call: CallbackQuery, bot: Bot):
         link = drop["direct_link"] or "https://t.me"
         res = db.claim_free_drop_item(drop_id, user_id, delivery_content=link)
         if not res["success"]:
-            await call.answer(res.get("message", "ক্লেইম ব্যর্থ হয়েছে!"), show_alert=True)
+            fail_text = res.get("message", "Claim failed!") if lang == "en" else res.get("message", "ক্লেইম ব্যর্থ হয়েছে!")
+            await call.answer(fail_text, show_alert=True)
             return
             
-        site_line = f"🌐 <b>অফিসিয়াল সাইট:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n" if site_link else ""
+        if lang == "en":
+            site_line = f"🌐 <b>Official Website:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n" if site_link else ""
+            success_msg = (
+                "🎉 <b>Congratulations! Your Free Drop Link is Unlocked!</b> 🎉\n\n"
+                f"📌 <b>Drop:</b> <b>{title_esc}</b>\n"
+                f"📂 <b>Category:</b> {meta['icon']} {meta['name_en']}\n\n"
+                f"{site_line}"
+                f"🔗 <b>Secret Access Link:</b>\n"
+                f"<pre>{html.escape(link)}</pre>\n\n"
+                "📖 <b>Usage Guide:</b>\n"
+                f"{guide_esc}\n\n"
+                "💡 <i>Please save this link for future reference.</i>"
+            )
+        else:
+            site_line = f"🌐 <b>অফিসিয়াল সাইট:</b> <a href=\"{site_link}\">{html.escape(site_link)}</a>\n\n" if site_link else ""
+            success_msg = (
+                "🎉 <b>অভিনন্দন! আপনার ফ্রি ড্রপ লিংক আনলক হয়েছে!</b> 🎉\n\n"
+                f"📌 <b>ড্রপ:</b> <b>{title_esc}</b>\n"
+                f"📂 <b>ক্যাটাগরি:</b> {meta['icon']} {meta['name_bn']}\n\n"
+                f"{site_line}"
+                f"🔗 <b>সিক্রেট অ্যাক্সেস লিংক:</b>\n"
+                f"<pre>{html.escape(link)}</pre>\n\n"
+                "📖 <b>ব্যবহারের নির্দেশিকা:</b>\n"
+                f"{guide_esc}\n\n"
+                "💡 <i>লিংকটি সংরক্ষণ করে রাখুন।</i>"
+            )
         
-        success_msg = (
-            "🎉 <b>অভিনন্দন! আপনার ফ্রি ড্রপ লিংক আনলক হয়েছে!</b> 🎉\n\n"
-            f"📌 <b>ড্রপ:</b> <b>{title_esc}</b>\n"
-            f"📂 <b>ক্যাটাগরি:</b> {meta['icon']} {meta['name_bn']}\n\n"
-            f"{site_line}"
-            f"🔗 <b>সিক্রেট অ্যাক্সেস লিংক:</b>\n"
-            f"<pre>{html.escape(link)}</pre>\n\n"
-            "📖 <b>ব্যবহারের নির্দেশিকা:</b>\n"
-            f"{guide_esc}\n\n"
-            "💡 <i>লিংকটি সংরক্ষণ করে রাখুন।</i>"
-        )
-        
+        open_txt = "🔗 Open Link" if lang == "en" else "🔗 ওপেন লিংক (Open Link)"
         kb_buttons = [
-            [InlineKeyboardButton(text="🔗 ওপেন লিংক (Open Link)", url=link if link.startswith("http") else "https://t.me")]
+            [InlineKeyboardButton(text=open_txt, url=link if link.startswith("http") else "https://t.me")]
         ]
         if site_link:
-            kb_buttons.append([InlineKeyboardButton(text="🌐 অফিসিয়াল ওয়েবসাইট", url=site_link)])
+            web_txt = "🌐 Official Website" if lang == "en" else "🌐 অফিসিয়াল ওয়েবসাইট"
+            kb_buttons.append([InlineKeyboardButton(text=web_txt, url=site_link)])
         kb_buttons.append([
-            InlineKeyboardButton(text="🔙 ড্রপ তালিকা (Back)", callback_data=f"claim_cat:{cat_key}"),
-            InlineKeyboardButton(text="🏠 মূল মেনু (Home)", callback_data="main_menu")
+            InlineKeyboardButton(text=t("btn_back", lang), callback_data=f"claim_cat:{cat_key}"),
+            InlineKeyboardButton(text=t("btn_home", lang), callback_data="main_menu")
         ])
         
         kb = InlineKeyboardMarkup(inline_keyboard=kb_buttons)
@@ -504,7 +623,12 @@ async def handle_execute_free_claim(call: CallbackQuery, bot: Bot):
 
 @router.callback_query(F.data.in_(["noop_claimed", "noop_full"]))
 async def handle_noop_drop_clicks(call: CallbackQuery):
+    user_id = call.from_user.id
+    user = db.get_user(user_id)
+    lang = user.get("language", "bn") if user else "bn"
     if call.data == "noop_claimed":
-        await call.answer("আপনি ইতিমধ্যে এই ড্রপটি সফলভাবে ক্লেইম করেছেন! ড্রপের বিস্তারিততে আপনার কপি সেভ আছে।", show_alert=True)
+        alert_msg = "You have already claimed this drop! Your copy is saved in drop details." if lang == "en" else "আপনি ইতিমধ্যে এই ড্রপটি সফলভাবে ক্লেইম করেছেন! ড্রপের বিস্তারিততে আপনার কপি সেভ আছে।"
+        await call.answer(alert_msg, show_alert=True)
     else:
-        await call.answer("দুঃখিত, এই ড্রপটির সকল ফ্রি স্লট ইতিমধ্যে শেষ হয়ে গেছে!", show_alert=True)
+        alert_msg = "Sorry, all free slots for this drop have been claimed!" if lang == "en" else "দুঃখিত, এই ড্রপটির সকল ফ্রি স্লট ইতিমধ্যে শেষ হয়ে গেছে!"
+        await call.answer(alert_msg, show_alert=True)

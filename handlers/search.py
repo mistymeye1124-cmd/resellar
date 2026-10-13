@@ -9,6 +9,7 @@ from typing import Dict, Any
 from database.db import db
 from config import ADMIN_USERNAME, ADMIN_IDS, get_live_usd_rate
 from utils.emojis import make_custom_button, em_tag
+from utils.i18n import t, localize_item_name
 from keyboards.user_kb import (
     get_product_detail_kb,
     get_course_search_results_kb,
@@ -61,17 +62,11 @@ INTENT_KEYWORDS = {
 @router.callback_query(F.data == "req_course_start")
 async def handle_request_course_start(event: Message | CallbackQuery, state: FSMContext):
     await state.set_state(CourseRequestState.waiting_for_details)
+    user_id = event.from_user.id
+    lang = db.get_user_language(user_id)
     
-    prompt_text = (
-        "🎯 <b>প্রিমিয়াম কোর্স ও সফটওয়্যার রিকোয়েস্ট হাব</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "আপনার পছন্দের যে কোর্স, টুল বা প্রিমিয়াম অ্যাকাউন্টটি আমাদের ক্যাটালগে নেই, "
-        "তার <b>নাম</b> অথবা <b>অফিশিয়াল ওয়েবসাইট লিংক</b> লিখে পাঠান:\n\n"
-        "<i>(উদাহরণস্বরূপ: 10 Minute School Web Dev, অথবা Bohubrihi Python, অথবা https://udemy.com/...)</i>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "💡 আমাদের অ্যাডমিন টিম রিকোয়েস্ট পাওয়ার সাথে সাথেই তা ব্যবস্থা করার উদ্যোগ নেবে!"
-    )
-    kb = get_course_request_prompt_kb()
+    prompt_text = t("course_req_prompt_text", lang)
+    kb = get_course_request_prompt_kb(lang)
     if isinstance(event, CallbackQuery):
         await event.answer()
         await render_screen(event, prompt_text, reply_markup=kb, parse_mode="HTML")
@@ -81,18 +76,21 @@ async def handle_request_course_start(event: Message | CallbackQuery, state: FSM
 @router.callback_query(F.data == "cancel_course_req")
 async def handle_cancel_course_req(call: CallbackQuery, state: FSMContext):
     await state.clear()
-    await call.answer("❌ রিকোয়েস্ট বাতিল করা হয়েছে।")
+    lang = db.get_user_language(call.from_user.id)
+    await call.answer(t("course_req_cancelled_alert", lang))
     from handlers.start import format_main_dashboard_text, is_admin
     from keyboards.user_kb import get_main_dashboard_inline_kb
-    lang = db.get_user_language(call.from_user.id)
     text = format_main_dashboard_text(call.from_user.id, call.from_user, lang)
     kb = get_main_dashboard_inline_kb(lang, is_admin=is_admin(call.from_user.id))
     await render_screen(call, text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(CourseRequestState.waiting_for_details)
 async def handle_course_request_received(message: Message, state: FSMContext, bot: Bot):
+    user_id = message.from_user.id
+    lang = db.get_user_language(user_id)
     if not message.text or not message.text.strip():
-        await message.answer("❌ অনুগ্রহ করে কোর্স বা সফটওয়্যারের নাম বা লিংক টেক্সট আকারে লিখে পাঠান:")
+        err_msg = "❌ Please send the course name or website URL in text:" if lang in ["en", "hi"] else "❌ অনুগ্রহ করে কোর্স বা সফটওয়্যারের নাম বা লিংক টেক্সট আকারে লিখে পাঠান:"
+        await message.answer(err_msg)
         return
 
     req_query = message.text.strip()
@@ -105,21 +103,16 @@ async def handle_course_request_received(message: Message, state: FSMContext, bo
     await state.clear()
 
     # User confirmation
-    confirm_text = (
-        "✅ <b>আপনার কোর্স রিকোয়েস্ট সফলভাবে জমা হয়েছে!</b>\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📦 <b>রিকোয়েস্টকৃত আইটেম:</b>\n<code>{html.escape(req_query)}</code>\n\n"
-        f"🆔 <b>রিকোয়েস্ট ট্র্যাকিং আইডি:</b> <code>#REQ-{req_id}</code>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "💡 আমাদের অ্যাডমিন টিম এটি পর্যালোচনা করে দ্রুত ক্যাটালগে যুক্ত করবে অথবা আপনার সাথে ইনবক্সে যোগাযোগ করবে। ধন্যবাদ!"
-    )
+    confirm_text = t("course_req_user_confirm", lang, item=html.escape(req_query), req_id=req_id)
+    btn_browse = "🎓 Browse Catalog" if lang in ["en", "hi"] else "🎓 ক্যাটালগ ব্রাউজ করুন"
+    btn_admin = "💬 Live Admin" if lang in ["en", "hi"] else "💬 সরাসরি অ্যাডমিন"
     buttons = [
         [
-            make_custom_button(text="🎓 ক্যাটালগ ব্রাউজ করুন", callback_data="back_cats", emoji_key="courses"),
-            make_custom_button(text="💬 সরাসরি অ্যাডমিন", url=f"https://t.me/{ADMIN_USERNAME}", emoji_key="support")
+            make_custom_button(text=btn_browse, callback_data="back_cats", emoji_key="courses"),
+            make_custom_button(text=btn_admin, url=f"https://t.me/{ADMIN_USERNAME}", emoji_key="support")
         ],
         [
-            make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
         ]
     ]
     await message.answer(confirm_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
@@ -151,11 +144,12 @@ async def handle_course_request_received(message: Message, state: FSMContext, bo
 @router.callback_query(F.data == "quick_req_submit")
 async def handle_quick_req_submit(call: CallbackQuery, bot: Bot):
     user_id = call.from_user.id
+    lang = db.get_user_language(user_id)
     query = last_search_query.get(user_id)
     if not query:
         await call.answer()
-        from aiogram.fsm.context import FSMContext
-        await call.message.answer("✏️ অনুগ্রহ করে যে কোর্সটি চান তার নাম বা লিংক লিখে পাঠান:")
+        err_prompt = "✏️ Please type the name or link of the course you want:" if lang in ["en", "hi"] else "✏️ অনুগ্রহ করে যে কোর্সটি চান তার নাম বা লিংক লিখে পাঠান:"
+        await call.message.answer(err_prompt)
         return
 
     user = call.from_user
@@ -163,20 +157,15 @@ async def handle_quick_req_submit(call: CallbackQuery, bot: Bot):
     uname = f"@{user.username}" if user.username else "N/A"
 
     req_id = db.record_course_request(user_id, user.full_name or "Customer", query)
-    await call.answer("✅ আপনার রিকোয়েস্ট সফলভাবে জমা হয়েছে!", show_alert=True)
+    submit_alert = "✅ Your request has been submitted!" if lang in ["en", "hi"] else "✅ আপনার রিকোয়েস্ট সফলভাবে জমা হয়েছে!"
+    await call.answer(submit_alert, show_alert=True)
 
-    text = (
-        "✅ <b>আপনার রিকোয়েস্ট সফলভাবে জমা হয়েছে!</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📦 <b>রিকোয়েস্টকৃত আইটেম:</b>\n<code>{html.escape(query)}</code>\n\n"
-        f"🆔 <b>রিকোয়েস্ট আইডি:</b> <code>#REQ-{req_id}</code>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "💡 আমাদের টিম দ্রুত এটি ক্যাটালগে যুক্ত করবে অথবা আপনার সাথে যোগাযোগ করবে।"
-    )
+    text = t("course_req_user_confirm", lang, item=html.escape(query), req_id=req_id)
+    btn_browse = "🎓 Browse Catalog" if lang in ["en", "hi"] else "🎓 ক্যাটালগ ব্রাউজ করুন"
     buttons = [
         [
-            make_custom_button(text="🎓 ক্যাটালগ ব্রাউজ করুন", callback_data="back_cats", emoji_key="courses"),
-            make_custom_button(text="🏠 মূল মেনু", callback_data="main_menu", emoji_key="home")
+            make_custom_button(text=btn_browse, callback_data="back_cats", emoji_key="courses"),
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
         ]
     ]
     await render_screen(call, text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
@@ -252,12 +241,7 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
         else:
             # Consecutive greeting (2nd message): send friendly guidance card
             casual_tracker[user_id] = 0
-            guide_text = (
-                "👋 <b>আসসালামু আলাইকুম ভাই!</b>\n\n"
-                "আপনার কি কোনো নির্দিষ্ট কোর্স, সফটওয়্যার বা প্রিমিয়াম অ্যাকাউন্ট লাগবে?\n\n"
-                "• বট ব্যবহার করতে নিচের কিবোর্ড বাটনগুলো ব্যবহার করুন\n"
-                "• অথবা আপনার যে কোর্স বা সফটওয়্যারটি প্রয়োজন তার <b>নাম বা ওয়েবসাইট লিংক</b> সরাসরি এখানে লিখে পাঠিয়ে দিন!"
-            )
+            guide_text = t("search_casual_guide_text", lang)
             await message.answer(guide_text, reply_markup=get_casual_guide_kb(lang), parse_mode="HTML")
             return
 
@@ -288,14 +272,15 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
         em_crs = em_tag("courses", "🎓")
         em_box = em_tag("box", "📦")
         
-        detail_text = (
-            f"🎯 <b>আপনার কাঙ্ক্ষিত কোর্সটি খুঁজে পাওয়া গেছে!</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"{em_crs} <b>{html.escape(prod['title'])}</b>\n\n"
-            f"📝 <b>বিবরণ:</b>\n{render_safe_html_text(prod.get('description', '')[:300])}...\n\n"
-            f"💰 <b>মূল্য:</b> <b>৳{reg_bdt} BDT</b> অথবা <b>${reg_usd} USD</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"👉 <i>ইনস্ট্যান্ট এক্সেস নিতে বা রেফারেল দিয়ে ফ্রি পেতে নিচের বাটনে চাপুন:</i>"
+        c_title = localize_item_name(prod['title'], lang)
+        detail_text = t(
+            "search_found_single_text",
+            lang,
+            em_crs=em_crs,
+            title=html.escape(c_title),
+            desc=render_safe_html_text(prod.get('description', '')[:300]),
+            bdt=reg_bdt,
+            usd=reg_usd
         )
         if prod.get("photo_file_id"):
             try:
@@ -314,11 +299,11 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
 
     # 2. Multiple matches found -> Deliver interactive selection list!
     elif len(matches) > 1:
-        list_text = (
-            f"🔍 <b>সার্চ রেজাল্ট: {len(matches)} টি কোর্স পাওয়া গেছে!</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"আপনি যা খুঁজছেন: <code>{html.escape(text)}</code>\n\n"
-            "👇 যে কোর্সটির বিবরণ ও মূল্য দেখতে চান নিচের অপশন থেকে বেছে নিন:"
+        list_text = t(
+            "search_found_multiple_text",
+            lang,
+            count=len(matches),
+            query=html.escape(text)
         )
         await message.answer(list_text, reply_markup=get_course_search_results_kb(matches, text, lang), parse_mode="HTML")
         return
@@ -327,13 +312,10 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
     else:
         # If it was a URL, or contained search keywords, or was an explicit search phrase
         if is_url or has_keyword or len(text.split()) >= 2 or len(text) >= 4:
-            not_found_text = (
-                "🔍 <b>সার্চ রেজাল্ট: ক্যাটালগে পাওয়া যায়নি</b>\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"আপনি যা খুঁজছেন:\n<code>{html.escape(text)}</code>\n\n"
-                "⚠️ দুঃখিত, এই কোর্সটি বা লিংকটি বর্তমানে আমাদের ক্যাটালগে সরাসরি নেই।\n\n"
-                "💡 <b>তবে কোনো চিন্তা নেই!</b> আমাদের কাছে আনলিমিটেড প্রিমিয়াম রিসোর্স ও প্রোভাইডার এক্সেস রয়েছে। "
-                "আপনি চাইলে এখনই এটি রিকোয়েস্ট করতে পারেন—আমাদের অ্যাডমিন টিম দ্রুত আপনার জন্য এটি ম্যানেজ করে দেবে!"
+            not_found_text = t(
+                "search_not_found_text",
+                lang,
+                query=html.escape(text)
             )
             await message.answer(not_found_text, reply_markup=get_course_not_found_kb(text, lang), parse_mode="HTML")
             return

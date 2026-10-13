@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from database.db import db
 from keyboards.user_kb import get_main_dashboard_inline_kb, get_main_reply_kb
 from utils.ui_nav import render_screen
+from utils.i18n import t
 import html
 
 router = Router()
@@ -44,11 +45,7 @@ async def handle_global_cancel(message: Message, state: FSMContext):
 
     from handlers.start import format_main_dashboard_text
     lang = db.get_user_language(user_id)
-    text = (
-        "❌ <b>বর্তমান প্রক্রিয়াটি সফলভাবে বাতিল করা হয়েছে।</b>\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "👇 আপনি মূল ড্যাশবোর্ডে ফিরে এসেছেন:"
-    )
+    text = t("global_cancelled_msg", lang)
     kb = get_main_dashboard_inline_kb(lang, is_admin=is_admin(user_id))
     await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
@@ -56,8 +53,9 @@ async def handle_global_cancel(message: Message, state: FSMContext):
 async def handle_cancel_fsm_cb(call: CallbackQuery, state: FSMContext):
     current_state = await state.get_state()
     await state.clear()
-    await call.answer("প্রক্রিয়াটি বাতিল করা হয়েছে।")
     user_id = call.from_user.id
+    lang = db.get_user_language(user_id)
+    await call.answer(t("global_cancelled_alert", lang))
 
     if is_admin(user_id) and current_state and any(tag in str(current_state).lower() for tag in ["admin", "prod", "cat", "drop", "stock", "groq", "coupon"]):
         from handlers.admin_panel import handle_admin_main_dashboard
@@ -65,7 +63,6 @@ async def handle_cancel_fsm_cb(call: CallbackQuery, state: FSMContext):
         return
 
     from handlers.start import format_main_dashboard_text
-    lang = db.get_user_language(user_id)
     text = format_main_dashboard_text(user_id, call.from_user, lang)
     kb = get_main_dashboard_inline_kb(lang, is_admin=is_admin(user_id))
     await render_screen(call, text, reply_markup=kb, parse_mode="HTML")

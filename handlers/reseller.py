@@ -10,6 +10,7 @@ from keyboards.user_kb import get_reseller_hub_kb, get_cancel_fsm_kb
 from config import ADMIN_USERNAME
 from utils.notifier import notify_admin_reseller_app
 from utils.emojis import em_tag, make_custom_button
+from utils.i18n import t, localize_item_name
 from utils.ui_nav import render_screen
 
 logger = logging.getLogger(__name__)
@@ -225,40 +226,58 @@ async def handle_reseller_hub(message: Message):
 @router.callback_query(F.data == "reseller_pricelist")
 async def handle_reseller_pricelist(call: CallbackQuery):
     await call.answer()
+    lang = db.get_user_language(call.from_user.id)
     products = db.get_all_active_products()
     
     if not products:
-        await call.answer("⚠️ বর্তমানে কোনো প্রোডাক্ট লোড করা নেই।", show_alert=True)
+        alert_msg = "⚠️ No products loaded currently." if lang in ["en", "hi"] else "⚠️ বর্তমানে কোনো প্রোডাক্ট লোড করা নেই।"
+        await call.answer(alert_msg, show_alert=True)
         return
         
     em_dia = em_tag("diamond", "💎")
-    text = (
-        f"{em_dia} <b>রিসেলার পাইকারি মূল্য তালিকা (Wholesale Price List)</b> {em_dia}\n\n"
-        "<i>প্রতিটি প্রোডাক্টের সাধারণ খুচরা ও রিসেলার পাইকারি রেটের তুলনামূলক চার্ট:</i>\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    )
-    
-    for idx, p in enumerate(products, start=1):
-        reg_bdt = int(p["price_bdt"])
-        res_bdt = int(p["reseller_price_bdt"]) if p.get("reseller_price_bdt") else int(reg_bdt * 0.70)
-        profit = reg_bdt - res_bdt
-        
-        text += (
-            f"<b>#{idx} | {html.escape(p['title'])}</b>\n"
-            f"🏷️ সাধারণ খুচরা রেট: <code>৳{reg_bdt} BDT</code>\n"
-            f"{em_dia} <b>রিসেলার পাইকারি রেট:</b> <b>৳{res_bdt} BDT</b> <i>(নিট লাভ: ৳{profit}!)</i>\n"
-            "────────────────────────────\n"
+    if lang in ["en", "hi"]:
+        text = (
+            f"{em_dia} <b>Reseller Wholesale Price List</b> {em_dia}\n\n"
+            "<i>Comparison between regular retail prices and your wholesale rates:</i>\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         )
-        
-    text += (
-        "\n⚡ <b>অফিসিয়াল সুবিধা:</b> আপনি এই পাইকারি রেটে কিনে আপনার যেকোনো গ্রাহকের কাছে নিজের মূল্যে সেল করতে পারেন।"
-    )
+        for idx, p in enumerate(products, start=1):
+            clean_title = localize_item_name(p['title'], lang)
+            reg_bdt = int(p["price_bdt"])
+            res_bdt = int(p["reseller_price_bdt"]) if p.get("reseller_price_bdt") else int(reg_bdt * 0.70)
+            profit = reg_bdt - res_bdt
+            text += (
+                f"<b>#{idx} | {html.escape(clean_title)}</b>\n"
+                f"🏷️ Retail Price: <code>৳{reg_bdt} BDT</code>\n"
+                f"{em_dia} <b>Wholesale Price:</b> <b>৳{res_bdt} BDT</b> <i>(Profit: ৳{profit}!)</i>\n"
+                "────────────────────────────\n"
+            )
+        text += "\n⚡ <b>Official Perk:</b> You can purchase at wholesale prices and resell to your clients at your own pricing."
+    else:
+        text = (
+            f"{em_dia} <b>রিসেলার পাইকারি মূল্য তালিকা (Wholesale Price List)</b> {em_dia}\n\n"
+            "<i>প্রতিটি প্রোডাক্টের সাধারণ খুচরা ও রিসেলার পাইকারি রেটের তুলনামূলক চার্ট:</i>\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        )
+        for idx, p in enumerate(products, start=1):
+            reg_bdt = int(p["price_bdt"])
+            res_bdt = int(p["reseller_price_bdt"]) if p.get("reseller_price_bdt") else int(reg_bdt * 0.70)
+            profit = reg_bdt - res_bdt
+            text += (
+                f"<b>#{idx} | {html.escape(p['title'])}</b>\n"
+                f"🏷️ সাধারণ খুচরা রেট: <code>৳{reg_bdt} BDT</code>\n"
+                f"{em_dia} <b>রিসেলার পাইকারি রেট:</b> <b>৳{res_bdt} BDT</b> <i>(নিট লাভ: ৳{profit}!)</i>\n"
+                "────────────────────────────\n"
+            )
+        text += (
+            "\n⚡ <b>অফিসিয়াল সুবিধা:</b> আপনি এই পাইকারি রেটে কিনে আপনার যেকোনো গ্রাহকের কাছে নিজের মূল্যে সেল করতে পারেন।"
+        )
     
-    from utils.emojis import make_custom_button
+    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi"] else "🔙 রিসেলার হাব (Back)"
     back_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            make_custom_button(text="🔙 রিসেলার হাব (Back)", callback_data="back_reseller_hub", emoji_key="back"),
-            make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")
+            make_custom_button(text=back_txt, callback_data="back_reseller_hub", emoji_key="back"),
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
         ]
     ])
     await render_screen(call, text, reply_markup=back_kb, parse_mode="HTML")
@@ -266,25 +285,42 @@ async def handle_reseller_pricelist(call: CallbackQuery):
 @router.callback_query(F.data == "reseller_copy_posts")
 async def handle_reseller_marketing_posts(call: CallbackQuery):
     await call.answer()
+    lang = db.get_user_language(call.from_user.id)
     
-    marketing_template = (
-        "📢 <b>রেডি-মেড মার্কেটিং পোস্টস (Copy & Sell Shortcut)</b>\n\n"
-        "👇 নিচে দেওয়া ফরম্যাটটি সরাসরি কপি করে আপনার ফেসবুক গ্রুপ, পেজ বা টেলিগ্রামে পোস্ট করতে পারেন:\n\n"
-        "<pre>🔥 ধামাকা অফার! প্রিমিয়াম ভিডিও এডিটিং ও স্কিল ডেভেলপমেন্ট কোর্স VIP অ্যাক্সেস!\n\n"
-        "✅ Adobe Premiere Pro & After Effects Masterclass 2026\n"
-        "✅ 500+ GB Presets, Sound Effects & Essential Packs\n"
-        "✅ লাইফটাইম প্রাইভেট ভিআইপি চ্যানেল অ্যাক্সেস\n"
-        "✅ মোবাইল ও পিসি উভয় ইউজারদের জন্য পারফেক্ট\n\n"
-        "💰 নিয়মিত মূল্য: ৳৭০০ টাকা\n"
-        "⚡ আজকের অফার মূল্য: মাত্র ৳৩৫০ টাকা!\n\n"
-        "📥 ইনবক্স করুন সরাসরি অ্যাক্সেস পেতে!</pre>\n\n"
-        "📌 <b>টিপ:</b> কাস্টমার আপনাকে টাকা দিলে আপনি বটে পাইকারি রেটে কিনে তার জন্য ১-টাইম অ্যাক্সেস লিংক নিয়ে তাকে দিয়ে দেবেন!"
-    )
+    if lang in ["en", "hi"]:
+        marketing_template = (
+            "📢 <b>Ready-to-Use Marketing Templates (Copy & Sell)</b>\n\n"
+            "👇 Copy the formatted text below and post directly to your Facebook groups, page, or Telegram:\n\n"
+            "<pre>🔥 Mega Offer! Premium Video Editing & Skill Development VIP Access!\n\n"
+            "✅ Adobe Premiere Pro & After Effects Masterclass 2026\n"
+            "✅ 500+ GB Presets, Sound Effects & Essential Packs\n"
+            "✅ Lifetime Private VIP Channel Access\n"
+            "✅ Works seamlessly on both Mobile & PC\n\n"
+            "💰 Regular Price: ৳700 BDT\n"
+            "⚡ Today's Special Price: Only ৳350 BDT!\n\n"
+            "📥 Inbox us now for instant delivery!</pre>\n\n"
+            "📌 <b>Pro-Tip:</b> When your customer pays you, simply purchase at wholesale price in this bot and send them the 1-time access link!"
+        )
+    else:
+        marketing_template = (
+            "📢 <b>রেডি-মেড মার্কেটিং পোস্টস (Copy & Sell Shortcut)</b>\n\n"
+            "👇 নিচে দেওয়া ফরম্যাটটি সরাসরি কপি করে আপনার ফেসবুক গ্রুপ, পেজ বা টেলিগ্রামে পোস্ট করতে পারেন:\n\n"
+            "<pre>🔥 ধামাকা অফার! প্রিমিয়াম ভিডিও এডিটিং ও স্কিল ডেভেলপমেন্ট কোর্স VIP অ্যাক্সেস!\n\n"
+            "✅ Adobe Premiere Pro & After Effects Masterclass 2026\n"
+            "✅ 500+ GB Presets, Sound Effects & Essential Packs\n"
+            "✅ লাইফটাইম প্রাইভেট ভিআইপি চ্যানেল অ্যাক্সেস\n"
+            "✅ মোবাইল ও পিসি উভয় ইউজারদের জন্য পারফেক্ট\n\n"
+            "💰 নিয়মিত মূল্য: ৳৭০০ টাকা\n"
+            "⚡ আজকের অফার মূল্য: মাত্র ৳৩৫০ টাকা!\n\n"
+            "📥 ইনবক্স করুন সরাসরি অ্যাক্সেস পেতে!</pre>\n\n"
+            "📌 <b>টিপ:</b> কাস্টমার আপনাকে টাকা দিলে আপনি বটে পাইকারি রেটে কিনে তার জন্য ১-টাইম অ্যাক্সেস লিংক নিয়ে তাকে দিয়ে দেবেন!"
+        )
     
+    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi"] else "🔙 রিসেলার হাব (Back)"
     back_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            make_custom_button(text="🔙 রিসেলার হাব (Back)", callback_data="back_reseller_hub", emoji_key="back"),
-            make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")
+            make_custom_button(text=back_txt, callback_data="back_reseller_hub", emoji_key="back"),
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
         ]
     ])
     await render_screen(call, marketing_template, reply_markup=back_kb, parse_mode="HTML")
@@ -305,34 +341,55 @@ async def handle_back_reseller_hub(call: CallbackQuery, state: FSMContext = None
 @router.callback_query(F.data == "reseller_leaderboard")
 async def handle_reseller_leaderboard(call: CallbackQuery):
     await call.answer()
+    lang = db.get_user_language(call.from_user.id)
     leaders = db.get_reseller_leaderboard(limit=10)
     
-    text = (
-        "🏆 <b>সেরা রিসেলার লিডারবোর্ড (Top Resellers Ranking)</b>\n\n"
-        "চলতি মাসের সফল রিসেলারদের তালিকা:\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-    )
-    
-    if not leaders:
-        text += "<i>এখনও এই মাসের সেলস রেকর্ড শুরু হয়নি। আপনিই হোন প্রথম টপ সেলার!</i>\n"
+    if lang in ["en", "hi"]:
+        text = (
+            "🏆 <b>Top Resellers Leaderboard</b>\n\n"
+            "Top performing partners this month:\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+        )
+        if not leaders:
+            text += "<i>No sales recorded yet this month. Be the first top seller!</i>\n"
+        else:
+            medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+            for idx, leader in enumerate(leaders):
+                badge = medals[idx] if idx < len(medals) else f"#{idx+1}"
+                name = leader.get("first_name", "Reseller")
+                code = leader.get("reseller_code", "RS-N/A")
+                sales = leader.get("reseller_monthly_sales", 0)
+                text += f"{badge} <b>[{code}] {name}</b> — <code>{sales} successful sales</code>\n"
+        text += (
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🎁 <b>Monthly Bonus:</b> Top 3 resellers receive special cashback and free VIP reward passes at month-end!"
+        )
     else:
-        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-        for idx, leader in enumerate(leaders):
-            badge = medals[idx] if idx < len(medals) else f"#{idx+1}"
-            name = leader.get("first_name", "Reseller")
-            code = leader.get("reseller_code", "RS-N/A")
-            sales = leader.get("reseller_monthly_sales", 0)
-            text += f"{badge} <b>[{code}] {name}</b> — <code>{sales} টি সফল সেল</code>\n"
-            
-    text += (
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "🎁 <b>মাসিক বোনাস:</b> মাসের শেষে শীর্ষ ৩ জন রিসেলারের জন্য রয়েছে বিশেষ নগদ ক্যাশব্যাক ও ফ্রি ভিআইপি অ্যাক্সেস!"
-    )
+        text = (
+            "🏆 <b>সেরা রিসেলার লিডারবোর্ড (Top Resellers Ranking)</b>\n\n"
+            "চলতি মাসের সফল রিসেলারদের তালিকা:\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+        )
+        if not leaders:
+            text += "<i>এখনও এই মাসের সেলস রেকর্ড শুরু হয়নি। আপনিই হোন প্রথম টপ সেলার!</i>\n"
+        else:
+            medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+            for idx, leader in enumerate(leaders):
+                badge = medals[idx] if idx < len(medals) else f"#{idx+1}"
+                name = leader.get("first_name", "Reseller")
+                code = leader.get("reseller_code", "RS-N/A")
+                sales = leader.get("reseller_monthly_sales", 0)
+                text += f"{badge} <b>[{code}] {name}</b> — <code>{sales} টি সফল সেল</code>\n"
+        text += (
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🎁 <b>মাসিক বোনাস:</b> মাসের শেষে শীর্ষ ৩ জন রিসেলারের জন্য রয়েছে বিশেষ নগদ ক্যাশব্যাক ও ফ্রি ভিআইপি অ্যাক্সেস!"
+        )
     
+    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi"] else "🔙 রিসেলার হাব (Back)"
     back_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            make_custom_button(text="🔙 রিসেলার হাব (Back)", callback_data="back_reseller_hub", emoji_key="back"),
-            make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")
+            make_custom_button(text=back_txt, callback_data="back_reseller_hub", emoji_key="back"),
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
         ]
     ])
     await render_screen(call, text, reply_markup=back_kb, parse_mode="HTML")
@@ -341,6 +398,7 @@ async def handle_reseller_leaderboard(call: CallbackQuery):
 async def handle_reseller_live_race(call: CallbackQuery):
     await call.answer()
     user_id = call.from_user.id
+    lang = db.get_user_language(user_id)
     data = db.get_challenge_leaderboard()
     ch = data["challenge"]
     racers = data["racers"]
@@ -355,21 +413,33 @@ async def handle_reseller_live_race(call: CallbackQuery):
 
     # Check if user already won
     user_won_record = next((w for w in ch.get("winners", []) if w["user_id"] == user_id), None)
-    if user_won_record:
-        user_status_note = (
-            f"🏆 <b>অভিনন্দন!</b> আপনি #{user_won_record['rank']} বিজয়ী হিসেবে রিওয়ার্ড পাস আনলক করেছেন!\n"
-            f"🎟️ কুপন কোড: `{user_won_record.get('coupon_code', 'N/A')}`\n"
-        )
-    elif ch["remaining_slots"] <= 0:
-        user_status_note = "🔒 <b>সতর্কতা:</b> এই রাউন্ডের সমস্ত বিজয়ী স্লট পূরণ হয়ে গেছে! পরবর্তী রাউন্ডের জন্য প্রস্তুত থাকুন।"
+    if lang in ["en", "hi"]:
+        if user_won_record:
+            user_status_note = (
+                f"🏆 <b>Congratulations!</b> You unlocked the VIP Reward Pass as Winner #{user_won_record['rank']}!\n"
+                f"🎟️ Coupon Code: `{user_won_record.get('coupon_code', 'N/A')}`\n"
+            )
+        elif ch["remaining_slots"] <= 0:
+            user_status_note = "🔒 <b>Notice:</b> All winner slots for this round are filled! Stay tuned for the next race."
+        else:
+            needed = max(0, target - user_sales)
+            user_status_note = f"⚡ You only need <b><code>{needed}</code></b> more sales to win!"
     else:
-        needed = max(0, target - user_sales)
-        user_status_note = f"⚡ বিজয়ী হতে আপনার আর মাত্র <b><code>{needed} টি</code></b> সফল সেল প্রয়োজন!"
+        if user_won_record:
+            user_status_note = (
+                f"🏆 <b>অভিনন্দন!</b> আপনি #{user_won_record['rank']} বিজয়ী হিসেবে রিওয়ার্ড পাস আনলক করেছেন!\n"
+                f"🎟️ কুপন কোড: `{user_won_record.get('coupon_code', 'N/A')}`\n"
+            )
+        elif ch["remaining_slots"] <= 0:
+            user_status_note = "🔒 <b>সতর্কতা:</b> এই রাউন্ডের সমস্ত বিজয়ী স্লট পূরণ হয়ে গেছে! পরবর্তী রাউন্ডের জন্য প্রস্তুত থাকুন।"
+        else:
+            needed = max(0, target - user_sales)
+            user_status_note = f"⚡ বিজয়ী হতে আপনার আর মাত্র <b><code>{needed} টি</code></b> সফল সেল প্রয়োজন!"
 
     medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
     racer_rows = []
     if not racers:
-        racer_rows.append("_এখনও কোনো রিসেলারের সেলস রেকর্ড হয়নি।_")
+        racer_rows.append("_No reseller sales recorded yet._" if lang in ["en", "hi"] else "_এখনও কোনো রিসেলারের সেলস রেকর্ড হয়নি।_")
     else:
         for idx, r in enumerate(racers[:10]):
             badge = medals[idx] if idx < len(medals) else f"#{idx+1}"
@@ -377,45 +447,70 @@ async def handle_reseller_live_race(call: CallbackQuery):
             r_code = r.get("reseller_code", "RS")
             r_sales = r.get("reseller_monthly_sales", 0)
             if r.get("won_rank"):
-                tag = f" — `{r_sales} টি` 🏆 <b>(বিজয়ী #{r['won_rank']})</b>"
+                tag = f" — `{r_sales}` 🏆 <b>(Winner #{r['won_rank']})</b>" if lang in ["en", "hi"] else f" — `{r_sales} টি` 🏆 <b>(বিজয়ী #{r['won_rank']})</b>"
             else:
                 left = max(0, target - r_sales)
-                tag = f" — `{r_sales} টি` _(আর {left}টি বাকি)_"
+                tag = f" — `{r_sales}` _({left} remaining)_" if lang in ["en", "hi"] else f" — `{r_sales} টি` _(আর {left}টি বাকি)_"
             racer_rows.append(f"{badge} **[{r_code}] {r_name}**{tag}")
 
     racers_text = "\n".join(racer_rows)
 
-    text = (
-        "🏁 <b>সেলস চ্যালেঞ্জ ও লাইভ রেস (Live Sales Race)</b> 🏁\n\n"
-        f"🏆 <b>চ্যালেঞ্জ:</b> {ch['title']}\n"
-        f"🎯 <b>টার্গেট:</b> `{ch['target_sales']} টি সেলস`\n"
-        "🎁 <b>বিজয়ীদের জন্য এক্সক্লুসিভ রিওয়ার্ড পাস:</b>\n"
-        f"• 💥 পাইকারি মূল্যের চেয়েও অতিরিক্ত <b>-৳{ch['discount_bdt']:.0f} BDT</b> ছাড়!\n"
-        f"• ⏳ পাসের মেয়াদ: `{ch['days_valid']} দিন`\n"
-        f"• 📦 মোট ব্যবহার সীমা: `{ch['max_uses']} টি অর্ডার`\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "📊 <b>স্লট স্ট্যাটাস:</b>\n"
-        f"• মোট বিজয়ী স্লট: `{ch['max_slots']} টি`\n"
-        f"• দখলকৃত স্লট: `{ch['claimed_slots']} টি`\n"
-        f"• অবশিষ্ট ফাঁকা স্লট: `{ch['remaining_slots']} টি` {'🔥 রেস রানিং!' if ch['remaining_slots'] > 0 else '🔒 স্লট পূর্ণ'}\n\n"
-        "👤 <b>আপনার বর্তমান অগ্রগতি:</b>\n"
-        f"• আপনার সম্পন্ন সেলস: `{user_sales} / {ch['target_sales']} টি` ({pct}%)\n"
-        f"• প্রগ্রেস: `[{bar}] {pct}%`\n"
-        f"{user_status_note}\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "🏎️ <b>লাইভ রেসার ট্র্যাকার (Top Racers in Race):</b>\n"
-        f"{racers_text}\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"⚡ সবার আগে টার্গেট স্পর্শকারী প্রথম {ch['max_slots']} জন স্বয়ংক্রিয়ভাবে ভিআইপি রিওয়ার্ড পাস আনলক করবেন!"
-    )
+    if lang in ["en", "hi"]:
+        text = (
+            "🏁 <b>Live Sales Race & Challenge Tracker</b> 🏁\n\n"
+            f"🏆 <b>Challenge:</b> {ch['title']}\n"
+            f"🎯 <b>Target:</b> `{ch['target_sales']} Sales`\n"
+            "🎁 <b>Exclusive Winner Reward Pass:</b>\n"
+            f"• 💥 Extra <b>-৳{ch['discount_bdt']:.0f} BDT</b> discount below wholesale prices!\n"
+            f"• ⏳ Pass Validity: `{ch['days_valid']} days`\n"
+            f"• 📦 Total Order Uses: `{ch['max_uses']} orders`\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📊 <b>Slot Status:</b>\n"
+            f"• Total Winner Slots: `{ch['max_slots']}`\n"
+            f"• Claimed Slots: `{ch['claimed_slots']}`\n"
+            f"• Available Slots: `{ch['remaining_slots']}` {'🔥 Race Active!' if ch['remaining_slots'] > 0 else '🔒 Slots Filled'}\n\n"
+            "👤 <b>Your Progress:</b>\n"
+            f"• Completed Sales: `{user_sales} / {ch['target_sales']}` ({pct}%)\n"
+            f"• Progress Bar: `[{bar}] {pct}%`\n"
+            f"{user_status_note}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🏎️ <b>Top Racers in Race:</b>\n"
+            f"{racers_text}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"⚡ The first {ch['max_slots']} sellers to hit the target automatically unlock the VIP reward pass!"
+        )
+    else:
+        text = (
+            "🏁 <b>সেলস চ্যালেঞ্জ ও লাইভ রেস (Live Sales Race)</b> 🏁\n\n"
+            f"🏆 <b>চ্যালেঞ্জ:</b> {ch['title']}\n"
+            f"🎯 <b>টার্গেট:</b> `{ch['target_sales']} টি সেলস`\n"
+            "🎁 <b>বিজয়ীদের জন্য এক্সক্লুসিভ রিওয়ার্ড পাস:</b>\n"
+            f"• 💥 পাইকারি মূল্যের চেয়েও অতিরিক্ত <b>-৳{ch['discount_bdt']:.0f} BDT</b> ছাড়!\n"
+            f"• ⏳ পাসের মেয়াদ: `{ch['days_valid']} দিন`\n"
+            f"• 📦 মোট ব্যবহার সীমা: `{ch['max_uses']} টি অর্ডার`\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📊 <b>স্লট স্ট্যাটাস:</b>\n"
+            f"• মোট বিজয়ী স্লট: `{ch['max_slots']} টি`\n"
+            f"• দখলকৃত স্লট: `{ch['claimed_slots']} টি`\n"
+            f"• অবশিষ্ট ফাঁকা স্লট: `{ch['remaining_slots']} টি` {'🔥 রেস রানিং!' if ch['remaining_slots'] > 0 else '🔒 স্লট পূর্ণ'}\n\n"
+            "👤 <b>আপনার বর্তমান অগ্রগতি:</b>\n"
+            f"• আপনার সম্পন্ন সেলস: `{user_sales} / {ch['target_sales']} টি` ({pct}%)\n"
+            f"• প্রগ্রেস: `[{bar}] {pct}%`\n"
+            f"{user_status_note}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🏎️ <b>লাইভ রেসার ট্র্যাকার (Top Racers in Race):</b>\n"
+            f"{racers_text}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"⚡ সবার আগে টার্গেট স্পর্শকারী প্রথম {ch['max_slots']} জন স্বয়ংক্রিয়ভাবে ভিআইপি রিওয়ার্ড পাস আনলক করবেন!"
+        )
 
-    from utils.emojis import make_custom_button
+    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi"] else "🔙 রিসেলার হাব (Back)"
     race_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [make_custom_button(text="🔄 Refresh Race (লাইভ আপডেট)", callback_data="reseller_live_race", emoji_key="refresh")],
-        [make_custom_button(text="🛒 Buy Wholesale / পাইকারি অর্ডার", callback_data="back_cats", emoji_key="cart")],
+        [make_custom_button(text="🔄 Refresh Race" if lang in ["en", "hi"] else "🔄 Refresh Race (লাইভ আপডেট)", callback_data="reseller_live_race", emoji_key="refresh")],
+        [make_custom_button(text="🛒 Buy Wholesale" if lang in ["en", "hi"] else "🛒 Buy Wholesale / পাইকারি অর্ডার", callback_data="back_cats", emoji_key="cart")],
         [
-            make_custom_button(text="🔙 রিসেলার হাব (Back)", callback_data="back_reseller_hub", emoji_key="back"),
-            make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")
+            make_custom_button(text=back_txt, callback_data="back_reseller_hub", emoji_key="back"),
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
         ]
     ])
 
@@ -424,6 +519,7 @@ async def handle_reseller_live_race(call: CallbackQuery):
 @router.callback_query(F.data == "apply_reseller")
 async def handle_start_apply(call: CallbackQuery, state: FSMContext):
     user_id = call.from_user.id
+    lang = db.get_user_language(user_id)
     user = db.get_user(user_id)
     if not user:
         user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
@@ -434,29 +530,53 @@ async def handle_start_apply(call: CallbackQuery, state: FSMContext):
     
     # 1000 BDT MANDATORY CHECK
     if curr_bal < min_dep:
-        await call.answer("⚠️ ন্যূনতম ১,০০০ টাকা ব্যালেন্স প্রয়োজন!", show_alert=True)
+        alert_popup = "⚠️ Minimum 1,000 BDT balance required!" if lang in ["en", "hi"] else "⚠️ ন্যূনতম ১,০০০ টাকা ব্যালেন্স প্রয়োজন!"
+        await call.answer(alert_popup, show_alert=True)
         need_amount = int(min_dep - curr_bal)
         usable_after = int(min_dep - fee)
-        alert_text = (
-            "⚠️ <b>রিসেলার আবেদন করতে ওয়ালেটে ন্যূনতম ৳১,০০০ ব্যালেন্স থাকা বাধ্যতামূলক!</b>\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            f"💳 <b>আপনার বর্তমান ব্যালেন্স:</b> <code>৳{curr_bal:.2f} BDT</code>\n"
-            f"💰 <b>প্রয়োজনীয় ন্যূনতম ব্যালেন্স:</b> <code>৳{int(min_dep)} BDT</code>\n"
-            f"📌 <b>ঘাটতি ব্যালেন্স:</b> <code>৳{need_amount} BDT</code>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "📊 <b>ব্যালেন্স ও ফি বন্টন নিয়মাবলী:</b>\n"
-            f"• <b>ভেরিফাইড পার্টনার অ্যাক্টিভেশন ফি:</b> <code>৳{int(fee)} BDT</code> (নন-রিফান্ডেবল — অ্যাডমিন অনুমোদনের পর স্বয়ংক্রিয়ভাবে কর্তন হবে)\n"
-            f"• <b>ব্যবহারযোগ্য পাইকারি শপিং ব্যালেন্স:</b> <code>৳{usable_after} BDT</code> (আপনার ওয়ালেটে থাকবে, যা দিয়ে পাইকারি রেটে কোর্স/টুলস কিনতে পারবেন)\n\n"
-            "🛡️ <i>ভুয়া আবেদনকারী ও নন-সিরিয়াস ইউজার ফিল্টার করতে এই সিকিউরিটি পলিসি কার্যকর করা হয়েছে।</i>\n\n"
-            "👇 অনুগ্রহ করে নিচের বাটনে চাপ দিয়ে ওয়ালেটে ব্যালেন্স লোড করে পুনরায় আবেদন করুন:"
-        )
-        gate_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💳 Add Balance (ব্যালেন্স লোড করুন)", callback_data="add_balance_shortcut")],
-            [
-                InlineKeyboardButton(text="🔙 রিসেলার হাব (Back)", callback_data="back_reseller_hub"),
-                InlineKeyboardButton(text="🏠 মূল মেনু (Home)", callback_data="main_menu")
-            ]
-        ])
+        
+        if lang in ["en", "hi"]:
+            alert_text = (
+                "⚠️ <b>A minimum wallet balance of ৳1,000 BDT is required to apply for Reseller!</b>\n\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                f"💳 <b>Your Current Balance:</b> <code>৳{curr_bal:.2f} BDT</code>\n"
+                f"💰 <b>Required Minimum Balance:</b> <code>৳{int(min_dep)} BDT</code>\n"
+                f"📌 <b>Balance Shortage:</b> <code>৳{need_amount} BDT</code>\n"
+                "━━━━━━━━━━━━━━━━━━━━\n\n"
+                "📊 <b>Balance & Fee Breakdown:</b>\n"
+                f"• <b>Verified Partner Activation Fee:</b> <code>৳{int(fee)} BDT</code> (Non-refundable — deducted upon admin approval)\n"
+                f"• <b>Usable Wholesale Shopping Balance:</b> <code>৳{usable_after} BDT</code> (Remains in wallet for purchasing courses/tools at wholesale prices)\n\n"
+                "🛡️ <i>This security policy filters non-serious applicants and protects genuine resellers.</i>\n\n"
+                "👇 Please add funds to your wallet using the button below and re-apply:"
+            )
+            gate_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="💳 Add Balance", callback_data="add_balance_shortcut")],
+                [
+                    InlineKeyboardButton(text="🔙 Back to Reseller Hub", callback_data="back_reseller_hub"),
+                    InlineKeyboardButton(text="🏠 Main Menu", callback_data="main_menu")
+                ]
+            ])
+        else:
+            alert_text = (
+                "⚠️ <b>রিসেলার আবেদন করতে ওয়ালেটে ন্যূনতম ৳১,০০০ ব্যালেন্স থাকা বাধ্যতামূলক!</b>\n\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                f"💳 <b>আপনার বর্তমান ব্যালেন্স:</b> <code>৳{curr_bal:.2f} BDT</code>\n"
+                f"💰 <b>প্রয়োজনীয় ন্যূনতম ব্যালেন্স:</b> <code>৳{int(min_dep)} BDT</code>\n"
+                f"📌 <b>ঘাটতি ব্যালেন্স:</b> <code>৳{need_amount} BDT</code>\n"
+                "━━━━━━━━━━━━━━━━━━━━\n\n"
+                "📊 <b>ব্যালেন্স ও ফি বন্টন নিয়মাবলী:</b>\n"
+                f"• <b>ভেরিফাইড পার্টনার অ্যাক্টিভেশন ফি:</b> <code>৳{int(fee)} BDT</code> (নন-রিফান্ডেবল — অ্যাডমিন অনুমোদনের পর স্বয়ংক্রিয়ভাবে কর্তন হবে)\n"
+                f"• <b>ব্যবহারযোগ্য পাইকারি শপিং ব্যালেন্স:</b> <code>৳{usable_after} BDT</code> (আপনার ওয়ালেটে থাকবে, যা দিয়ে পাইকারি রেটে কোর্স/টুলস কিনতে পারবেন)\n\n"
+                "🛡️ <i>ভুয়া আবেদনকারী ও নন-সিরিয়াস ইউজার ফিল্টার করতে এই সিকিউরিটি পলিসি কার্যকর করা হয়েছে।</i>\n\n"
+                "👇 অনুগ্রহ করে নিচের বাটনে চাপ দিয়ে ওয়ালেটে ব্যালেন্স লোড করে পুনরায় আবেদন করুন:"
+            )
+            gate_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="💳 Add Balance (ব্যালেন্স লোড করুন)", callback_data="add_balance_shortcut")],
+                [
+                    InlineKeyboardButton(text="🔙 রিসেলার হাব (Back)", callback_data="back_reseller_hub"),
+                    InlineKeyboardButton(text="🏠 মূল মেনু (Home)", callback_data="main_menu")
+                ]
+            ])
         await render_screen(call, alert_text, reply_markup=gate_kb, parse_mode="HTML")
         return
         
@@ -464,21 +584,32 @@ async def handle_start_apply(call: CallbackQuery, state: FSMContext):
     await state.set_state(ResellerApplyState.waiting_for_info)
     
     usable_after = max(0.0, curr_bal - fee)
-    prompt = (
-        f"📝 <b>ভিআইপি রিসেলার আবেদন ফর্ম (ভেরিফাইড ব্যালেন্স: ৳{curr_bal:.2f} ✅)</b>\n\n"
-        "💡 <b>মনে রাখবেন:</b> অ্যাডমিন অনুমোদন দিলে আপনার ওয়ালেট থেকে এককালীন <code>৳500</code> ভেরিফিকেশন ফি কর্তন হবে এবং অবশিষ্ট <code>৳" f"{usable_after:.2f}</code> শপিং ব্যালেন্স হিসেবে থাকবে।\n\n"
-        "অনুগ্রহ করে নিচের তথ্যগুলো এক মেসেজে লিখে পাঠান:\n"
-        "১. আপনার ফেসবুক পেজ, গ্রুপ বা টেলিগ্রাম/হোয়াটসঅ্যাপ চ্যানেলের লিংক\n"
-        "২. আপনি কীভাবে কোর্স মার্কেটিং ও সেল করবেন এবং আপনার অভিজ্ঞতা?\n\n"
-        "<i>(সঠিক ও স্পষ্ট তথ্য না দিলে আবেদন গ্রহণযোগ্য হবে না)</i>"
-    )
-    await render_screen(call, prompt, reply_markup=get_cancel_fsm_kb(), parse_mode="HTML")
+    if lang in ["en", "hi"]:
+        prompt = (
+            f"📝 <b>VIP Reseller Application Form (Verified Balance: ৳{curr_bal:.2f} ✅)</b>\n\n"
+            f"💡 <b>Note:</b> Upon approval, a one-time verification fee of <code>৳{int(fee)}</code> will be deducted, leaving <code>৳{usable_after:.2f}</code> as your active wholesale shopping balance.\n\n"
+            "Please send the following details in a single message:\n"
+            "1. Link to your Facebook page/group or Telegram/WhatsApp channel\n"
+            "2. How do you plan to market and sell courses, and your experience?\n\n"
+            "<i>(Applications with inaccurate or insufficient info will not be approved)</i>"
+        )
+    else:
+        prompt = (
+            f"📝 <b>ভিআইপি রিসেলার আবেদন ফর্ম (ভেরিফাইড ব্যালেন্স: ৳{curr_bal:.2f} ✅)</b>\n\n"
+            "💡 <b>মনে রাখবেন:</b> অ্যাডমিন অনুমোদন দিলে আপনার ওয়ালেট থেকে এককালীন <code>৳500</code> ভেরিফিকেশন ফি কর্তন হবে এবং অবশিষ্ট <code>৳" f"{usable_after:.2f}</code> শপিং ব্যালেন্স হিসেবে থাকবে।\n\n"
+            "অনুগ্রহ করে নিচের তথ্যগুলো এক মেসেজে লিখে পাঠান:\n"
+            "১. আপনার ফেসবুক পেজ, গ্রুপ বা টেলিগ্রাম/হোয়াটসঅ্যাপ চ্যানেলের লিংক\n"
+            "২. আপনি কীভাবে কোর্স মার্কেটিং ও সেল করবেন এবং আপনার অভিজ্ঞতা?\n\n"
+            "<i>(সঠিক ও স্পষ্ট তথ্য না দিলে আবেদন গ্রহণযোগ্য হবে না)</i>"
+        )
+    await render_screen(call, prompt, reply_markup=get_cancel_fsm_kb(lang=lang), parse_mode="HTML")
 
 @router.message(ResellerApplyState.waiting_for_info)
 async def handle_process_apply(message: Message, state: FSMContext, bot: Bot):
     info = message.text.strip() if message.text else "N/A"
     user = message.from_user
     db_user = db.get_user(user.id)
+    lang = db.get_user_language(user.id)
     curr_bal = float(db_user.get("balance_bdt") or 0.0) if db_user else 0.0
     await state.clear()
     
@@ -487,20 +618,36 @@ async def handle_process_apply(message: Message, state: FSMContext, bot: Bot):
     fee = float(db.get_setting("reseller_activation_fee", "500"))
     usable_after = max(0.0, curr_bal - fee)
     
-    confirm_text = (
-        "🎉 <b>আপনার রিসেলার আবেদন সফলভাবে সাবমিট হয়েছে!</b>\n\n"
-        f"🆔 আবেদন নং: <code>#{app_id}</code>\n"
-        f"💰 বর্তমান ভেরিফাইড ব্যালেন্স: <code>৳{curr_bal:.2f} BDT</code>\n"
-        f"🛡️ অনুমোদনে কর্তনযোগ্য ফি: <code>৳{fee:.2f} BDT</code>\n"
-        f"💳 অনুমোদনের পর অবশিষ্ট থাকবে: <code>৳{usable_after:.2f} BDT</code>\n\n"
-        "অ্যাডমিন আপনার প্রোফাইল ও মার্কেটিং লিংক যাচাই করে দ্রুত অনুমোদন করবেন।\n\n"
-        f"⚡ <b>দ্রুত অনুমোদনের জন্য সরাসরি অ্যাডমিনকে নক দিতে পারেন:</b>\n"
-        f"👉 @{ADMIN_USERNAME}"
-    )
-    confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"💬 নক অ্যাডমিন (@{ADMIN_USERNAME})", url=f"https://t.me/{ADMIN_USERNAME}")],
-        [InlineKeyboardButton(text="🏠 মূল মেনু (Home)", callback_data="main_menu")]
-    ])
+    if lang in ["en", "hi"]:
+        confirm_text = (
+            "🎉 <b>Your Reseller Application has been submitted!</b>\n\n"
+            f"🆔 Application ID: <code>#{app_id}</code>\n"
+            f"💰 Verified Balance: <code>৳{curr_bal:.2f} BDT</code>\n"
+            f"🛡️ Fee Upon Approval: <code>৳{fee:.2f} BDT</code>\n"
+            f"💳 Balance Remaining: <code>৳{usable_after:.2f} BDT</code>\n\n"
+            "Our admin will review your marketing channels and approve your application shortly.\n\n"
+            f"⚡ <b>For instant verification, ping the admin directly:</b>\n"
+            f"👉 @{ADMIN_USERNAME}"
+        )
+        confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f"💬 Ping Admin (@{ADMIN_USERNAME})", url=f"https://t.me/{ADMIN_USERNAME}")],
+            [InlineKeyboardButton(text="🏠 Main Menu", callback_data="main_menu")]
+        ])
+    else:
+        confirm_text = (
+            "🎉 <b>আপনার রিসেলার আবেদন সফলভাবে সাবমিট হয়েছে!</b>\n\n"
+            f"🆔 আবেদন নং: <code>#{app_id}</code>\n"
+            f"💰 বর্তমান ভেরিফাইড ব্যালেন্স: <code>৳{curr_bal:.2f} BDT</code>\n"
+            f"🛡️ অনুমোদনে কর্তনযোগ্য ফি: <code>৳{fee:.2f} BDT</code>\n"
+            f"💳 অনুমোদনের পর অবশিষ্ট থাকবে: <code>৳{usable_after:.2f} BDT</code>\n\n"
+            "অ্যাডমিন আপনার প্রোফাইল ও মার্কেটিং লিংক যাচাই করে দ্রুত অনুমোদন করবেন।\n\n"
+            f"⚡ <b>দ্রুত অনুমোদনের জন্য সরাসরি অ্যাডমিনকে নক দিতে পারেন:</b>\n"
+            f"👉 @{ADMIN_USERNAME}"
+        )
+        confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f"💬 নক অ্যাডমিন (@{ADMIN_USERNAME})", url=f"https://t.me/{ADMIN_USERNAME}")],
+            [InlineKeyboardButton(text="🏠 মূল মেনু (Home)", callback_data="main_menu")]
+        ])
     await message.answer(confirm_text, reply_markup=confirm_kb, parse_mode="HTML")
     
     # Notify Admin Instantly with interactive action buttons

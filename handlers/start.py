@@ -126,35 +126,31 @@ def format_user_orders_data(user_id: int, lang: str = "bn"):
     em_wal = em_tag("wallet", "💰")
     
     if not orders:
-        text = (
-            f"{em_box} <b>আপনার অর্ডার ভল্ট বর্তমানে খালি!</b>\n\n"
-            f"আপনি এখনও কোনো কোর্স বা ডিজিটাল প্রোডাক্ট ক্রয় করেননি।\n"
-            f"কোর্স দেখতে নিচের <b>🛍️ Browse Courses</b> অপশনে যান!"
-        )
+        text = t("orders_vault_empty", lang)
     else:
-        text = (
-            f"{em_box} <b>ডিজিটাল অর্ডার হিস্ট্রি ও এক্সেস ভল্ট</b> {em_box}\n"
-            f"<i>আপনার সাম্প্রতিক সব অর্ডার ও এক্সেস ডাটা নিচে দেওয়া হলো (১-ট্যাপে কপি করুন):</i>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        )
+        text = t("orders_vault_header", lang)
+        paid_label = t("orders_paid_label", lang)
+        date_label = t("orders_date_label", lang)
+        access_label = t("orders_access_label", lang)
         for idx, order in enumerate(orders[:10], start=1):
             clean_title = html.escape(str(order.get("product_title", "Product")))
             clean_delivery = html.escape(str(order.get("delivery_content", "Delivered")))
             text += (
                 f"<b>#{idx} | {clean_title}</b>\n"
-                f"{em_wal} পরিশোধিত মূল্য: <code>৳{order['amount_paid']} {order['currency']}</code>\n"
-                f"📅 তারিখ: <code>{order['created_at'][:16]}</code>\n"
-                f"🔑 <b>এক্সেস ডাটা / ডেলিভারি ক্রেডেনশিয়াল:</b>\n"
+                f"{em_wal} {paid_label}: <code>৳{order['amount_paid']} {order['currency']}</code>\n"
+                f"📅 {date_label}: <code>{order['created_at'][:16]}</code>\n"
+                f"🔑 <b>{access_label}:</b>\n"
                 f"<pre>{clean_delivery}</pre>\n"
                 f"────────────────────────────\n"
             )
         if len(orders) > 10:
-            text += f"\n<i>(ডাটাবেজে আরও {len(orders)-10} টি অতীত অর্ডার সংরক্ষিত রয়েছে)</i>\n"
+            more_txt = f"\n<i>({len(orders)-10} more past orders archived in database)</i>\n" if lang == "en" else f"\n<i>(ডাটাবেজে আরও {len(orders)-10} টি অতীত অর্ডার সংরক্ষিত রয়েছে)</i>\n"
+            text += more_txt
 
     kb_buttons = [
         [
-            make_custom_button(text="🛍️ Browse Courses (শপ)", callback_data="back_cats", emoji_key="courses"),
-            make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")
+            make_custom_button(text=t("btn_courses", lang), callback_data="back_cats", emoji_key="courses"),
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
         ]
     ]
     return text, InlineKeyboardMarkup(inline_keyboard=kb_buttons)
@@ -177,19 +173,24 @@ async def handle_start(message: Message, state: FSMContext = None):
         from keyboards.user_kb import get_reseller_verification_kb
         query = deep_param.replace("verify_", "").replace("v_", "")
         target = db.verify_reseller(query)
-        cert = generate_verification_certificate(target, query)
+        cert = generate_verification_certificate(target, query, lang=lang)
         uname = target.get("username") if target else None
 
         safe_fname = html.escape(user.first_name or "Partner")
+        header_text = (
+            f"👋 <b>Welcome, {safe_fname}!</b>\n\n🛡️ <b>Reseller verification result below:</b>"
+        ) if lang == "en" else (
+            f"👋 <b>স্বাগতম, {safe_fname}!</b>\n\n🛡️ <b>রিসেলার সততা যাচাইকরণ রেজাল্ট নিচে দেওয়া হলো:</b>"
+        )
         await message.answer(
-            f"👋 <b>স্বাগতম, {safe_fname}!</b>\n\n🛡️ <b>রিসেলার সততা যাচাইকরণ রেজাল্ট নিচে দেওয়া হলো:</b>",
+            header_text,
             reply_markup=get_main_dashboard_inline_kb(lang, is_admin=admin_flag),
             parse_mode="HTML"
         )
         try:
-            await message.answer(cert, reply_markup=get_reseller_verification_kb(uname), parse_mode="HTML")
+            await message.answer(cert, reply_markup=get_reseller_verification_kb(uname, lang=lang), parse_mode="HTML")
         except Exception:
-            await message.answer(cert, reply_markup=get_reseller_verification_kb(uname))
+            await message.answer(cert, reply_markup=get_reseller_verification_kb(uname, lang=lang))
         return
 
     # Handle deep-link referral (e.g., ?start=ref_12345, ?start=ref_12345_c12, or ?start=12345)
@@ -294,6 +295,14 @@ async def handle_set_language_callback(call: CallbackQuery):
     kb = get_main_dashboard_inline_kb(new_lang, is_admin=is_admin(user_id))
     await render_screen(call, text, reply_markup=kb, parse_mode="HTML")
 
+    # Synchronize persistent bottom reply keyboard to match selected language immediately
+    reply_kb = get_main_reply_kb(new_lang, is_admin=is_admin(user_id))
+    confirm_msg = f"✅ Menu language updated to <b>{lang_name}</b>" if new_lang == "en" else f"✅ মেনু ভাষা পরিবর্তন করা হয়েছে: <b>{lang_name}</b>"
+    try:
+        await call.message.answer(confirm_msg, reply_markup=reply_kb, parse_mode="HTML")
+    except Exception:
+        pass
+
 def format_user_profile_data(user_id: int, user_obj=None):
     db_user = db.get_user(user_id)
     if not db_user and user_obj:
@@ -317,28 +326,52 @@ def format_user_profile_data(user_id: int, user_obj=None):
     em_ord = em_tag("orders", "📦")
     em_crs = em_tag("courses", "🎓")
 
-    profile_text = (
-        f"{em_dia} <b>VIP CUSTOMER MEMBERSHIP PROFILE</b> {em_dia}\n"
-        f"<i>স্বাগতম {safe_name}! আপনার সম্পূর্ণ অ্যাকাউন্ট প্রোফাইল ও রেফারেল ভল্ট:</i>\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"{em_usr} <b>কাস্টমার আইডি:</b> <code>#{user_id}</code>\n"
-        f"{em_shd} <b>মেম্বারশিপ টায়ার:</b> <code>{tier_label}</code>\n"
-        f"🏷️ <b>টেলিগ্রাম ইউজার:</b> {uname}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"{em_wal} <b>ওয়ালেট ব্যালেন্স:</b>\n"
-        f"• <b>BDT:</b> <b>৳{db_user['balance_bdt']:.2f} BDT</b>\n"
-        f"• <b>USD:</b> <b>${db_user['balance_usd']:.2f} USD</b>\n\n"
-        f"💎 <b>রেফারেল আর্নিং ও পয়েন্ট ভল্ট:</b>\n"
-        f"• 🌟 <b>ব্যবহারযোগ্য পয়েন্ট:</b> <b>{ref_summary['available_points']} Pts</b> <i>(~৳{ref_summary['bdt_value']:.0f} BDT সমমূল্য)</i>\n"
-        f"• 👥 মোট আমন্ত্রিত বন্ধু: <b>{ref_summary['total_referrals']} জন</b> (সরাসরি: {ref_summary['t1_count']} | টিম: {ref_summary['t2_count']})\n"
-        f"• {em_crs} <b>কোর্স রেফারেল সংখ্যা:</b> <b>{ref_summary['course_referrals']} টি</b>\n"
-        f"• 💱 মোট কনভার্টকৃত টাকা: <b>৳{ref_summary['converted_bdt_total']:.2f} BDT</b>\n\n"
-        f"{em_ord} <b>শপিং হিস্ট্রি ও সামারি:</b>\n"
-        f"• মোট কেনাকাটা: <b>৳{db_user['total_spent_bdt']:.2f} BDT</b> (${db_user['total_spent_usd']:.2f} USD)\n"
-        f"• মোট সম্পন্ন অর্ডার: <b>{len(orders)} টি</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"💡 <i>পয়েন্ট টাকায় রূপান্তর করতে বা সরাসরি কোর্স কিনতে নিচের বাটন ব্যবহার করুন:</i>"
-    )
+    if lang == "en":
+        profile_text = (
+            f"{em_dia} <b>VIP CUSTOMER MEMBERSHIP PROFILE</b> {em_dia}\n"
+            f"<i>Welcome {safe_name}! Your complete account profile and referral vault:</i>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{em_usr} <b>Customer ID:</b> <code>#{user_id}</code>\n"
+            f"{em_shd} <b>Membership Tier:</b> <code>{tier_label}</code>\n"
+            f"🏷️ <b>Telegram User:</b> {uname}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{em_wal} <b>Wallet Balance:</b>\n"
+            f"• <b>BDT:</b> <b>৳{db_user['balance_bdt']:.2f} BDT</b>\n"
+            f"• <b>USD:</b> <b>${db_user['balance_usd']:.2f} USD</b>\n\n"
+            f"💎 <b>Referral Earnings & Points Vault:</b>\n"
+            f"• 🌟 <b>Available Points:</b> <b>{ref_summary['available_points']} Pts</b> <i>(~৳{ref_summary['bdt_value']:.0f} BDT Value)</i>\n"
+            f"• 👥 Total Referred Friends: <b>{ref_summary['total_referrals']}</b> (Direct: {ref_summary['t1_count']} | Team: {ref_summary['t2_count']})\n"
+            f"• {em_crs} <b>Course Referrals:</b> <b>{ref_summary['course_referrals']}</b>\n"
+            f"• 💱 Total Converted Cash: <b>৳{ref_summary['converted_bdt_total']:.2f} BDT</b>\n\n"
+            f"{em_ord} <b>Shopping History & Summary:</b>\n"
+            f"• Total Spent: <b>৳{db_user['total_spent_bdt']:.2f} BDT</b> (${db_user['total_spent_usd']:.2f} USD)\n"
+            f"• Total Completed Orders: <b>{len(orders)} Orders</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💡 <i>Use the buttons below to convert points or browse courses:</i>"
+        )
+    else:
+        profile_text = (
+            f"{em_dia} <b>VIP CUSTOMER MEMBERSHIP PROFILE</b> {em_dia}\n"
+            f"<i>স্বাগতম {safe_name}! আপনার সম্পূর্ণ অ্যাকাউন্ট প্রোফাইল ও রেফারেল ভল্ট:</i>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{em_usr} <b>কাস্টমার আইডি:</b> <code>#{user_id}</code>\n"
+            f"{em_shd} <b>মেম্বারশিপ টায়ার:</b> <code>{tier_label}</code>\n"
+            f"🏷️ <b>টেলিগ্রাম ইউজার:</b> {uname}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{em_wal} <b>ওয়ালেট ব্যালেন্স:</b>\n"
+            f"• <b>BDT:</b> <b>৳{db_user['balance_bdt']:.2f} BDT</b>\n"
+            f"• <b>USD:</b> <b>${db_user['balance_usd']:.2f} USD</b>\n\n"
+            f"💎 <b>রেফারেল আর্নিং ও পয়েন্ট ভল্ট:</b>\n"
+            f"• 🌟 <b>ব্যবহারযোগ্য পয়েন্ট:</b> <b>{ref_summary['available_points']} Pts</b> <i>(~৳{ref_summary['bdt_value']:.0f} BDT সমমূল্য)</i>\n"
+            f"• 👥 মোট আমন্ত্রিত বন্ধু: <b>{ref_summary['total_referrals']} জন</b> (সরাসরি: {ref_summary['t1_count']} | টিম: {ref_summary['t2_count']})\n"
+            f"• {em_crs} <b>কোর্স রেফারেল সংখ্যা:</b> <b>{ref_summary['course_referrals']} টি</b>\n"
+            f"• 💱 মোট কনভার্টকৃত টাকা: <b>৳{ref_summary['converted_bdt_total']:.2f} BDT</b>\n\n"
+            f"{em_ord} <b>শপিং হিস্ট্রি ও সামারি:</b>\n"
+            f"• মোট কেনাকাটা: <b>৳{db_user['total_spent_bdt']:.2f} BDT</b> (${db_user['total_spent_usd']:.2f} USD)\n"
+            f"• মোট সম্পন্ন অর্ডার: <b>{len(orders)} টি</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💡 <i>পয়েন্ট টাকায় রূপান্তর করতে বা সরাসরি কোর্স কিনতে নিচের বাটন ব্যবহার করুন:</i>"
+        )
     kb = get_user_profile_kb(
         user_id=user_id,
         available_points=ref_summary['available_points'],
@@ -362,7 +395,9 @@ async def handle_profile(message: Message):
 async def handle_profile_refresh_callback(call: CallbackQuery, state: FSMContext = None):
     if state:
         await state.clear()
-    await call.answer("🔄 প্রোফাইল ডাটা আপডেট করা হয়েছে!")
+    lang = db.get_user_language(call.from_user.id)
+    alert_txt = "🔄 Profile data refreshed!" if lang == "en" else "🔄 প্রোফাইল ডাটা আপডেট করা হয়েছে!"
+    await call.answer(alert_txt)
     text, kb = format_user_profile_data(call.from_user.id, call.from_user)
     await render_screen(call, text, reply_markup=kb, parse_mode="HTML")
 
@@ -400,14 +435,14 @@ async def handle_support(message: Message):
     em_adm = em_tag("admin", "👑")
     em_chn = em_tag("channel", "📢")
     
-    support_text = (
-        f"{em_sup} <b>অফিসিয়াল কাস্টমার সাপোর্ট ও হেল্পডেস্ক</b> {em_sup}\n\n"
-        f"যেকোনো প্রশ্ন, কোর্স সম্পর্কিত তথ্য বা পেমেন্ট ভেরিফিকেশনের জন্য সরাসরি আমাদের সাথে যোগাযোগ করুন:\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"{em_adm} <b>সাপোর্ট অ্যাডমিন:</b> @{ADMIN_USERNAME}\n"
-        f"{em_chn} <b>অফিসিয়াল আপডেট চ্যানেল:</b> {OFFICIAL_CHANNEL}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"⚡ <i>জরুরি প্রয়োজনে সরাসরি অ্যাডমিনকে ইনবক্স করতে নিচের বাটনে চাপুন:</i>"
+    support_text = t(
+        "support_card_text",
+        lang,
+        em_sup=em_sup,
+        em_adm=em_adm,
+        em_chn=em_chn,
+        admin=ADMIN_USERNAME,
+        channel=OFFICIAL_CHANNEL
     )
     await message.answer(
         support_text,

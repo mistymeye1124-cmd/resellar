@@ -14,7 +14,7 @@ from keyboards.user_kb import (
 )
 from utils.invite_helper import generate_single_use_invite_link
 from config import ADMIN_IDS, USD_TO_BDT_RATE, get_live_usd_rate
-from utils.i18n import t
+from utils.i18n import t, localize_item_name
 from utils.notifier import notify_admin_order
 from utils.emojis import em_tag
 
@@ -26,17 +26,14 @@ class BuyCouponState(StatesGroup):
     waiting_for_code = State()
 
 @router.message(F.text.in_([
-    "Browse Courses (কোর্স সমূহ)", "🎓 Browse Courses (কোর্স সমূহ)", "Browse Courses", "🎓 Browse Courses", "कोर्सेस देखें (Courses)", "🎓 कोर्सेस देखें (Courses)", "কোর্স সমূহ", "কোর্স"
+    "Browse Courses (কোর্স সমূহ)", "🎓 Browse Courses (কোর্স সমূহ)", "Browse Courses", "🎓 Browse Courses", 
+    "🎓 কোর্স ভল্ট (Courses)", "কোর্স ভল্ট (Courses)", "🎓 কোর্স ভল্ট", "কোর্স ভল্ট",
+    "कोर्सेस देखें (Courses)", "🎓 कोर्सेस देखें (Courses)", "কোর্স সমূহ", "কোর্স", "Courses"
 ]))
 async def handle_browse_courses(message: Message):
     cats = db.get_categories_by_type("course")
     lang = db.get_user_language(message.from_user.id)
-    em_crs = em_tag("courses", "🎓")
-    text = (
-        f"{em_crs} <b>প্রিমিয়াম কোর্স স্টোর — কারিকুলাম ও ক্যাটাগরি</b> {em_crs}\n\n"
-        "আমাদের ডিজিটাল শপে সেরা ইন্সট্রাক্টরদের শীর্ষ কোর্সগুলো সাজানো আছে।\n"
-        "👇 আপনার পছন্দের ক্যাটাগরি বেছে নিন:"
-    )
+    text = t("shop_courses_text", lang)
     await message.answer(text, reply_markup=get_categories_kb(cats, "course", lang), parse_mode="HTML")
 
 @router.message(F.text.in_([
@@ -45,12 +42,7 @@ async def handle_browse_courses(message: Message):
 async def handle_browse_digital(message: Message):
     cats = db.get_categories_by_type("digital")
     lang = db.get_user_language(message.from_user.id)
-    em_dgt = em_tag("digital", "⚡")
-    text = (
-        f"{em_dgt} <b>ডিজিটাল একাউন্টস ও এআই টুলস হাব</b> {em_dgt}\n\n"
-        "ওটিটি প্ল্যাটফর্ম, ভিপিএন, এআই টুলস ও প্রিমিয়াম সফটওয়্যার লাইসেন্স।\n"
-        "👇 আপনার প্রয়োজনীয় ক্যাটাগরি নির্বাচন করুন:"
-    )
+    text = t("shop_digital_text", lang)
     await message.answer(text, reply_markup=get_categories_kb(cats, "digital", lang), parse_mode="HTML")
 
 @router.callback_query(F.data == "back_cats")
@@ -59,33 +51,30 @@ async def handle_back_cats(call: CallbackQuery, state: FSMContext):
     await call.answer()
     cats = db.get_categories(parent_id=None)
     lang = db.get_user_language(call.from_user.id)
-    em_crs = em_tag("courses", "🛍️")
-    text = (
-        f"{em_crs} <b>প্রিমিয়াম শপ — সকল ক্যাটাগরি ও প্ল্যাটফর্ম</b> {em_crs}\n\n"
-        "আমাদের ডিজিটাল স্টোরে প্রিমিয়াম একাডেমি কোর্স, টুলস ও অ্যাকাউন্ট সাজানো আছে।\n"
-        "👇 আপনার পছন্দের প্ল্যাটফর্ম বা ক্যাটাগরি বেছে নিন:"
-    )
+    text = t("shop_all_cats_text", lang)
     await render_screen(call, text, reply_markup=get_categories_kb(cats, "all", lang), parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("cat:"))
 async def handle_category_select(call: CallbackQuery):
     cat_id = int(call.data.split(":")[1])
     cat = db.get_category(cat_id)
+    lang = db.get_user_language(call.from_user.id)
     if not cat:
-        await call.answer("ক্যাটাগরি পাওয়া যায়নি!", show_alert=True)
+        err_msg = "Category not found!" if lang in ["en", "hi"] else "ক্যাটাগরি পাওয়া যায়নি!"
+        await call.answer(err_msg, show_alert=True)
         return
         
     await call.answer()
     em_cat = em_tag("category", "📁")
-    lang = db.get_user_language(call.from_user.id)
+    clean_cat_name = localize_item_name(cat['name'], lang)
     
     # Check if this category has subcategories
     if db.has_subcategories(cat_id):
         subcats = db.get_subcategories(cat_id)
+        sub_prompt = t("subcat_selector_prompt", lang)
         text = (
-            f"{em_cat} <b>{html.escape(cat['name'])}</b>\n\n"
-            "📚 <b>বিষয়ভিত্তিক কোর্স ট্র্যাক ও সাব-ক্যাটাগরি:</b>\n"
-            "👇 আপনি কোন বিষয়ের কোর্স খুঁজছেন নিচে বেছে নিন:"
+            f"{em_cat} <b>{html.escape(clean_cat_name)}</b>\n\n"
+            f"{sub_prompt}"
         )
         await render_screen(call, text, reply_markup=get_subcategories_kb(subcats, cat_id, lang), parse_mode="HTML")
         return
@@ -93,23 +82,23 @@ async def handle_category_select(call: CallbackQuery):
     # Direct category products
     products = db.get_products_by_category(cat_id)
     if not products:
+        no_prod_text = t("cat_no_products", lang)
         text = (
-            f"{em_cat} <b>{html.escape(cat['name'])}</b>\n\n"
-            "⚠️ এই ক্যাটাগরিতে বর্তমানে কোনো কোর্স/প্রোডাক্ট সক্রিয় নেই।\n"
-            "খুব শীঘ্রই নতুন কোর্স ও স্টক যুক্ত করা হবে!"
+            f"{em_cat} <b>{html.escape(clean_cat_name)}</b>\n\n"
+            f"{no_prod_text}"
         )
         from utils.emojis import make_custom_button
         back_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [make_custom_button(text="🔙 ক্যাটাগরি (Back)", callback_data="back_cats", emoji_key="back")],
-            [make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")]
+            [make_custom_button(text=t("btn_back_cats", lang), callback_data="back_cats", emoji_key="back")],
+            [make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")]
         ])
         await render_screen(call, text, reply_markup=back_kb, parse_mode="HTML")
         return
         
+    count_prompt = t("cat_products_count_prompt", lang, count=len(products))
     text = (
-        f"{em_cat} <b>{html.escape(cat['name'])}</b>\n\n"
-        f"📊 মোট উপলব্ধ প্রোডাক্ট: <b>{len(products)} টি</b>\n"
-        "👇 বিস্তারিত দেখতে নিচের কোর্সে ক্লিক করুন:"
+        f"{em_cat} <b>{html.escape(clean_cat_name)}</b>\n\n"
+        f"{count_prompt}"
     )
     await render_screen(call, text, reply_markup=get_products_kb(products, cat_id, lang=lang), parse_mode="HTML")
 
@@ -118,36 +107,39 @@ async def handle_subcategory_select(call: CallbackQuery):
     subcat_id = int(call.data.split(":")[1])
     subcat = db.get_category(subcat_id)
     if not subcat:
-        await call.answer("সাব-ক্যাটাগরি পাওয়া যায়নি!", show_alert=True)
+        lang = db.get_user_language(call.from_user.id)
+        await call.answer(t("catalog_subcat_not_found_alert", lang), show_alert=True)
         return
         
     await call.answer()
     em_cat = em_tag("category", "📁")
     lang = db.get_user_language(call.from_user.id)
     parent_cat = db.get_category(subcat.get("parent_id")) if subcat.get("parent_id") else None
-    parent_name = f"{parent_cat['name']} ❯ " if parent_cat else ""
+    parent_clean = localize_item_name(parent_cat['name'], lang) if parent_cat else ""
+    parent_name = f"{parent_clean} ❯ " if parent_clean else ""
+    subcat_clean = localize_item_name(subcat['name'], lang)
     
     products = db.get_products_by_subcategory(subcat_id)
     from utils.emojis import make_custom_button
     if not products:
+        empty_text = t("subcat_empty_notice", lang)
         text = (
-            f"{em_cat} <b>{parent_name}{html.escape(subcat['name'])}</b>\n\n"
-            "⚠️ এই সাব-ক্যাটাগরিতে বর্তমানে কোনো কোর্স সক্রিয় নেই।\n"
-            "খুব শীঘ্রই নতুন কোর্স ও স্টক যুক্ত করা হবে!"
+            f"{em_cat} <b>{parent_name}{html.escape(subcat_clean)}</b>\n\n"
+            f"{empty_text}"
         )
         parent_id = subcat.get('parent_id')
         back_cb = f"cat:{parent_id}" if parent_id else "back_cats"
         back_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [make_custom_button(text="🔙 সাব-ক্যাটাগরি (Back)", callback_data=back_cb, emoji_key="back")],
-            [make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")]
+            [make_custom_button(text=t("btn_back_subcats", lang), callback_data=back_cb, emoji_key="back")],
+            [make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")]
         ])
         await render_screen(call, text, reply_markup=back_kb, parse_mode="HTML")
         return
         
+    count_prompt = t("cat_products_count_prompt", lang, count=len(products))
     text = (
-        f"{em_cat} <b>{parent_name}{html.escape(subcat['name'])}</b>\n\n"
-        f"📊 মোট উপলব্ধ কোর্স: <b>{len(products)} টি</b>\n"
-        "👇 বিস্তারিত দেখতে নিচের কোর্সে ক্লিক করুন:"
+        f"{em_cat} <b>{parent_name}{html.escape(subcat_clean)}</b>\n\n"
+        f"{count_prompt}"
     )
     await render_screen(call, text, reply_markup=get_products_kb(products, category_id=subcat.get("parent_id", subcat_id), subcategory_id=subcat_id, parent_id=subcat.get("parent_id"), lang=lang), parse_mode="HTML")
 
@@ -155,13 +147,15 @@ async def handle_subcategory_select(call: CallbackQuery):
 async def handle_product_detail(call: CallbackQuery):
     prod_id = int(call.data.split(":")[1])
     prod = db.get_product(prod_id)
+    user_id = call.from_user.id
+    lang = db.get_user_language(user_id)
     if not prod:
-        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        err_msg = "Product not found!" if lang in ["en", "hi"] else "প্রোডাক্ট পাওয়া যায়নি!"
+        await call.answer(err_msg, show_alert=True)
         return
         
     await call.answer()
     
-    user_id = call.from_user.id
     user = db.get_user(user_id)
     if not user:
         user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
@@ -171,29 +165,48 @@ async def handle_product_detail(call: CallbackQuery):
     is_in_stock_flag = bool(prod.get("is_in_stock", 1) if prod.get("is_in_stock") is not None else 1)
     if not is_in_stock_flag:
         in_stock = False
-        stock_str = "❌ <b>স্টক শেষ (Out of Stock)</b>"
+        stock_str = t("product_stock_out", lang)
     elif prod["product_type"] == "stock_account":
         stock_cnt = db.get_stock_count(prod_id)
         if stock_cnt > 0:
             in_stock = True
-            stock_str = f"✅ <b>ইন-স্টক: {stock_cnt} টি অ্যাকাউন্ট / কি উপলব্ধ</b>"
+            stock_str = t("product_stock_in", lang, count=stock_cnt)
         elif prod.get("drive_link") and ("http" in prod["drive_link"] or ":" in prod["drive_link"]):
             in_stock = True
-            stock_str = "⚡ <b>ইনস্ট্যান্ট অটো-ডেলিভারি প্রস্তুত</b>"
+            stock_str = t("product_stock_instant", lang)
         else:
             in_stock = False
-            stock_str = "❌ <b>স্টক শেষ (Out of Stock)</b>"
+            stock_str = t("product_stock_out", lang)
     else:
         in_stock = True
-        stock_str = "⚡ <b>ইনস্ট্যান্ট অটো-ডেলিভারি প্রস্তুত</b>"
+        stock_str = t("product_stock_instant", lang)
         
-    type_labels = {
-        "channel_link": "🔒 Private VIP Telegram Channel (1-Time Single-Use Link)",
-        "dual_access": "🔥 Dual Package (VIP Channel & Personal Account Access)",
-        "stock_account": "🔑 Ready-Made Account / License Key (Instant Delivery)",
-        "drive_link": "☁️ Google Drive / Mega Cloud Vault",
-        "manual": "🛠️ Custom Setup / Activated on Your Mail"
-    }
+    if lang in ["en", "hi"]:
+        type_labels = {
+            "channel_link": "🔒 Private VIP Telegram Channel (1-Time Invite Link)",
+            "dual_access": "🔥 Dual Package (VIP Channel & Personal Account Access)",
+            "stock_account": "🔑 Ready-Made Account / License Key (Instant Delivery)",
+            "drive_link": "☁️ Google Drive / Cloud Vault",
+            "manual": "🛠️ Custom Setup / Activated on Your Mail"
+        }
+        sales_title = "Course Curriculum & Sales Page:"
+        cat_title = "Category:"
+        access_title = "Access Type:"
+        stock_title = "Stock Status:"
+        cta_text = "👉 <i>Click any button below for instant delivery:</i>"
+    else:
+        type_labels = {
+            "channel_link": "🔒 প্রাইভেট ভিআইপি টেলিগ্রাম চ্যানেল (1-টাইম ইনভাইট লিংক)",
+            "dual_access": "🔥 ডুয়েল প্যাকেজ (ভিআইপি চ্যানেল ও পার্সোনাল একাউন্ট এক্সেস)",
+            "stock_account": "🔑 রেডিমেড অ্যাকাউন্ট / লাইসেন্স কি (ইনস্ট্যান্ট ডেলিভারি)",
+            "drive_link": "☁️ গুগল ড্রাইভ / ক্লাউড ভল্ট",
+            "manual": "🛠️ কাস্টম সেটআপ / আপনার মেইলে অ্যাক্টিভেশন"
+        }
+        sales_title = "কোর্স কারিকুলাম ও সেলস পেজ:"
+        cat_title = "ক্যাটাগরি:"
+        access_title = "অ্যাক্সেস টাইপ:"
+        stock_title = "স্টক অবস্থা:"
+        cta_text = "👉 <i>ইনস্ট্যান্ট অ্যাক্সেস নিতে নিচের বাটনে ক্লিক করুন:</i>"
 
     reg_bdt = int(prod["price_bdt"])
     reg_usd = prod["price_usd"]
@@ -214,53 +227,88 @@ async def handle_product_detail(call: CallbackQuery):
 
     sales_info = ""
     if prod.get("sales_page_url"):
-        sales_info = f"🌐 <b>কোর্স কারিকুলাম ও সেলস পেজ:</b>\n<code>{html.escape(prod['sales_page_url'])}</code>\n\n"
+        sales_info = f"🌐 <b>{sales_title}</b>\n<code>{html.escape(prod['sales_page_url'])}</code>\n\n"
 
     has_dual = (float(prod.get("price_channel_bdt") or 0) > 0 and float(prod.get("price_account_bdt") or 0) > 0)
+    live_rate = get_live_usd_rate()
     if has_dual:
-        live_rate = get_live_usd_rate()
         ch_b = float(prod["price_channel_bdt"])
         ch_u = float(prod.get("price_channel_usd") or round(ch_b / live_rate, 2))
         acc_b = float(prod["price_account_bdt"])
         acc_u = float(prod.get("price_account_usd") or round(acc_b / live_rate, 2))
         
-        if is_reseller:
-            r_ch_b = float(prod.get("reseller_price_channel_bdt") or round(ch_b * 0.70, 2))
-            r_acc_b = float(prod.get("reseller_price_account_bdt") or round(acc_b * 0.70, 2))
+        if lang in ["en", "hi"]:
+            if is_reseller:
+                r_ch_b = float(prod.get("reseller_price_channel_bdt") or round(ch_b * 0.70, 2))
+                r_acc_b = float(prod.get("reseller_price_account_bdt") or round(acc_b * 0.70, 2))
+                price_section = (
+                    f"💳 <b>Package Options & Wholesale Rates:</b>\n"
+                    f"• 📢 <b>VIP Channel:</b> <b>${round(r_ch_b/live_rate, 2)} USD</b> (৳{int(r_ch_b)}) <i>(Retail: ${ch_u})</i>\n"
+                    f"• 🔐 <b>Personal Account:</b> <b>${round(r_acc_b/live_rate, 2)} USD</b> (৳{int(r_acc_b)}) <i>(Retail: ${acc_u})</i>\n\n"
+                    f"🎁 <b>Unlock Free with Referrals:</b> <code>{refs_needed} referrals</code>\n"
+                    f"📊 <b>Your Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ${user_bal_bdt/live_rate:.2f})</i>"
+                )
+            else:
+                price_section = (
+                    f"💳 <b>Access Packages & Price List:</b>\n"
+                    f"• 📢 <b>VIP Channel:</b> <b>${ch_u} USD</b> (৳{int(ch_b)} BDT)\n"
+                    f"• 🔐 <b>Personal Account:</b> <b>${acc_u} USD</b> (৳{int(acc_b)} BDT)\n\n"
+                    f"🎁 <b>Unlock Free with Referrals:</b> <code>{refs_needed} referrals</code>\n"
+                    f"📊 <b>Your Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ${user_bal_bdt/live_rate:.2f})</i>"
+                )
+        else:
+            if is_reseller:
+                r_ch_b = float(prod.get("reseller_price_channel_bdt") or round(ch_b * 0.70, 2))
+                r_acc_b = float(prod.get("reseller_price_account_bdt") or round(acc_b * 0.70, 2))
+                price_section = (
+                    f"💳 <b>প্যাকেজ অপশন ও স্পেশাল পাইকারি রেট:</b>\n"
+                    f"• 📢 <b>VIP Channel Access:</b> <b>৳{int(r_ch_b)} BDT</b> (${round(r_ch_b/live_rate, 2)}) <i>(খুচরা ৳{int(ch_b)})</i>\n"
+                    f"• 🔐 <b>Personal Account / Drive:</b> <b>৳{int(r_acc_b)} BDT</b> (${round(r_acc_b/live_rate, 2)}) <i>(খুচরা ৳{int(acc_b)})</i>\n\n"
+                    f"🎁 <b>রেফারেল দিয়ে ফ্রি নিন:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
+                    f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>"
+                )
+            else:
+                price_section = (
+                    f"💳 <b>প্যাকেজ অপশন ও মূল্য তালিকা:</b>\n"
+                    f"• 📢 <b>VIP Channel Access:</b> <b>৳{int(ch_b)} BDT</b> (${ch_u} USD)\n"
+                    f"• 🔐 <b>Personal Account / Drive:</b> <b>৳{int(acc_b)} BDT</b> (${acc_u} USD)\n\n"
+                    f"🎁 <b>অথবা রেফারেল দিয়ে সম্পূর্ণ ফ্রি:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
+                    f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(বর্তমান ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>\n"
+                    f"🎯 <i>(আর মাত্র ৳{int(rem_bdt)} বা {rem_refs} টি রেফারেল করলেই ফ্রি আনলক!)</i>"
+                )
+        active_prod = prod
+    elif is_reseller:
+        if lang in ["en", "hi"]:
             price_section = (
-                f"💳 <b>প্যাকেজ অপশন ও স্পেশাল পাইকারি রেট:</b>\n"
-                f"• 📢 <b>VIP Channel Access:</b> <b>৳{int(r_ch_b)} BDT</b> (${round(r_ch_b/live_rate, 2)}) <i>(খুচরা ৳{int(ch_b)})</i>\n"
-                f"• 🔐 <b>Personal Account / Drive:</b> <b>৳{int(r_acc_b)} BDT</b> (${round(r_acc_b/live_rate, 2)}) <i>(খুচরা ৳{int(acc_b)})</i>\n\n"
-                f"🎁 <b>রেফারেল দিয়ে ফ্রি নিন:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
-                f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>"
+                f"💎 <b>Wholesale Reseller Rate:</b> <b>${res_usd} USD</b> | <b>৳{res_bdt} BDT</b>\n"
+                f"🏷️ <i>(Retail: ${reg_usd} — You save ${reg_usd - res_usd:.2f}!)</i>\n"
+                f"🎁 <b>Unlock Free with Referrals:</b> <code>{refs_needed} referrals</code>\n"
+                f"📊 <b>Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ${user_bal_bdt/live_rate:.2f})</i>"
             )
         else:
             price_section = (
-                f"💳 <b>প্যাকেজ অপশন ও মূল্য তালিকা:</b>\n"
-                f"• 📢 <b>VIP Channel Access:</b> <b>৳{int(ch_b)} BDT</b> (${ch_u} USD)\n"
-                f"• 🔐 <b>Personal Account / Drive:</b> <b>৳{int(acc_b)} BDT</b> (${acc_u} USD)\n\n"
-                f"🎁 <b>অথবা রেফারেল দিয়ে সম্পূর্ণ ফ্রি:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
-                f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(বর্তমান ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>\n"
-                f"🎯 <i>(আর মাত্র ৳{int(rem_bdt)} বা {rem_refs} টি রেফারেল করলেই ফ্রি আনলক!)</i>"
+                f"💎 <b>আপনার স্পেশাল পাইকারি রেট:</b> <b>৳{res_bdt} BDT</b> | <b>${res_usd} USD</b>\n"
+                f"🏷️ <i>(সাধারণ খুচরা মূল্য: ৳{reg_bdt} — আপনি সেভ করছেন ৳{reg_bdt - res_bdt}!)</i>\n"
+                f"🎁 <b>রেফারেল দিয়ে ফ্রি নিন:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
+                f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>"
             )
-        active_prod = prod
-    elif is_reseller:
-        price_section = (
-            f"💎 <b>আপনার স্পেশাল পাইকারি রেট:</b> <b>৳{res_bdt} BDT</b> | <b>${res_usd} USD</b>\n"
-            f"🏷️ <i>(সাধারণ খুচরা মূল্য: ৳{reg_bdt} — আপনি সেভ করছেন ৳{reg_bdt - res_bdt}!)</i>\n"
-            f"🎁 <b>রেফারেল দিয়ে ফ্রি নিন:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
-            f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>"
-        )
         active_prod = dict(prod)
         active_prod["price_bdt"] = res_bdt
         active_prod["price_usd"] = res_usd
     else:
-        price_section = (
-            f"💰 <b>মূল্য:</b> <b>৳{reg_bdt} BDT</b> অথবা <b>${reg_usd} USD</b>\n"
-            f"🎁 <b>অথবা রেফারেল দিয়ে সম্পূর্ণ ফ্রি:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
-            f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(বর্তমান ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>\n"
-            f"🎯 <i>(আর মাত্র ৳{int(rem_bdt)} বা {rem_refs} টি রেফারেল করলেই ফ্রি আনলক!)</i>"
-        )
+        if lang in ["en", "hi"]:
+            price_section = (
+                f"💰 <b>Price:</b> <b>${reg_usd} USD</b> or <b>৳{reg_bdt} BDT</b>\n"
+                f"🎁 <b>Or Unlock Free with Referrals:</b> <code>{refs_needed} referrals</code>\n"
+                f"📊 <b>Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ${user_bal_bdt/live_rate:.2f})</i>"
+            )
+        else:
+            price_section = (
+                f"💰 <b>মূল্য:</b> <b>৳{reg_bdt} BDT</b> অথবা <b>${reg_usd} USD</b>\n"
+                f"🎁 <b>অথবা রেফারেল দিয়ে সম্পূর্ণ ফ্রি:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
+                f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(বর্তমান ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>\n"
+                f"🎯 <i>(আর মাত্র ৳{int(rem_bdt)} বা {rem_refs} টি রেফারেল করলেই ফ্রি আনলক!)</i>"
+            )
         active_prod = prod
 
     category_label = ""
@@ -268,31 +316,35 @@ async def handle_product_detail(call: CallbackQuery):
         subcat = db.get_category(prod["subcategory_id"])
         parent = db.get_category(prod.get("category_id"))
         if subcat and parent:
-            category_label = f"📁 <b>ক্যাটাগরি:</b> <code>{html.escape(parent['name'])} ❯ {html.escape(subcat['name'])}</code>\n"
+            p_name = localize_item_name(parent['name'], lang)
+            sc_name = localize_item_name(subcat['name'], lang)
+            category_label = f"📁 <b>{cat_title}</b> <code>{html.escape(p_name)} ❯ {html.escape(sc_name)}</code>\n"
         elif subcat:
-            category_label = f"📁 <b>ক্যাটাগরি:</b> <code>{html.escape(subcat['name'])}</code>\n"
+            sc_name = localize_item_name(subcat['name'], lang)
+            category_label = f"📁 <b>{cat_title}</b> <code>{html.escape(sc_name)}</code>\n"
     elif prod.get("category_id"):
         cat = db.get_category(prod["category_id"])
         if cat:
-            category_label = f"📁 <b>ক্যাটাগরি:</b> <code>{html.escape(cat['name'])}</code>\n"
+            c_name = localize_item_name(cat['name'], lang)
+            category_label = f"📁 <b>{cat_title}</b> <code>{html.escape(c_name)}</code>\n"
 
     em_crs = em_tag("courses", "🎓")
     em_box = em_tag("box", "📦")
+    clean_title = localize_item_name(prod['title'], lang)
     detail_text = (
-        f"{em_crs} <b>{html.escape(prod['title'])}</b> {em_crs}\n\n"
-        f"📝 <b>কোর্স বিবরণ ও কারিকুলাম:</b>\n{render_safe_html_text(prod['description'])}\n\n"
+        f"{em_crs} <b>{html.escape(clean_title)}</b> {em_crs}\n\n"
+        f"📝 <b>{sales_title if not prod.get('sales_page_url') else 'Curriculum & Overview:'}</b>\n{render_safe_html_text(prod['description'])}\n\n"
         f"{sales_info}"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"{category_label}"
-        f"{em_box} <b>অ্যাক্সেস টাইপ:</b> {type_labels.get(prod['product_type'], 'Digital')}\n"
-        f"📊 <b>স্টক অবস্থা:</b> {stock_str}\n"
+        f"{em_box} <b>{access_title}</b> {type_labels.get(prod['product_type'], 'Digital')}\n"
+        f"📊 <b>{stock_title}</b> {stock_str}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"{price_section}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"👉 <i>ইনস্ট্যান্ট অ্যাক্সেস নিতে নিচের বাটনে ক্লিক করুন:</i>"
+        f"{cta_text}"
     )
     
-    lang = db.get_user_language(user_id)
     photo_id = prod.get("photo_file_id")
     await safe_switch_screen(
         call,
@@ -307,7 +359,8 @@ async def handle_claim_ref(call: CallbackQuery, bot: Bot):
     prod_id = int(call.data.split(":")[1])
     prod = db.get_product(prod_id)
     if not prod:
-        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        lang = db.get_user_language(call.from_user.id)
+        await call.answer(t("catalog_prod_not_found_alert", lang), show_alert=True)
         return
         
     user_id = call.from_user.id
@@ -315,6 +368,8 @@ async def handle_claim_ref(call: CallbackQuery, bot: Bot):
     if not user:
         user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
     is_reseller = user.get("is_reseller", 0) >= 1
+    lang = db.get_user_language(user_id)
+    clean_title = localize_item_name(prod['title'], lang)
 
     reg_bdt = float(prod["price_bdt"])
     res_bdt = float(prod["reseller_price_bdt"]) if prod.get("reseller_price_bdt") else round(reg_bdt * 0.70, 2)
@@ -328,34 +383,46 @@ async def handle_claim_ref(call: CallbackQuery, bot: Bot):
     # If user has enough referral points OR balance, offer instant unlock!
     if user_pts >= refs_needed or user_bal >= charge_bdt:
         from utils.emojis import make_custom_button
-        pay_confirm_text = (
-            f"🎉 <b>অভিনন্দন! আপনার অ্যাকাউন্টে পর্যাপ্ত রিসোর্স রয়েছে!</b>\n\n"
-            f"📦 <b>কোর্স:</b> {html.escape(prod['title'])}\n"
-            f"💰 <b>প্রয়োজনীয় মূল্য:</b> <code>৳{int(charge_bdt)} BDT</code> (বা <b>{refs_needed} Pts</b>)\n"
-            f"💳 <b>আপনার BDT ব্যালেন্স:</b> <code>৳{user_bal:.2f} BDT</code>\n"
-            f"💎 <b>আপনার রেফারেল পয়েন্ট:</b> <code>{user_pts} Pts</code>\n\n"
-            f"👇 আপনি যেভাবে কোর্সটি পেতে চান নিচের বাটন চাপুন:"
-        )
+        if lang in ["en", "hi"]:
+            pay_confirm_text = (
+                f"🎉 <b>Congratulations! You have sufficient resources!</b>\n\n"
+                f"📦 <b>Course:</b> {html.escape(clean_title)}\n"
+                f"💰 <b>Required:</b> <code>৳{int(charge_bdt)} BDT</code> (or <b>{refs_needed} Pts</b>)\n"
+                f"💳 <b>Your BDT Balance:</b> <code>৳{user_bal:.2f} BDT</code>\n"
+                f"💎 <b>Your Referral Points:</b> <code>{user_pts} Pts</code>\n\n"
+                f"👇 Choose how you want to unlock this item:"
+            )
+        else:
+            pay_confirm_text = (
+                f"🎉 <b>অভিনন্দন! আপনার অ্যাকাউন্টে পর্যাপ্ত রিসোর্স রয়েছে!</b>\n\n"
+                f"📦 <b>কোর্স:</b> {html.escape(clean_title)}\n"
+                f"💰 <b>প্রয়োজনীয় মূল্য:</b> <code>৳{int(charge_bdt)} BDT</code> (বা <b>{refs_needed} Pts</b>)\n"
+                f"💳 <b>আপনার BDT ব্যালেন্স:</b> <code>৳{user_bal:.2f} BDT</code>\n"
+                f"💎 <b>আপনার রেফারেল পয়েন্ট:</b> <code>{user_pts} Pts</code>\n\n"
+                f"👇 আপনি যেভাবে কোর্সটি পেতে চান নিচের বাটন চাপুন:"
+            )
         buttons = []
         if user_pts >= refs_needed:
+            btn_txt = f"🎁 Pay with Referrals ({refs_needed} Pts)" if lang in ["en", "hi"] else f"🎁 রেফারেল পয়েন্ট দিয়ে নিন ({refs_needed} Pts)"
             buttons.append([
                 make_custom_button(
-                    text=f"🎁 Pay with Referrals ({refs_needed} Pts)",
+                    text=btn_txt,
                     callback_data=f"confirm_buy:{prod_id}:REF",
                     emoji_key="free_claim"
                 )
             ])
         if user_bal >= charge_bdt:
+            bal_txt = f"💰 Pay with Balance (৳{int(charge_bdt)})" if lang in ["en", "hi"] else f"💰 ওয়ালেট দিয়ে নিন (৳{int(charge_bdt)})"
             buttons.append([
                 make_custom_button(
-                    text=f"💰 Pay with Balance (৳{int(charge_bdt)})",
+                    text=bal_txt,
                     callback_data=f"confirm_buy:{prod_id}:BDT",
                     emoji_key="check"
                 )
             ])
         buttons.append([
-            make_custom_button(text="🔙 পূর্ববর্তী (Back)", callback_data=f"prod:{prod_id}", emoji_key="back"),
-            make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")
+            make_custom_button(text=t("btn_back", lang), callback_data=f"prod:{prod_id}", emoji_key="back"),
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
         ])
         await render_screen(call, pay_confirm_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
         return
@@ -375,36 +442,58 @@ async def handle_claim_ref(call: CallbackQuery, bot: Bot):
 
     t2_pct = float(db.get_setting("referral_t2_percent", "50.0"))
     welcome_bonus = float(db.get_setting("referral_welcome_bonus", "5.0"))
-    gift_str = f"▫️ 🎉 নতুন ফ্রেন্ড জয়েন করলেই পাবে: **৳{welcome_bonus:.0f} BDT** ওয়েলকাম বোনাস\n" if welcome_bonus > 0 else ""
-
-    progress_modal = (
-        "🌟 **রেফারেল দিয়ে সম্পূর্ণ ফ্রিতে কোর্সটি আনলক করুন!**\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🎓 **কোর্সের নাম:** {prod['title']}\n"
-        f"💰 **কোর্সের সম্পূর্ণ মূল্য:** **৳{int(charge_bdt)} BDT** (বা **{refs_needed} Points**)\n"
-        f"💳 **আপনার বর্তমান ওয়ালেট ব্যালেন্স:** **৳{user_bal:.2f} BDT**\n"
-        f"💎 **আপনার বর্তমান রেফারেল পয়েন্ট:** **{user_pts} Pts** (প্রয়োজন: **{refs_needed} Pts**)\n\n"
-        f"⚡ **আপনার আনলক প্রগ্রেস:** `{prog_bar}`\n"
-        f"🎯 **টার্গেট:** আর মাত্র **{rem_refs} টি রেফারেল** হলেই কোর্সটি সম্পূর্ণ ফ্রি!\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "🔗 **আপনার বিশেষ কোর্স রেফারেল লিংক (ট্যাপ করলেই কপি):**\n"
-        f"`{ref_link}`\n\n"
-        "💎 **রেফারেলের এক্সক্লুসিভ বেনিফিট:**\n"
-        f"▫️ 👤 সরাসরি রেফারেল বোনাস: **+1 Point (+৳{t1_bonus:.0f} BDT)** ইনস্ট্যান্ট\n"
-        f"▫️ 👥 টিম প্যাসিভ কমিশন: **+{t2_pct:.0f}%** লাইফটাইম হাফ কমিশন\n"
-        f"{gift_str}"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "👇 **১-ট্যাপে লিংক কপি করতে বা সরাসরি শেয়ার করতে নিচের বাটন চাপুন:**"
-    )
+    if lang in ["en", "hi"]:
+        gift_str = f"▫️ 🎉 New friends join & receive: **৳{welcome_bonus:.0f} BDT** welcome bonus\n" if welcome_bonus > 0 else ""
+        progress_modal = (
+            "🌟 **Unlock this Course Completely FREE with Referrals!**\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🎓 **Course:** {clean_title}\n"
+            f"💰 **Regular Price:** **৳{int(charge_bdt)} BDT** (or **{refs_needed} Points**)\n"
+            f"💳 **Wallet Balance:** **৳{user_bal:.2f} BDT**\n"
+            f"💎 **Referral Points:** **{user_pts} Pts** (Needed: **{refs_needed} Pts**)\n\n"
+            f"⚡ **Unlock Progress:** `{prog_bar}`\n"
+            f"🎯 **Target:** Only **{rem_refs} more referrals** to unlock for free!\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🔗 **Your Unique Course Invite Link (Tap to copy):**\n"
+            f"`{ref_link}`\n\n"
+            "💎 **Exclusive Referral Benefits:**\n"
+            f"▫️ 👤 Direct Referral Bonus: **+1 Point (+৳{t1_bonus:.0f} BDT)** instant\n"
+            f"▫️ 👥 Passive Team Commission: **+{t2_pct:.0f}%** lifetime\n"
+            f"{gift_str}"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "👇 **Tap below to copy or share directly:**"
+        )
+    else:
+        gift_str = f"▫️ 🎉 নতুন ফ্রেন্ড জয়েন করলেই পাবে: **৳{welcome_bonus:.0f} BDT** ওয়েলকাম বোনাস\n" if welcome_bonus > 0 else ""
+        progress_modal = (
+            "🌟 **রেফারেল দিয়ে সম্পূর্ণ ফ্রিতে কোর্সটি আনলক করুন!**\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🎓 **কোর্সের নাম:** {clean_title}\n"
+            f"💰 **কোর্সের সম্পূর্ণ মূল্য:** **৳{int(charge_bdt)} BDT** (বা **{refs_needed} Points**)\n"
+            f"💳 **আপনার বর্তমান ওয়ালেট ব্যালেন্স:** **৳{user_bal:.2f} BDT**\n"
+            f"💎 **আপনার বর্তমান রেফারেল পয়েন্ট:** **{user_pts} Pts** (প্রয়োজন: **{refs_needed} Pts**)\n\n"
+            f"⚡ **আপনার আনলক প্রগ্রেস:** `{prog_bar}`\n"
+            f"🎯 **টার্গেট:** আর মাত্র **{rem_refs} টি রেফারেল** হলেই কোর্সটি সম্পূর্ণ ফ্রি!\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🔗 **আপনার বিশেষ কোর্স রেফারেল লিংক (ট্যাপ করলেই কপি):**\n"
+            f"`{ref_link}`\n\n"
+            "💎 **রেফারেলের এক্সক্লুসিভ বেনিফিট:**\n"
+            f"▫️ 👤 সরাসরি রেফারেল বোনাস: **+1 Point (+৳{t1_bonus:.0f} BDT)** ইনস্ট্যান্ট\n"
+            f"▫️ 👥 টিম প্যাসিভ কমিশন: **+{t2_pct:.0f}%** লাইফটাইম হাফ কমিশন\n"
+            f"{gift_str}"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "👇 **১-ট্যাপে লিংক কপি করতে বা সরাসরি শেয়ার করতে নিচের বাটন চাপুন:**"
+        )
     from keyboards.user_kb import get_referral_progress_kb
-    await render_screen(call, progress_modal, reply_markup=get_referral_progress_kb(prod_id, bot_username, user_id), parse_mode="Markdown")
+    await render_screen(call, progress_modal, reply_markup=get_referral_progress_kb(prod_id, bot_username, user_id, lang=lang), parse_mode="Markdown")
 
 @router.callback_query(F.data.startswith("gen_course_ref:"))
 async def handle_gen_course_ref(call: CallbackQuery, bot: Bot):
     prod_id = int(call.data.split(":")[1])
     prod = db.get_product(prod_id)
     if not prod:
-        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        lang = db.get_user_language(call.from_user.id)
+        await call.answer(t("catalog_prod_not_found_alert", lang), show_alert=True)
         return
         
     user_id = call.from_user.id
@@ -412,22 +501,38 @@ async def handle_gen_course_ref(call: CallbackQuery, bot: Bot):
     bot_username = bot_info.username or "AllInOneProAccess_bot"
     course_link = f"https://t.me/{bot_username}?start=ref_{user_id}_c{prod_id}"
     lang = db.get_user_language(user_id)
+    clean_title = localize_item_name(prod['title'], lang)
     
     await call.answer()
     
-    text = (
-        "🔗 <b>এই কোর্সের স্পেশাল রেফারেল লিংক</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🎓 <b>কোর্স:</b> {html.escape(prod['title'])}\n"
-        f"🔗 <b>আপনার পার্সোনাল কোর্স লিংক:</b>\n"
-        f"<code>{course_link}</code>\n"
-        "<i>(ট্যাপ করলেই লিংক কপি হবে অথবা নিচের বাটনে চাপুন)</i>\n\n"
-        "💡 <b>সুবিধাসমূহ:</b>\n"
-        "• কোনো বন্ধু এই লিংকে ক্লিক করে বটে আসলে সে সরাসরি এই কোর্সের পেইজ দেখতে পাবে।\n"
-        "• আপনার প্রোফাইলে ট্র্যাক থাকবে এই কোর্সের মাধ্যমে কতজন বন্ধু জয়েন করেছে।\n"
-        "• বন্ধু জয়েন করলেই আপনার অ্যাকাউন্টে সরাসরি রেফারেল পয়েন্ট যুক্ত হবে!\n\n"
-        "👇 ১-ট্যাপে লিংক কপি করতে বা সরাসরি শেয়ার করতে নিচের বাটন চাপুন:"
-    )
+    if lang in ["en", "hi"]:
+        text = (
+            "🔗 <b>Special Referral Link for this Course</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🎓 <b>Course:</b> {html.escape(clean_title)}\n"
+            f"🔗 <b>Your Personal Course Link:</b>\n"
+            f"<code>{course_link}</code>\n"
+            "<i>(Tap to copy link or use button below)</i>\n\n"
+            "💡 <b>Benefits:</b>\n"
+            "• Friends clicking this link land directly on this course page.\n"
+            "• Track how many friends joined through this course.\n"
+            "• Earn reward points credited immediately when friends join!\n\n"
+            "👇 Tap below to copy or share directly:"
+        )
+    else:
+        text = (
+            "🔗 <b>এই কোর্সের স্পেশাল রেফারেল লিংক</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🎓 <b>কোর্স:</b> {html.escape(clean_title)}\n"
+            f"🔗 <b>আপনার পার্সোনাল কোর্স লিংক:</b>\n"
+            f"<code>{course_link}</code>\n"
+            "<i>(ট্যাপ করলেই লিংক কপি হবে অথবা নিচের বাটনে চাপুন)</i>\n\n"
+            "💡 <b>সুবিধাসমূহ:</b>\n"
+            "• কোনো বন্ধু এই লিংকে ক্লিক করে বটে আসলে সে সরাসরি এই কোর্সের পেইজ দেখতে পাবে।\n"
+            "• আপনার প্রোফাইলে ট্র্যাক থাকবে এই কোর্সের মাধ্যমে কতজন বন্ধু জয়েন করেছে।\n"
+            "• বন্ধু জয়েন করলেই আপনার অ্যাকাউন্টে সরাসরি রেফারেল পয়েন্ট যুক্ত হবে!\n\n"
+            "👇 ১-ট্যাপে লিংক কপি করতে বা সরাসরি শেয়ার করতে নিচের বাটন চাপুন:"
+        )
     from keyboards.user_kb import get_course_ref_share_kb
     await render_screen(call, text, reply_markup=get_course_ref_share_kb(bot_username, user_id, prod, lang), parse_mode="HTML")
 
@@ -438,23 +543,27 @@ async def handle_copy_course_ref(call: CallbackQuery, bot: Bot):
     bot_info = await bot.get_me()
     bot_username = bot_info.username or "AllInOneProAccess_bot"
     course_link = f"https://t.me/{bot_username}?start=ref_{call.from_user.id}_c{prod_id}"
-    await call.answer(f"📋 রেফারেল লিংক:\n{course_link}", show_alert=True)
+    lang = db.get_user_language(call.from_user.id)
+    alert_txt = f"📋 Referral Link:\n{course_link}" if lang in ["en", "hi"] else f"📋 রেফারেল লিংক:\n{course_link}"
+    await call.answer(alert_txt, show_alert=True)
 
 @router.callback_query(F.data.startswith("buy_tier_select:"))
 async def handle_buy_tier_select(call: CallbackQuery):
     prod_id = int(call.data.split(":")[1])
     prod = db.get_product(prod_id)
+    lang = db.get_user_language(call.from_user.id)
     if not prod:
-        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        await call.answer(t("catalog_prod_not_found_alert", lang), show_alert=True)
         return
     if prod.get("is_in_stock") is not None and prod.get("is_in_stock") == 0:
-        await call.answer("⚠️ দুঃখিত, এই কোর্সটি বর্তমানে 'আউট অব স্টক' (Out of Stock)!", show_alert=True)
+        await call.answer(t("out_of_stock_alert", lang), show_alert=True)
         return
         
     user_id = call.from_user.id
     user = db.get_user(user_id)
     is_reseller = user.get("is_reseller", 0) >= 1 if user else False
     lang = db.get_user_language(user_id)
+    clean_title = localize_item_name(prod['title'], lang)
     
     live_rate = get_live_usd_rate()
     ch_bdt = float(prod.get("price_channel_bdt") or prod["price_bdt"])
@@ -470,18 +579,14 @@ async def handle_buy_tier_select(call: CallbackQuery):
         
     await call.answer()
     
-    text = (
-        f"🛒 <b>প্যাকেজ নির্বাচন করুন: {html.escape(prod['title'])}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "এই কোর্সের জন্য ২টি পৃথক অ্যাক্সেস প্যাকেজ উপলব্ধ রয়েছে:\n\n"
-        f"1️⃣ 📢 <b>VIP Telegram Channel Access:</b>\n"
-        "• প্রাইভেট ভিআইপি চ্যানেলে লাইফটাইম অ্যাক্সেস (1-Time Invite Link)\n"
-        f"• মূল্য: <b>৳{int(ch_bdt)} BDT</b> (${ch_usd} USD)\n\n"
-        f"2️⃣ 🔐 <b>Personal Account / Drive Access:</b>\n"
-        "• পার্সোনাল লগইন অ্যাকাউন্ট বা ডিরেক্ট ড্রাইভ অ্যাক্সেস\n"
-        f"• মূল্য: <b>৳{int(acc_bdt)} BDT</b> (${acc_usd} USD)\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "👇 আপনি কোন অ্যাক্সেসটি নিতে চান নিচের অপশন থেকে বেছে নিন:"
+    text = t(
+        "checkout_tier_intro",
+        lang,
+        title=html.escape(clean_title),
+        ch_bdt=int(ch_bdt),
+        ch_usd=ch_usd,
+        acc_bdt=int(acc_bdt),
+        acc_usd=acc_usd
     )
     from keyboards.user_kb import get_access_tier_selection_kb
     await render_screen(call, text, reply_markup=get_access_tier_selection_kb(prod_id, ch_bdt, ch_usd, acc_bdt, acc_usd, lang=lang), parse_mode="HTML")
@@ -493,11 +598,12 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
     tier = parts[2] # 'channel' or 'account'
     
     prod = db.get_product(prod_id)
+    lang = db.get_user_language(call.from_user.id)
     if not prod:
-        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        await call.answer(t("catalog_prod_not_found_alert", lang), show_alert=True)
         return
     if prod.get("is_in_stock") is not None and prod.get("is_in_stock") == 0:
-        await call.answer("⚠️ দুঃখিত, এই কোর্সটি বর্তমানে 'আউট অব স্টক' (Out of Stock)!", show_alert=True)
+        await call.answer(t("out_of_stock_alert", lang), show_alert=True)
         return
         
     user_id = call.from_user.id
@@ -506,6 +612,7 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
         user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
     is_reseller = user.get("is_reseller", 0) >= 1
     lang = db.get_user_language(user_id)
+    clean_title = localize_item_name(prod['title'], lang)
 
     live_rate = get_live_usd_rate()
     if tier == "channel":
@@ -523,18 +630,29 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
 
     charge_bdt = res_bdt if is_reseller else reg_bdt
     charge_usd = res_usd if is_reseller else reg_usd
-    reseller_badge = "💎 <b>(রিসেলার পাইকারি ডিসকাউন্ট প্রযোজ্য)</b>" if is_reseller else ""
+    
+    if is_reseller:
+        reseller_badge = "💎 <b>(Wholesale Reseller Discount Applied)</b>" if lang in ["en", "hi"] else "💎 <b>(রিসেলার পাইকারি ডিসকাউন্ট প্রযোজ্য)</b>"
+    else:
+        reseller_badge = ""
 
     vip_pass = db.get_active_reseller_vip_pass(user_id) if is_reseller else None
     if vip_pass:
         extra_bdt = float(vip_pass.get("discount_bdt", 0.0))
         charge_bdt = max(0, charge_bdt - int(extra_bdt))
         charge_usd = round(charge_bdt / live_rate, 2)
-        reseller_badge = (
-            f"💎 <b>(রিসেলার সাধারণ পাইকারি: ৳{int(res_bdt)})</b>\n"
-            f"🏆 <b>[টপ-সেলার রিওয়ার্ড: -৳{int(extra_bdt)} অতিরিক্ত ছাড়!]</b>\n"
-            f"⏳ অফার মেয়াদ বাকি: <code>{vip_pass['days_left']} দিন</code> (অর্ডার বাকি: <code>{vip_pass['remaining_uses']} টি</code>)"
-        )
+        if lang in ["en", "hi"]:
+            reseller_badge = (
+                f"💎 <b>(Regular Wholesale: ৳{int(res_bdt)})</b>\n"
+                f"🏆 <b>[Top-Seller VIP Pass: -৳{int(extra_bdt)} Extra Off!]</b>\n"
+                f"⏳ Valid for: <code>{vip_pass['days_left']} days</code> (Orders left: <code>{vip_pass['remaining_uses']}</code>)"
+            )
+        else:
+            reseller_badge = (
+                f"💎 <b>(রিসেলার সাধারণ পাইকারি: ৳{int(res_bdt)})</b>\n"
+                f"🏆 <b>[টপ-সেলার রিওয়ার্ড: -৳{int(extra_bdt)} অতিরিক্ত ছাড়!]</b>\n"
+                f"⏳ অফার মেয়াদ বাকি: <code>{vip_pass['days_left']} দিন</code> (অর্ডার বাকি: <code>{vip_pass['remaining_uses']} টি</code>)"
+            )
 
     t1_bonus = float(db.get_setting("referral_t1_bonus", "10.0"))
     refs_needed = max(1, int(charge_bdt / t1_bonus)) if t1_bonus > 0 else 1
@@ -542,19 +660,19 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
 
     await call.answer()
     
-    text = (
-        f"🛒 <b>অর্ডার চেকআউট কনফার্মেশন</b>\n"
-        f"<b>{html.escape(prod['title'])}</b>\n"
-        f"🏷️ <b>নির্বাচিত প্যাকেজ:</b> {tier_title}\n"
-        f"{reseller_badge}\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💰 প্যাকেজ মূল্য: <b>৳{int(charge_bdt)} BDT</b> অথবা <b>${charge_usd} USD</b>\n\n"
-        f"💳 <b>আপনার বর্তমান ওয়ালেট ব্যালেন্স:</b>\n"
-        f"• BDT: <b>৳{user['balance_bdt']:.2f} BDT</b>\n"
-        f"• USD: <b>${user['balance_usd']:.2f} USD</b>\n"
-        f"• রেফারেল পয়েন্ট: <b>{user_pts} Pts</b> (প্রয়োজন: {refs_needed} Pts)\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "👇 আপনি কোন ব্যালেন্স বা পয়েন্ট দিয়ে পে করতে চান নির্বাচন করুন:"
+    tier_label = f"🏷️ <b>Selected Package:</b> {tier_title}\n" if lang in ["en", "hi"] else f"🏷️ <b>নির্বাচিত প্যাকেজ:</b> {tier_title}\n"
+    text = t(
+        "checkout_confirm_card",
+        lang,
+        title=html.escape(clean_title),
+        tier_badge=tier_label,
+        reseller_badge=reseller_badge,
+        charge_bdt=int(charge_bdt),
+        charge_usd=charge_usd,
+        bal_bdt=user['balance_bdt'],
+        bal_usd=user['balance_usd'],
+        user_pts=user_pts,
+        refs_needed=refs_needed
     )
     await render_screen(call, text, reply_markup=get_buy_confirm_kb(prod_id, charge_bdt, charge_usd, tier=tier, has_coupon=False, refs_needed=refs_needed, user_pts=user_pts, lang=lang), parse_mode="HTML")
 
@@ -562,11 +680,12 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
 async def handle_buy_prompt(call: CallbackQuery):
     prod_id = int(call.data.split(":")[1])
     prod = db.get_product(prod_id)
+    lang = db.get_user_language(call.from_user.id)
     if not prod:
-        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        await call.answer(t("catalog_prod_not_found_alert", lang), show_alert=True)
         return
     if prod.get("is_in_stock") is not None and prod.get("is_in_stock") == 0:
-        await call.answer("⚠️ দুঃখিত, এই কোর্সটি বর্তমানে 'আউট অব স্টক' (Out of Stock)!", show_alert=True)
+        await call.answer(t("out_of_stock_alert", lang), show_alert=True)
         return
         
     user_id = call.from_user.id
@@ -575,6 +694,7 @@ async def handle_buy_prompt(call: CallbackQuery):
         user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
     is_reseller = user.get("is_reseller", 0) >= 1
     lang = db.get_user_language(user_id)
+    clean_title = localize_item_name(prod['title'], lang)
 
     reg_bdt = int(prod["price_bdt"])
     reg_usd = prod["price_usd"]
@@ -583,7 +703,11 @@ async def handle_buy_prompt(call: CallbackQuery):
 
     charge_bdt = res_bdt if is_reseller else reg_bdt
     charge_usd = res_usd if is_reseller else reg_usd
-    reseller_badge = "💎 <b>(রিসেলার ডিসকাউন্ট প্রযোজ্য)</b>" if is_reseller else ""
+    
+    if is_reseller:
+        reseller_badge = "💎 <b>(Wholesale Reseller Discount Applied)</b>" if lang in ["en", "hi"] else "💎 <b>(রিসেলার ডিসকাউন্ট প্রযোজ্য)</b>"
+    else:
+        reseller_badge = ""
 
     # Check for active Reseller VIP Pass (Extra Top-Seller Reward Discount)
     vip_pass = db.get_active_reseller_vip_pass(user_id) if is_reseller else None
@@ -591,11 +715,18 @@ async def handle_buy_prompt(call: CallbackQuery):
         extra_bdt = float(vip_pass.get("discount_bdt", 0.0))
         charge_bdt = max(0, charge_bdt - int(extra_bdt))
         charge_usd = round(charge_bdt / get_live_usd_rate(), 2)
-        reseller_badge = (
-            f"💎 <b>(রিসেলার সাধারণ পাইকারি: ৳{res_bdt})</b>\n"
-            f"🏆 <b>[টপ-সেলার রিওয়ার্ড: -৳{int(extra_bdt)} অতিরিক্ত ছাড়!]</b>\n"
-            f"⏳ অফার মেয়াদ বাকি: <code>{vip_pass['days_left']} দিন</code> (অর্ডার বাকি: <code>{vip_pass['remaining_uses']} টি</code>)"
-        )
+        if lang in ["en", "hi"]:
+            reseller_badge = (
+                f"💎 <b>(Regular Wholesale: ৳{res_bdt})</b>\n"
+                f"🏆 <b>[Top-Seller VIP Pass: -৳{int(extra_bdt)} Extra Off!]</b>\n"
+                f"⏳ Valid for: <code>{vip_pass['days_left']} days</code> (Orders left: <code>{vip_pass['remaining_uses']}</code>)"
+            )
+        else:
+            reseller_badge = (
+                f"💎 <b>(রিসেলার সাধারণ পাইকারি: ৳{res_bdt})</b>\n"
+                f"🏆 <b>[টপ-সেলার রিওয়ার্ড: -৳{int(extra_bdt)} অতিরিক্ত ছাড়!]</b>\n"
+                f"⏳ অফার মেয়াদ বাকি: <code>{vip_pass['days_left']} দিন</code> (অর্ডার বাকি: <code>{vip_pass['remaining_uses']} টি</code>)"
+            )
 
     t1_bonus = float(db.get_setting("referral_t1_bonus", "10.0"))
     refs_needed = max(1, int(charge_bdt / t1_bonus)) if t1_bonus > 0 else 1
@@ -603,18 +734,18 @@ async def handle_buy_prompt(call: CallbackQuery):
 
     await call.answer()
     
-    text = (
-        f"🛒 <b>অর্ডার চেকআউট কনফার্মেশন</b>\n"
-        f"<b>{html.escape(prod['title'])}</b>\n"
-        f"{reseller_badge}\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💰 কোর্স মূল্য: <b>৳{charge_bdt} BDT</b> অথবা <b>${charge_usd} USD</b>\n\n"
-        f"💳 <b>আপনার বর্তমান ওয়ালেট ব্যালেন্স:</b>\n"
-        f"• BDT: <b>৳{user['balance_bdt']:.2f} BDT</b>\n"
-        f"• USD: <b>${user['balance_usd']:.2f} USD</b>\n"
-        f"• রেফারেল পয়েন্ট: <b>{user_pts} Pts</b> (প্রয়োজন: {refs_needed} Pts)\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "👇 আপনি কোন ব্যালেন্স বা পয়েন্ট দিয়ে পে করতে চান নির্বাচন করুন:"
+    text = t(
+        "checkout_confirm_card",
+        lang,
+        title=html.escape(clean_title),
+        tier_badge="",
+        reseller_badge=reseller_badge,
+        charge_bdt=charge_bdt,
+        charge_usd=charge_usd,
+        bal_bdt=user['balance_bdt'],
+        bal_usd=user['balance_usd'],
+        user_pts=user_pts,
+        refs_needed=refs_needed
     )
     await render_screen(call, text, reply_markup=get_buy_confirm_kb(prod_id, charge_bdt, charge_usd, has_coupon=False, refs_needed=refs_needed, user_pts=user_pts, lang=lang), parse_mode="HTML")
 
@@ -627,41 +758,44 @@ async def handle_apply_coupon_start(call: CallbackQuery, state: FSMContext):
     await state.set_state(BuyCouponState.waiting_for_code)
     await call.answer()
     
+    lang = db.get_user_language(call.from_user.id)
     cancel_cb = f"buy_tier:{prod_id}:{tier}" if tier != "default" else f"buy:{prod_id}"
-    text = (
-        "🎟️ **কুপন বা ভাউচার কোড ব্যবহার করুন**\n\n"
-        "👉 আপনার কুপন কোডটি লিখে সেন্ড করুন:\n"
-        "_(যেমন: VIP50 বা SPECIAL100)_"
-    )
+    text = t("coupon_start_prompt", lang)
     cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🔙 ব্যাকে যান (Back)", callback_data=cancel_cb),
-            InlineKeyboardButton(text="🏠 মূল মেনু (Home)", callback_data="main_menu")
+            InlineKeyboardButton(text=t("btn_back", lang), callback_data=cancel_cb),
+            InlineKeyboardButton(text=t("btn_home", lang), callback_data="main_menu")
         ]
     ])
     await render_screen(call, text, reply_markup=cancel_kb, parse_mode="Markdown")
 
 @router.message(BuyCouponState.waiting_for_code)
 async def handle_apply_coupon_code(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    lang = db.get_user_language(user_id)
+    
     if not message.text:
-        await message.answer("❌ অনুগ্রহ করে কুপন কোডটি টেক্সট আকারে লিখে পাঠান:")
+        err_msg = "❌ Please send the coupon code as text:" if lang in ["en", "hi"] else "❌ অনুগ্রহ করে কুপন কোডটি টেক্সট আকারে লিখে পাঠান:"
+        await message.answer(err_msg)
         return
+        
     code = message.text.strip().upper()
     data = await state.get_data()
     prod_id = data.get("coupon_prod_id")
     tier = data.get("coupon_tier", "default")
     if not prod_id:
         await state.clear()
-        await message.answer("⚠️ সেশন মেয়াদোত্তীর্ণ। আবার চেষ্টা করুন।")
+        expired_msg = "⚠️ Session expired. Please try again." if lang in ["en", "hi"] else "⚠️ সেশন মেয়াদোত্তীর্ণ। আবার চেষ্টা করুন।"
+        await message.answer(expired_msg)
         return
         
     cancel_cb = f"buy_tier:{prod_id}:{tier}" if tier != "default" else f"buy:{prod_id}"
     coupon = db.get_coupon(code)
     if not coupon:
         cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="❌ ফিরে যান", callback_data=cancel_cb)]
+            [InlineKeyboardButton(text=t("btn_back", lang), callback_data=cancel_cb)]
         ])
-        await message.answer("❌ **ভুল কুপন কোড অথবা মেয়াদ শেষ হয়ে গেছে!**\n\nসঠিক কোড দিন অথবা ফিরে যান:", reply_markup=cancel_kb, parse_mode="Markdown")
+        await message.answer(t("coupon_invalid_alert", lang), reply_markup=cancel_kb, parse_mode="Markdown")
         return
         
     prod = db.get_product(prod_id)
@@ -669,11 +803,11 @@ async def handle_apply_coupon_code(message: Message, state: FSMContext):
         await state.clear()
         return
         
-    user_id = message.from_user.id
     user = db.get_user(user_id)
     if not user:
         user = db.register_or_update_user(user_id, message.from_user.username, message.from_user.first_name)
     is_reseller = user.get("is_reseller", 0) >= 1
+    clean_title = localize_item_name(prod['title'], lang)
     
     if tier == "channel":
         reg_bdt = float(prod.get("price_channel_bdt") or prod["price_bdt"])
@@ -693,14 +827,17 @@ async def handle_apply_coupon_code(message: Message, state: FSMContext):
     await state.clear()
     
     tier_label = f" ({'📢 VIP Channel' if tier == 'channel' else '🔐 Account Access'})" if tier != 'default' else ""
-    confirm_text = (
-        f"🛒 **অর্ডার কনফার্মেশন: {prod['title']}{tier_label}**\n\n"
-        f"🏷️ **প্রযোজ্য কুপন:** `{code}` (৳{int(discount_bdt)} BDT ছাড় ✅)\n"
-        f"💰 **পরিশোধযোগ্য মূল্য:** `৳{int(final_bdt)} BDT` অথবা `${final_usd} USD`\n\n"
-        f"💳 **আপনার বর্তমান ব্যালেন্স:**\n"
-        f"• BDT: `৳{user['balance_bdt']:.2f}`\n"
-        f"• USD: `${user['balance_usd']:.2f}`\n\n"
-        "আপনি কোন ব্যালেন্স দিয়ে পে করতে চান নির্বাচন করুন:"
+    confirm_text = t(
+        "coupon_applied_card",
+        lang,
+        title=clean_title,
+        tier_label=tier_label,
+        code=code,
+        discount_bdt=int(discount_bdt),
+        final_bdt=int(final_bdt),
+        final_usd=final_usd,
+        bal_bdt=user['balance_bdt'],
+        bal_usd=user['balance_usd']
     )
     
     buttons = [
@@ -709,11 +846,11 @@ async def handle_apply_coupon_code(message: Message, state: FSMContext):
             InlineKeyboardButton(text=f"✅ Pay ${final_usd} (USD)", callback_data=f"confirm_buy:{prod_id}:USD:{tier}:{code}")
         ],
         [
-            InlineKeyboardButton(text="💳 Add Balance", callback_data="add_balance_shortcut")
+            InlineKeyboardButton(text=t("btn_add_balance", lang), callback_data="add_balance_shortcut")
         ],
         [
-            InlineKeyboardButton(text="🔙 Back", callback_data=cancel_cb),
-            InlineKeyboardButton(text="🏠 Home", callback_data="main_menu")
+            InlineKeyboardButton(text=t("btn_back", lang), callback_data=cancel_cb),
+            InlineKeyboardButton(text=t("btn_home", lang), callback_data="main_menu")
         ]
     ]
     await message.answer(confirm_text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="Markdown")
@@ -736,7 +873,8 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
     
     prod = db.get_product(prod_id)
     if not prod:
-        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        lang = db.get_user_language(call.from_user.id)
+        await call.answer(t("catalog_prod_not_found_alert", lang), show_alert=True)
         return
         
     user_id = call.from_user.id
@@ -806,46 +944,37 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
                 savings += disc_usd
             db.use_coupon(coupon_code)
 
+    lang = db.get_user_language(user_id)
+    clean_title = localize_item_name(prod['title'], lang)
+
     if prod.get("is_in_stock", 1) == 0:
-        await call.answer("❌ এই আইটেমটি বর্তমানে স্টকে নেই!", show_alert=True)
+        await call.answer(t("out_of_stock_alert", lang), show_alert=True)
         return
 
     # 1. Balance / Points Check
     if currency == "REF":
         if user_pts < price:
-            await call.answer("❌ পর্যাপ্ত রেফারেল পয়েন্ট নেই!", show_alert=True)
-            insufficient_text = (
-                "❌ <b>আপনার অ্যাকাউন্টে পর্যাপ্ত রেফারেল পয়েন্ট নেই!</b>\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"💎 প্রয়োজনীয় পয়েন্ট: <b>{price} Pts</b>\n"
-                f"🌟 আপনার বর্তমান পয়েন্ট: <b>{user_pts} Pts</b>\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "⚡ বন্ধুদের রেফার করে পয়েন্ট অর্জন করুন অথবা ওয়ালেটে টাকা ডিপোজিট করে কোর্স কিনুন।"
-            )
+            alert_msg = "❌ Insufficient points!" if lang in ["en", "hi"] else "❌ পর্যাপ্ত রেফারেল পয়েন্ট নেই!"
+            await call.answer(alert_msg, show_alert=True)
+            insufficient_text = t("insufficient_points", lang, price=price, user_pts=user_pts)
             await render_screen(
                 call,
                 insufficient_text,
-                reply_markup=get_buy_confirm_kb(prod_id, reg_bdt, round(reg_bdt / live_rate, 2), tier=tier, refs_needed=refs_needed, user_pts=user_pts),
+                reply_markup=get_buy_confirm_kb(prod_id, reg_bdt, round(reg_bdt / live_rate, 2), tier=tier, refs_needed=refs_needed, user_pts=user_pts, lang=lang),
                 parse_mode="HTML"
             )
             return
     else:
         user_bal = user["balance_bdt"] if currency == "BDT" else user["balance_usd"]
         if user_bal < price:
-            await call.answer("❌ পর্যাপ্ত ব্যালেন্স নেই!", show_alert=True)
+            alert_msg = "❌ Insufficient balance!" if lang in ["en", "hi"] else "❌ পর্যাপ্ত ব্যালেন্স নেই!"
+            await call.answer(alert_msg, show_alert=True)
             unit = "৳" if currency == "BDT" else "$"
-            insufficient_text = (
-                "❌ <b>আপনার ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই!</b>\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"💰 প্রয়োজনীয় ব্যালেন্স: <b>{unit}{price}</b>\n"
-                f"💳 আপনার বর্তমান ব্যালেন্স: <b>{unit}{user_bal:.2f}</b>\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "⚡ অনুগ্রহ করে নিচের বাটন থেকে ওয়ালেটে ব্যালেন্স রিচার্জ (ডিপোজিট) করুন।"
-            )
+            insufficient_text = t("insufficient_balance", lang, unit=unit, price=price, user_bal=user_bal)
             await render_screen(
                 call,
                 insufficient_text,
-                reply_markup=get_buy_confirm_kb(prod_id, price, round(price / live_rate, 2), tier=tier, refs_needed=refs_needed, user_pts=user_pts),
+                reply_markup=get_buy_confirm_kb(prod_id, price, round(price / live_rate, 2), tier=tier, refs_needed=refs_needed, user_pts=user_pts, lang=lang),
                 parse_mode="HTML"
             )
             return
@@ -854,12 +983,14 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
     if currency == "REF":
         deducted = db.deduct_referral_points(user_id, price)
         if not deducted:
-            await call.answer("❌ পয়েন্ট কাটতে সমস্যা হয়েছে!", show_alert=True)
+            err_msg = "❌ Failed to deduct points!" if lang in ["en", "hi"] else "❌ পয়েন্ট কাটতে সমস্যা হয়েছে!"
+            await call.answer(err_msg, show_alert=True)
             return
     else:
         deducted = db.deduct_user_balance(user_id, price, currency)
         if not deducted:
-            await call.answer("❌ ব্যালেন্স কাটতে সমস্যা হয়েছে!", show_alert=True)
+            err_msg = "❌ Failed to deduct balance!" if lang in ["en", "hi"] else "❌ ব্যালেন্স কাটতে সমস্যা হয়েছে!"
+            await call.answer(err_msg, show_alert=True)
             return
 
     # 3. Check Stock or Access Delivery according to Tier
@@ -871,7 +1002,7 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
         elif prod.get("drive_link"):
             delivery_data = prod["drive_link"]
         else:
-            delivery_data = "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের ইনভাইট লিংক পাঠাবে।"
+            delivery_data = "Manual Processing: Admin will send your invite link shortly." if lang in ["en", "hi"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের ইনভাইট লিংক পাঠাবে।"
     elif tier == "account" or (tier == "default" and prod["product_type"] == "stock_account"):
         item = db.pop_stock_item(prod_id, user_id)
         if item:
@@ -879,11 +1010,11 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
         elif prod.get("drive_link"):
             delivery_data = prod["drive_link"]
         else:
-            delivery_data = "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অ্যাকাউন্টের অ্যাক্সেস তথ্য দ্রুত পাঠাবে।"
+            delivery_data = "Manual Processing: Admin will send your account credentials shortly." if lang in ["en", "hi"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অ্যাকাউন্টের অ্যাক্সেস তথ্য দ্রুত পাঠাবে।"
     elif prod["product_type"] == "drive_link":
         delivery_data = prod.get("drive_link") or "https://drive.google.com"
     else:
-        delivery_data = "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের জন্য যোগাযোগ করবে।"
+        delivery_data = "Manual Processing: Admin will contact you regarding your order." if lang in ["en", "hi"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের জন্য যোগাযোগ করবে।"
         
     # 4. Record Order
     order_id = db.record_order(
@@ -940,44 +1071,59 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
                     except Exception:
                         pass
         
-    await call.answer("🎉 অর্ডার সফল হয়েছে!", show_alert=True)
+    success_alert = "🎉 Order completed successfully!" if lang in ["en", "hi"] else "🎉 অর্ডার সফল হয়েছে!"
+    await call.answer(success_alert, show_alert=True)
     
-    lang = db.get_user_language(user_id)
     if currency == "REF":
-        success_text = (
-            "🎉 <b>রেফারেল পয়েন্ট দিয়ে অর্ডার সফল হয়েছে!</b>\n\n"
-            f"📦 <b>কোর্স:</b> {html.escape(prod['title'])}\n"
-            f"💎 <b>পরিশোধিত পয়েন্ট:</b> <code>{price} Pts</code> (মূল্য: ৳{int(reg_bdt)} BDT)\n"
-            f"🆔 <b>অর্ডার আইডি:</b> <code>#{order_id}</code>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "🔑 <b>আপনার ডেলিভারি তথ্য / এক্সেস ডাটা:</b>\n"
-            f"<pre>{html.escape(delivery_data)}</pre>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "💡 <i>আপনার অর্ডারটি প্রোফাইলের 'My Purchases' এ স্থায়ীভাবে সংরক্ষিত থাকবে।</i>"
-        )
+        if lang in ["en", "hi"]:
+            success_text = (
+                "🎉 <b>Order Completed with Referral Points!</b>\n\n"
+                f"📦 <b>Course:</b> {html.escape(clean_title)}\n"
+                f"💎 <b>Points Paid:</b> <code>{price} Pts</code> (Value: ৳{int(reg_bdt)} BDT)\n"
+                f"🆔 <b>Order ID:</b> <code>#{order_id}</code>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "🔑 <b>Your Delivery Credentials / Access Data:</b>\n"
+                f"<pre>{html.escape(delivery_data)}</pre>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "💡 <i>Your order is permanently stored under 'My Purchases'.</i>"
+            )
+        else:
+            success_text = (
+                "🎉 <b>রেফারেল পয়েন্ট দিয়ে অর্ডার সফল হয়েছে!</b>\n\n"
+                f"📦 <b>কোর্স:</b> {html.escape(clean_title)}\n"
+                f"💎 <b>পরিশোধিত পয়েন্ট:</b> <code>{price} Pts</code> (মূল্য: ৳{int(reg_bdt)} BDT)\n"
+                f"🆔 <b>অর্ডার আইডি:</b> <code>#{order_id}</code>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "🔑 <b>আপনার ডেলিভারি তথ্য / এক্সেস ডাটা:</b>\n"
+                f"<pre>{html.escape(delivery_data)}</pre>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "💡 <i>আপনার অর্ডারটি প্রোফাইলের 'My Purchases' এ স্থায়ীভাবে সংরক্ষিত থাকবে।</i>"
+            )
     else:
         success_text = t(
             "order_success",
             lang,
             order_id=order_id,
-            title=html.escape(prod['title']),
+            title=html.escape(clean_title),
             amount=price,
             currency=currency,
             delivery_data=html.escape(delivery_data)
         )
     if tier == "channel":
-        success_text += "\n🏷️ <b>অ্যাক্সেস প্যাকেজ:</b> 📢 VIP Channel Access"
+        pkg_label = "📢 VIP Channel Access"
+        success_text += f"\n🏷️ <b>Access Package:</b> {pkg_label}" if lang in ["en", "hi"] else f"\n🏷️ <b>অ্যাক্সেস প্যাকেজ:</b> {pkg_label}"
     elif tier == "account":
-        success_text += "\n🏷️ <b>অ্যাক্সেস প্যাকেজ:</b> 🔐 Personal Account Access"
+        pkg_label = "🔐 Personal Account Access"
+        success_text += f"\n🏷️ <b>Access Package:</b> {pkg_label}" if lang in ["en", "hi"] else f"\n🏷️ <b>অ্যাক্সেস প্যাকেজ:</b> {pkg_label}"
         
     from keyboards.user_kb import make_custom_button
     order_done_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            make_custom_button(text="📜 My Orders (অর্ডার সমূহ)", callback_data="nav_orders", emoji_key="orders"),
-            make_custom_button(text="🛍️ More Courses (আরও কোর্স)", callback_data="back_cats", emoji_key="courses")
+            make_custom_button(text=t("btn_orders", lang), callback_data="nav_orders", emoji_key="orders"),
+            make_custom_button(text=t("btn_courses", lang), callback_data="back_cats", emoji_key="courses")
         ],
         [
-            make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
         ]
     ])
     await render_screen(call, success_text, reply_markup=order_done_kb, parse_mode="HTML")
@@ -1016,4 +1162,5 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
 
 @router.callback_query(F.data == "out_of_stock")
 async def handle_out_of_stock(call: CallbackQuery):
-    await call.answer("❌ এই আইটেমটি বর্তমানে স্টকে নেই। শীঘ্রই রিস্টক করা হবে!", show_alert=True)
+    lang = db.get_user_language(call.from_user.id)
+    await call.answer(t("out_of_stock_alert", lang), show_alert=True)
