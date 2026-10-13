@@ -115,7 +115,7 @@ def get_main_dashboard_inline_kb(lang: str = "bn", is_admin: bool = False, admin
 
     buttons = [
         [
-            make_custom_button(text=shop_txt, callback_data="back_cats", emoji_key="courses"),
+            make_custom_button(text=shop_txt, callback_data="back_cats", emoji_key="cart"),
             make_custom_button(text=prof_txt, callback_data="nav_profile", emoji_key="profile")
         ],
         [
@@ -124,11 +124,11 @@ def get_main_dashboard_inline_kb(lang: str = "bn", is_admin: bool = False, admin
         ],
         [
             make_custom_button(text=ref_txt, callback_data="nav_referral", emoji_key="referral"),
-            make_custom_button(text=ver_txt, callback_data="verify_reseller_prompt", emoji_key="verify")
+            make_custom_button(text=ver_txt, callback_data="verify_reseller_prompt", emoji_key="diamond")
         ],
         [
             make_custom_button(text=res_txt, callback_data="back_reseller_hub", emoji_key="reseller"),
-            make_custom_button(text=ord_txt, callback_data="nav_orders", emoji_key="orders")
+            make_custom_button(text=ord_txt, callback_data="nav_orders", emoji_key="box")
         ],
         [
             make_custom_button(text=lang_txt, callback_data="nav_lang", emoji_key="language"),

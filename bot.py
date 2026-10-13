@@ -69,8 +69,24 @@ class SafeMarkdownMiddleware(BaseRequestMiddleware):
     Ensures zero user-facing error crashes.
     """
     async def __call__(self, make_request, bot, method):
-        # Preserves crisp native vector emojis and custom button definitions
-        pass
+        # 1. Automatically enrich all keyboard buttons with Telegram Premium custom emojis
+        if hasattr(method, "reply_markup") and method.reply_markup is not None:
+            try:
+                from utils.emojis import apply_premium_emojis_to_keyboard
+                method.reply_markup = apply_premium_emojis_to_keyboard(method.reply_markup)
+            except Exception:
+                pass
+
+        # 2. Automatically convert standard emojis into <tg-emoji> for HTML messages ONLY
+        if getattr(method, "parse_mode", None) == "HTML":
+            try:
+                from utils.emojis import render_premium_html
+                if hasattr(method, "text") and method.text:
+                    method.text = render_premium_html(method.text)
+                if hasattr(method, "caption") and method.caption:
+                    method.caption = render_premium_html(method.caption)
+            except Exception:
+                pass
 
         try:
             return await make_request(bot, method)
