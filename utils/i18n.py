@@ -295,16 +295,16 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
     },
     "cat_products_count_prompt": {
         "bn": (
-            "📊 মোট উপলব্ধ প্রোডাক্ট: <b>{count} টি</b>\n"
-            "👇 বিস্তারিত দেখতে নিচের কোর্সে ক্লিক করুন:"
+            "📦 মোট উপলব্ধ প্রোডাক্ট: <b>{count} টি</b>\n"
+            "👉 বিস্তারিত ও কিনতে নিচে ক্লিক করুন:"
         ),
         "en": (
-            "📊 Available Products: <b>{count}</b>\n"
-            "👇 Tap any item below for complete details & access options:"
+            "📦 Available Products: <b>{count}</b>\n"
+            "👉 Tap below for complete details & access:"
         ),
         "hi": (
-            "📊 उपलब्ध उत्पाद: <b>{count}</b>\n"
-            "👇 विवरण देखने के लिए नीचे क्लिक करें:"
+            "📦 उपलब्ध उत्पाद: <b>{count}</b>\n"
+            "👉 विवरण देखने के लिए नीचे क्लिक करें:"
         )
     },
     "subcat_selector_prompt": {

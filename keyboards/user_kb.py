@@ -242,16 +242,22 @@ def get_products_kb(products: List[Dict[str, Any]], category_id: int, subcategor
     buttons = []
     for prod in products:
         clean_title = localize_item_name(prod['title'], lang)
-        if lang in ["en", "hi"]:
-            btn_text = f"{clean_title} — ${prod['price_usd']} / ৳{int(prod['price_bdt'])}"
+        # Limit title to 22 chars so button never truncates on mobile
+        if len(clean_title) > 24:
+            short_title = clean_title[:22].strip() + "…"
         else:
-            btn_text = f"{clean_title} — ৳{int(prod['price_bdt'])} / ${prod['price_usd']}"
-        buttons.append([make_custom_button(text=btn_text, callback_data=f"prod:{prod['id']}", emoji_key="sparkle")])
+            short_title = clean_title
+            
+        if lang in ["en", "hi"]:
+            btn_text = f"{short_title} • ${prod['price_usd']}"
+        else:
+            btn_text = f"{short_title} • ৳{int(prod['price_bdt'])}"
+        buttons.append([make_custom_button(text=btn_text, callback_data=f"prod:{prod['id']}")])
     
     if subcategory_id and parent_id:
-        back_btn = make_custom_button(text=t("btn_back_subcats", lang), callback_data=f"cat:{parent_id}", emoji_key="back")
+        back_btn = make_custom_button(text=t("btn_back_subcats", lang), callback_data=f"cat:{parent_id}")
     else:
-        back_btn = make_custom_button(text=t("btn_back_cats", lang), callback_data="back_cats", emoji_key="back")
+        back_btn = make_custom_button(text=t("btn_back_cats", lang), callback_data="back_cats")
 
     buttons.append([
         back_btn,

@@ -9,9 +9,8 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardBu
 # Master Telegram Premium Custom Emoji Catalog
 DEFAULT_CUSTOM_EMOJIS: Dict[str, str] = {
     # Core Navigation & Shell
-    "home": "5323642109767460983",         # 🏠 Home / Main Menu / Back
+    "home": "5323642109767460983",         # 🏠 Home / Main Menu
     "menu": "5323642109767460983",         # 🏠 Main Menu
-    "back": "5323642109767460983",         # 🔙 Back to Main
     "admin": "6235252066554484059",        # 👑 Admin Crown / VIP Leader
     "crown": "6235252066554484059",        # 👑 Crown
     "help": "5373098009640836781",         # ❓ Help / Support
@@ -19,11 +18,8 @@ DEFAULT_CUSTOM_EMOJIS: Dict[str, str] = {
     "language": "5397798946380721942",     # 🌐 Language / Globe
     "settings": "5201762530023733712",     # ⚙️ Settings / Tools / Icons
 
-    # Products, Courses & Catalog
-    "courses": "6032575759606878027",      # 🎓 Courses / Curriculum
+    # Products & Digital Accounts
     "digital": "5445118546700954082",      # ⚡ Digital Tools & Accounts
-    "catalog": "6032575759606878027",      # 📋 Catalog / Channels
-    "category": "6032575759606878027",     # 📁 Category
     "box": "5837134496868077492",          # 📦 Package / Stock / Key
     "stock": "5837134496868077492",        # 📦 Stock Box
     "download": "5445118546700954082",     # 🚀 Download / Direct Link
@@ -40,7 +36,6 @@ DEFAULT_CUSTOM_EMOJIS: Dict[str, str] = {
     "cash": "5395542928909150340",         # 💵 Cash
     "cart": "6271494293383286950",         # 🛒 Cart / Buy Now (VIP Diamond)
     "coupon": "5393383127294953991",       # 🎟️ Coupon / Voucher / Ticket
-    "orders": "5399850755337240950",       # 📜 Order Ledger / History
 
     # Resellers & Verification
     "diamond": "6271494293383286950",      # 💎 Reseller Diamond / VIP
@@ -65,8 +60,6 @@ DEFAULT_CUSTOM_EMOJIS: Dict[str, str] = {
     "edit": "5197269100878907942",         # ✏️ Edit
     "search": "5310278924616356636",       # 🔍 Search
     "sparkle": "6179411633371095707",      # ✨ Sparkle / Cookies / Highlights
-    "radio": "5348084369217052513",        # 🔘 Radio
-    "bullet": "5393383127294953991",       # 🔹 Sleek / Pin / Point
 
     # Payment Gateways
     "bkash": "6237941149873478197",        # bKash Custom Emoji
