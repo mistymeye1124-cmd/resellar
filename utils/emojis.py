@@ -34,10 +34,17 @@ DEFAULT_CUSTOM_EMOJIS: Dict[str, str] = {
     "wallet": "5395542928909150340",       # 💰 Wallet / Balance / Deposit
     "deposit": "5395542928909150340",      # 💳 Deposit / Money / Cash
     "cash": "5395542928909150340",         # 💵 Cash
+    "cart": "6271494293383286950",         # 🛒 Cart / Buy Now (VIP Diamond)
+    "coupon": "5393383127294953991",       # 🎟️ Coupon / Voucher / Ticket
 
     # Resellers & Verification
     "diamond": "6271494293383286950",      # 💎 Reseller Diamond / VIP
-    # Native high-definition shield emoji (prevents DEF sticker glitch)
+    "reseller": "6271494293383286950",     # 💎 Reseller Hub
+    "courses": "5445118546700954082",      # 🎓 Courses / Cloud Masterclass
+    "category": "5837134496868077492",     # 📁 Category
+    "orders": "5837134496868077492",       # 📜 Orders / Vault
+    "verify": "6271494293383286950",       # 🛡️ Verify / Shield
+    "back": "5323642109767460983",         # 🔙 Back
     "trophy": "5226431245918942763",       # 🏆 Trophy / Leaderboard
     "star": "6181535395914718008",         # ⭐ Star / Rating
     "target": "5310278924616356636",       # 🎯 Quota / Target / Race
@@ -72,7 +79,6 @@ DEFAULT_CUSTOM_EMOJIS: Dict[str, str] = {
 }
 
 # Exhaustive Mapping from ALL Unicode Emoji Characters to DEFAULT_CUSTOM_EMOJIS Keys
-# NOTE: Typographic bullets ('•', '◦', '‣', '▰', '▱') and symbols like 🛍️, 🤝, 🏷️ are left as native unicode
 EMOJI_CHAR_TO_KEY: Dict[str, str] = {
     # Crown & VIP
     "👑": "crown",
@@ -84,6 +90,10 @@ EMOJI_CHAR_TO_KEY: Dict[str, str] = {
     "💵": "cash",
     "💸": "cash",
     "🪙": "wallet",
+    "🛒": "cart",
+    "🛍️": "cart",
+    "🛍": "cart",
+    "🏪": "cart",
 
     # Stock, Packages, Keys & Storage
     "📦": "box",
@@ -140,6 +150,20 @@ EMOJI_CHAR_TO_KEY: Dict[str, str] = {
     "📈": "sparkle",
     "📉": "zap",
 
+    # Tickets & Coupons
+    "🎟️": "coupon",
+    "🎟": "coupon",
+    "🎫": "coupon",
+    "🏷️": "coupon",
+    "🏷": "coupon",
+
+    # Security & Verification
+    "🛡️": "verify",
+    "🛡": "verify",
+    "🔰": "verify",
+    "🔐": "verify",
+    "🔒": "verify",
+
     # Trophies, Competitions & Races
     "🏆": "trophy",
     "🥇": "trophy",
@@ -164,6 +188,7 @@ EMOJI_CHAR_TO_KEY: Dict[str, str] = {
     # Users, Profiles, Community & Collaboration
     "👥": "referral",
     "👤": "profile",
+    "🤝": "reseller",
     "👨": "profile",
     "🆔": "profile",
     "💼": "profile",
@@ -192,6 +217,11 @@ EMOJI_CHAR_TO_KEY: Dict[str, str] = {
     "🛠": "settings",
     "🔧": "settings",
     "🤖": "settings",
+
+    # Education & Courses
+    "🎓": "courses",
+    "📚": "courses",
+    "📖": "courses",
 
     # Digital Tools, Hardware & Links
     "🚀": "download",
@@ -320,10 +350,14 @@ def detect_emoji_key_from_text(text: str) -> Optional[str]:
         (("cancel", "বাতিল", "close", "বন্ধ", "রিসিভ", "রিসেলার বাতিল"), "cross"),
         (("approve", "অনুমোদন", "confirm", "নিশ্চিত", "success", "সফল"), "check"),
         (("deposit", "টপ-আপ", "ডিপোজিট", "ব্যালেন্স রিচার্জ", "জমা"), "deposit"),
+        (("buy", "কিনুন", "অর্ডার", "purchase", "order", "ক্রয়"), "cart"),
+        (("course", "কোর্স", "কোর্সের", "পাঠ্যক্রম"), "courses"),
+        (("digital", "টুলস", "একউন্ট", "অ্যাকাউন্ট", "ডিজিটাল"), "digital"),
         (("free", "গিভঅ্যাওয়ে", "লুট", "claim", "ক্লেইম", "উপহার"), "free_claim"),
         (("reseller", "রিসেলার", "পাইকারি", "wholesale"), "diamond"),
         (("referral", "রেফার", "রেফারেল", "refer"), "referral"),
         (("profile", "প্রোফাইল", "account", "আমার অ্যাকাউন্ট"), "profile"),
+        (("verify", "যাচাই", "ভেরিফাই", "সত্যাপন"), "verify"),
         (("support", "সাপোর্ট", "যোগাযোগ", "হেল্প", "help"), "support"),
         (("search", "সার্চ", "খুঁজুন", "অনুসন্ধান"), "search"),
         (("admin", "অ্যাডমিন", "এডমিন", "owner"), "admin"),
@@ -356,11 +390,17 @@ def make_custom_button(
     web_app: Optional[Any] = None
 ) -> InlineKeyboardButton:
     """
-    Constructs an InlineKeyboardButton strictly preserving all emojis in text.
-    Telegram Bot API Inline Buttons do not support icon_custom_emoji_id,
-    so keeping unicode emojis in text ensures 100% vibrant display on Mobile and PC.
+    Constructs an InlineKeyboardButton with automatic Telegram Premium custom emoji support.
+    If no emoji is explicitly supplied, automatically detects from text.
+    Strips static unicode emojis so only the animated custom emoji displays next to clean text.
     """
-    kwargs: Dict[str, Any] = {"text": text}
+    resolved_key = emoji_key or detect_emoji_key_from_text(text)
+    final_emoji_id = custom_emoji_id or (get_custom_emoji_id(resolved_key) if resolved_key else None)
+    
+    # Strip static emoji only if custom emoji is attached
+    btn_text = strip_all_emojis(text) if final_emoji_id else text
+    
+    kwargs: Dict[str, Any] = {"text": btn_text}
     if callback_data:
         kwargs["callback_data"] = callback_data
     if url:
@@ -369,6 +409,9 @@ def make_custom_button(
         kwargs["copy_text"] = copy_text
     if web_app:
         kwargs["web_app"] = web_app
+    if final_emoji_id and str(final_emoji_id).isdigit():
+        kwargs["icon_custom_emoji_id"] = str(final_emoji_id)
+        
     return InlineKeyboardButton(**kwargs)
 
 def make_custom_reply_button(
@@ -377,14 +420,14 @@ def make_custom_reply_button(
     emoji_key: Optional[str] = None
 ) -> KeyboardButton:
     """
-    Constructs a KeyboardButton with full emoji text intact and optional custom emoji id.
-    Ensures that if a client doesn't support custom emoji icons in reply buttons,
-    the native emoji in text is always visible.
+    Constructs a KeyboardButton with automatic Telegram Premium custom emoji support.
+    Strips static unicode emoji so the native custom emoji displays cleanly.
     """
     resolved_key = emoji_key or detect_emoji_key_from_text(text)
     final_emoji_id = custom_emoji_id or (get_custom_emoji_id(resolved_key) if resolved_key else None)
+    btn_text = strip_all_emojis(text) if final_emoji_id else text
     
-    kwargs: Dict[str, Any] = {"text": text}
+    kwargs: Dict[str, Any] = {"text": btn_text}
     if final_emoji_id and str(final_emoji_id).isdigit():
         kwargs["icon_custom_emoji_id"] = str(final_emoji_id)
         
@@ -392,9 +435,34 @@ def make_custom_reply_button(
 
 def apply_premium_emojis_to_keyboard(reply_markup):
     """
-    Ensures keyboards are delivered cleanly. Inline buttons strictly preserve their
-    native emojis in button text so they never display as stripped text.
+    Globally ensures 100% of buttons on any InlineKeyboardMarkup or ReplyKeyboardMarkup
+    have an animated Telegram Premium custom emoji icon attached.
     """
+    if not reply_markup:
+        return reply_markup
+    try:
+        if hasattr(reply_markup, "inline_keyboard"):
+            for row in reply_markup.inline_keyboard:
+                for btn in row:
+                    if not getattr(btn, "icon_custom_emoji_id", None):
+                        k = detect_emoji_key_from_text(btn.text)
+                        if k:
+                            eid = get_custom_emoji_id(k)
+                            if eid and eid.isdigit():
+                                btn.icon_custom_emoji_id = str(eid)
+                                btn.text = strip_all_emojis(btn.text)
+        elif hasattr(reply_markup, "keyboard"):
+            for row in reply_markup.keyboard:
+                for btn in row:
+                    if not getattr(btn, "icon_custom_emoji_id", None):
+                        k = detect_emoji_key_from_text(btn.text)
+                        if k:
+                            eid = get_custom_emoji_id(k)
+                            if eid and eid.isdigit():
+                                btn.icon_custom_emoji_id = str(eid)
+                                btn.text = strip_all_emojis(btn.text)
+    except Exception:
+        pass
     return reply_markup
 
 def strip_button_custom_emojis(reply_markup):
