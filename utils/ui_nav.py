@@ -10,30 +10,60 @@ logger = logging.getLogger(__name__)
 def render_safe_html_text(text: str) -> str:
     """
     Renders rich text for Telegram HTML parse_mode:
-    1. Unescapes previously double-escaped standard tags (&lt;b&gt; -> <b>, etc.).
-    2. Converts Markdown bold (**text**) to HTML <b>text</b>.
-    3. Preserves valid Telegram HTML tags (<b>, <i>, <code>, <u>, <s>, <a>, <pre>, <tg-emoji>).
-    4. Auto-closes any opened tags to prevent Telegram 'can't parse entities' errors.
+    1. Converts <br>, <p>, <li> to appropriate newlines (Telegram rejects <br>).
+    2. Unescapes harmless entities (&#x27;, &#39;, &quot;) so apostrophes and quotes render cleanly.
+    3. Unescapes previously double-escaped standard tags (&lt;b&gt; -> <b>, etc.).
+    4. Converts Markdown bold (**text**) and italics (*text*) to HTML.
+    5. Strips any disallowed tags (only allows b, i, u, s, code, pre, a, tg-spoiler, tg-emoji).
+    6. Auto-closes any opened tags to prevent Telegram 'can't parse entities' errors.
     """
     if not text:
         return ""
     
     repaired = str(text)
+
+    # 1. Convert <br>, <br/>, <br /> to newline
+    repaired = re.sub(r"<br\s*/?>", "\n", repaired, flags=re.I)
+    repaired = re.sub(r"</?p\s*>", "\n", repaired, flags=re.I)
+    repaired = re.sub(r"<li>", "• ", repaired, flags=re.I)
+    repaired = re.sub(r"</li>", "\n", repaired, flags=re.I)
+    repaired = re.sub(r"</?(?:ul|ol|div|span|header|section|h[1-6])\b[^>]*>", "\n", repaired, flags=re.I)
+
+    # 2. Unescape harmless quotes and apostrophes
+    repaired = repaired.replace("&#x27;", "'").replace("&#39;", "'").replace("&quot;", '"')
+    
+    # 3. Unescape double-escaped tags
     for tag in ["b", "i", "u", "s", "code", "pre", "tg-spoiler"]:
         repaired = re.sub(rf"&lt;({tag})&gt;", rf"<\1>", repaired, flags=re.I)
         repaired = re.sub(rf"&lt;/({tag})&gt;", rf"</\1>", repaired, flags=re.I)
     
+    # 4. Convert markdown bold and italics to HTML
     repaired = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", repaired)
+    repaired = re.sub(r"(?<!\w)\*([^*]+)\*(?!\w)", r"<i>\1</i>", repaired)
     
-    # Strip any dangling partial opening tag cut at the end (e.g. "<b" or "<a href...")
+    # 5. Filter only allowed Telegram tags
+    allowed_tags = {"b", "i", "u", "s", "code", "pre", "tg-spoiler", "tg-emoji", "a"}
+    def tag_filter(match):
+        tag_name = match.group(2).lower()
+        if tag_name in allowed_tags:
+            return match.group(0)
+        return ""
+
+    repaired = re.sub(r"<(/?)([a-zA-Z0-9-]+)(?:\s+[^>]*)?>", tag_filter, repaired)
+
+    # 6. Clean consecutive newlines (keep max 2)
+    repaired = re.sub(r"\n{3,}", "\n\n", repaired)
+    
+    # 7. Strip any dangling partial opening tag cut at the end
     repaired = re.sub(r"<[^>]*$", "", repaired)
     
+    # 8. Auto-balance opened tags
     tag_pattern = re.compile(r"<(/?)([a-zA-Z0-9-]+)(?:\s+[^>]*)?>")
     stack = []
     for match in tag_pattern.finditer(repaired):
         is_closing = match.group(1) == "/"
         tag_name = match.group(2).lower()
-        if tag_name in ["b", "i", "u", "s", "code", "pre", "tg-spoiler", "a"]:
+        if tag_name in allowed_tags and tag_name not in ["a", "tg-emoji"]:
             if not is_closing:
                 stack.append(tag_name)
             else:

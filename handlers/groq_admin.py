@@ -404,8 +404,8 @@ def format_groq_preview_text(data: Dict[str, Any], for_caption: bool = False) ->
     acc_res = int(acc_p * 0.70)
 
     if data.get("channel_target"):
-        ch_target_val = html.escape(str(data["channel_target"]))
-        ch_title_val = html.escape(str(data.get("channel_title") or data["channel_target"]))
+        ch_target_val = html.escape(str(data["channel_target"]), quote=False)
+        ch_title_val = html.escape(str(data.get("channel_title") or data["channel_target"]), quote=False)
         if data.get("channel_verified"):
             ch_stat = f"<code>{ch_target_val}</code> (<b>{ch_title_val}</b>) 🟢"
         else:
@@ -423,9 +423,9 @@ def format_groq_preview_text(data: Dict[str, Any], for_caption: bool = False) ->
     base_header = (
         "✨ <b>Groq AI কোর্স প্রিভিউ ও সুপার-স্পিড সেটআপ</b> ✨\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🏷️ <b>রিয়েল কোর্স টাইটেল:</b> <b>{html.escape(title_display)}</b>\n"
-        f"🌐 <b>অরিজিনাল সেলস পেজ:</b> <code>{html.escape(sales_url_display)}</code>\n"
-        f"📁 <b>ক্যাটাগরি:</b> <b>{html.escape(data.get('category_name', 'কোর্স'))}</b>\n\n"
+        f"🏷️ <b>রিয়েল কোর্স টাইটেল:</b> <b>{html.escape(title_display, quote=False)}</b>\n"
+        f"🌐 <b>অরিজিনাল সেলস পেজ:</b> <code>{html.escape(sales_url_display, quote=False)}</code>\n"
+        f"📁 <b>ক্যাটাগরি:</b> <b>{html.escape(data.get('category_name', 'কোর্স'), quote=False)}</b>\n\n"
         "💳 <b>অ্যাক্সেস প্রাইসিং (খুচরা ও রিসেলার):</b>\n"
         f"• 📢 <b>VIP Channel:</b> <b>৳{ch_p} BDT</b> (${ch_u}) <i>(রিসেলার ৳{ch_res})</i>\n"
         f"• 🔐 <b>Personal Account / Drive:</b> <b>৳{acc_p} BDT</b> (${acc_u}) <i>(রিসেলার ৳{acc_res})</i>\n\n"
@@ -448,7 +448,8 @@ def format_groq_preview_text(data: Dict[str, Any], for_caption: bool = False) ->
     else:
         desc_preview = render_safe_html_text(desc_raw)
 
-    return f"{base_header}{desc_preview}{base_footer}"
+    full_card = f"{base_header}{desc_preview}{base_footer}"
+    return render_safe_html_text(full_card)
 
 
 async def send_groq_preview_card(bot: Bot, chat_id: int, data: Dict[str, Any]) -> Message:

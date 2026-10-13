@@ -124,6 +124,29 @@ class SafeMarkdownMiddleware(BaseRequestMiddleware):
                         if "message is not modified" in str(e2).lower():
                             return True
 
+                # Step 1.5: Auto-sanitize HTML (strip <br>, auto-close dangling tags) and retry with HTML
+                try:
+                    from utils.ui_nav import render_safe_html_text
+                    repaired_any = False
+                    if hasattr(method, "text") and method.text:
+                        clean_t = render_safe_html_text(method.text)
+                        if clean_t != method.text:
+                            method.text = clean_t
+                            repaired_any = True
+                    if hasattr(method, "caption") and method.caption:
+                        clean_c = render_safe_html_text(method.caption)
+                        if clean_c != method.caption:
+                            method.caption = clean_c
+                            repaired_any = True
+                    if repaired_any:
+                        try:
+                            return await make_request(bot, method)
+                        except TelegramBadRequest as e2:
+                            if "message is not modified" in str(e2).lower():
+                                return True
+                except Exception:
+                    pass
+
                 # Step 2: Fall back to plain text (parse_mode=None)
                 if hasattr(method, "parse_mode") and method.parse_mode is not None:
                     logger.warning(f"Auto-handled Markdown/HTML entity error in {type(method).__name__}. Retrying with parse_mode=None.")

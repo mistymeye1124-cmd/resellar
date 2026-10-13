@@ -225,7 +225,7 @@ async def generate_course_with_groq(scraped_data: Dict[str, Any], raw_url: str) 
         "   - 💡 বিশেষ সুবিধাসমূহ: High-definition videos, complete resource files, projects\n"
         "   - 🎁 স্পেশাল বোনাস: Exclusive bonus resources & templates\n"
         "   - ⚡ ইনস্ট্যান্ট ডেলিভারি গ্যারান্টি\n"
-        "3. Use standard Telegram HTML tags (<b>, <i>, <code>). Do NOT use markdown asterisks (**) or markdown formatting.\n"
+        "3. Use standard Telegram HTML tags (<b>, <i>, <code>). Do NOT use markdown asterisks (**). Use standard newlines (\n) for line breaks. Strictly do NOT use <br> or <p> tags.\n"
         "4. Suggest default Channel Price (BDT, integer e.g. 150) and Account Price (BDT, integer e.g. 350).\n"
         "5. Output MUST be ONLY valid JSON matching this schema:\n"
         "{\n"
@@ -364,9 +364,7 @@ def build_fallback_course_data(title: str, desc: str, points: List[str], url: st
 
 def clean_telegram_html(text: str) -> str:
     """Ensures text complies with Telegram HTML formatting and strips markdown stars."""
-    # Replace markdown bold **text** with <b>text</b>
-    text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", text)
-    # Replace markdown italics *text* or _text_
-    text = re.sub(r"(?<!\w)\*([^*]+)\*(?!\w)", r"<i>\1</i>", text)
-    text = re.sub(r"(?<!\w)_([^_]+)_(?!\w)", r"<i>\1</i>", text)
-    return text.strip()
+    if not text:
+        return ""
+    from utils.ui_nav import render_safe_html_text
+    return render_safe_html_text(text)
