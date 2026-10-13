@@ -1,0 +1,21 @@
+[Unit]
+Description=Reseller Telegram Bot Service
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Update User and WorkingDirectory to match your VPS path (e.g., /root/resellar-bot or /home/ubuntu/resellar-bot)
+User=root
+WorkingDirectory=/root/resellar-bot
+ExecStart=/root/resellar-bot/venv/bin/python bot.py
+Restart=always
+RestartSec=5
+KillMode=process
+StandardOutput=append:/root/resellar-bot/bot.log
+StandardError=append:/root/resellar-bot/bot.log
+Environment=PYTHONUNBUFFERED=1
+Environment=TZ=Asia/Dhaka
+
+[Install]
+WantedBy=multi-user.target

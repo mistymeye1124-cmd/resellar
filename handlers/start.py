@@ -1,0 +1,428 @@
+# Start and Profile Handlers with Modern Single-Screen Interactive Dashboard
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, InlineKeyboardMarkup
+from aiogram.filters import CommandStart, Command
+from aiogram.fsm.context import FSMContext
+import html
+from database.db import db
+from keyboards.user_kb import (
+    get_main_reply_kb,
+    get_pending_deposit_kb,
+    get_language_kb,
+    get_main_dashboard_inline_kb,
+    get_user_profile_kb,
+    make_custom_button
+)
+from config import ADMIN_USERNAME, OFFICIAL_CHANNEL, ADMIN_IDS
+from utils.i18n import t, LANGUAGES
+from utils.emojis import em_tag
+from utils.ui_nav import render_screen
+
+router = Router()
+
+def escape_md(text: str) -> str:
+    """Escapes Telegram Markdown special characters from user inputs."""
+    if not text:
+        return ""
+    for ch in ["\\", "_", "*", "`", "[", "]"]:
+        text = text.replace(ch, f"\\{ch}")
+    return text
+
+def is_admin(user_id: int) -> bool:
+    if not ADMIN_IDS or ADMIN_IDS == [0] or user_id in ADMIN_IDS:
+        return True
+    return db.is_sub_admin(user_id)
+
+def format_main_dashboard_text(user_id: int, user_obj=None, lang: str = "bn", bonus_html: str = "", course_invite_html: str = "") -> str:
+    """Creates a high-end, compact master dashboard screen matching the agent_47vip store aesthetics."""
+    db_user = db.get_user(user_id)
+    if not db_user and user_obj:
+        db_user = db.register_or_update_user(user_id, getattr(user_obj, "username", None), getattr(user_obj, "first_name", None))
+    elif not db_user:
+        db_user = {"balance_bdt": 0.0, "balance_usd": 0.0, "is_reseller": 0, "referral_points": 0}
+        
+    first_name = user_obj.first_name if user_obj else db_user.get("first_name", "Customer")
+    safe_name = html.escape(first_name or "Customer")
+    
+    em_dia = em_tag("diamond", "💎")
+    em_wal = em_tag("wallet", "💰")
+    em_usr = em_tag("profile", "👤")
+    em_shd = em_tag("verify", "🛡️")
+    em_crs = em_tag("courses", "🎓")
+    em_dgt = em_tag("digital", "⚡")
+    em_gft = em_tag("free_claim", "🎁")
+    em_res = em_tag("reseller", "🤝")
+    
+    is_res = db_user.get("is_reseller", 0) >= 1
+    tier_label = "👑 VIP Reseller Partner" if is_res else "⭐ Verified Customer"
+    points = db_user.get("referral_points", 0) or 0
+    
+    announcement = db.get_setting("welcome_announcement", "").strip()
+    ann_html = f"📢 <b>বিশেষ নোটিশ:</b>\n<i>{html.escape(announcement)}</i>\n\n" if announcement else ""
+    
+    if lang == "en":
+        text = (
+            f"{ann_html}"
+            f"{em_dia} <b>ALL IN ONE — DIGITAL STORE & VIP HUB</b> {em_dia}\n"
+            f"<i>Welcome, {safe_name}! Premium courses & instant digital accounts.</i>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{em_usr} <b>Customer ID:</b> <code>#{user_id}</code>\n"
+            f"{em_shd} <b>Account Tier:</b> <code>{tier_label}</code>\n"
+            f"{em_wal} <b>Wallet Balance:</b> <b>৳{db_user['balance_bdt']:.2f} BDT</b> | <b>${db_user['balance_usd']:.2f} USD</b>\n"
+            f"💎 <b>Reward Points:</b> <b>{points} Pts</b>\n"
+            f"🟢 <b>Status:</b> <code>Online & Instant Auto-Delivery</code>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━{bonus_html}{course_invite_html}\n\n"
+            f"🛍️ <b>Store Departments:</b>\n"
+            f"• {em_crs} <b>Premium Courses:</b> Full masterclasses, Google Drive & private groups\n"
+            f"• {em_dgt} <b>Digital Accounts:</b> OTT, AI subscriptions & software access\n"
+            f"• {em_gft} <b>Free Rewards:</b> Daily cookies, promo drops & trial vaults\n"
+            f"• {em_res} <b>Reseller Hub:</b> Buy at wholesale rates and earn daily\n\n"
+            f"👉 <i>Tap any button below to browse or manage your account:</i>"
+        )
+    elif lang == "hi":
+        text = (
+            f"{ann_html}"
+            f"{em_dia} <b>ALL IN ONE — डिजिटल स्टोर और वीआईपी हब</b> {em_dia}\n"
+            f"<i>स्वागत है, {safe_name}! प्रीमियम क्लाउड कोर्सेस और इंस्टेंट डिजिटल अकाउंट्स।</i>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{em_usr} <b>कस्टमर आईडी:</b> <code>#{user_id}</code>\n"
+            f"{em_shd} <b>मेंबरशिप टियर:</b> <code>{tier_label}</code>\n"
+            f"{em_wal} <b>वॉलेट बैलेंस:</b> <b>৳{db_user['balance_bdt']:.2f} BDT</b> | <b>${db_user['balance_usd']:.2f} USD</b>\n"
+            f"💎 <b>रिवॉर्ड पॉइंट्स:</b> <b>{points} Pts</b>\n"
+            f"🟢 <b>स्टेटस:</b> <code>ऑनलाइन और 24/7 ऑटो-डिलीवरी</code>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━{bonus_html}{course_invite_html}\n\n"
+            f"🛍️ <b>स्टोर सर्विसेज:</b>\n"
+            f"• {em_crs} <b>प्रीमियम कोर्सेस:</b> टॉप कोर्सेस, लाइफटाइम ड्राइव एक्सेस और वीआईपी चैनल्स\n"
+            f"• {em_dgt} <b>डिजिटल अकाउंट्स:</b> OTT, AI टूल्स और सॉफ्टवेयर लाइसेंस\n"
+            f"• {em_gft} <b>फ्री रिवॉर्ड्स:</b> फ्री कुकीज, प्रोमो ड्रॉप्स और फ्री गिफ्ट्स\n"
+            f"• {em_res} <b>रीसेलर हब:</b> थोक भाव पर खरीदें और अनलिमिटेड कमाई करें\n\n"
+            f"👉 <i>ब्राउज करने या वॉलेट लोड करने के लिए नीचे दिए गए बटन पर टैप करें:</i>"
+        )
+    else: # Bengali (default)
+        text = (
+            f"{ann_html}"
+            f"{em_dia} <b>ALL IN ONE — DIGITAL STORE & VIP HUB</b> {em_dia}\n"
+            f"<i>স্বাগতম, {safe_name}! বিশ্বস্ত ও ইনস্ট্যান্ট ডেলিভারি প্রিমিয়াম ডিজিটাল শপ।</i>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{em_usr} <b>কাস্টমার আইডি:</b> <code>#{user_id}</code>\n"
+            f"{em_shd} <b>মেম্বারশিপ টায়ার:</b> <code>{tier_label}</code>\n"
+            f"{em_wal} <b>ওয়ালেট ব্যালেন্স:</b> <b>৳{db_user['balance_bdt']:.2f} BDT</b> | <b>${db_user['balance_usd']:.2f} USD</b>\n"
+            f"💎 <b>রেফারেল পয়েন্ট:</b> <b>{points} Pts</b>\n"
+            f"🟢 <b>সার্ভিস স্ট্যাটাস:</b> <code>অটোমেটিক ও ইনস্ট্যান্ট ডেলিভারি ২৪/৭</code>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━{bonus_html}{course_invite_html}\n\n"
+            f"🛍️ <b>শপ ডিপার্টমেন্ট ও প্রিমিয়াম সার্ভিসেস:</b>\n"
+            f"• {em_crs} <b>প্রিমিয়াম কোর্স:</b> টপ ইন্সট্রাক্টরদের ফুল কারিকুলাম ও ক্লাউড ড্রাইভ\n"
+            f"• {em_dgt} <b>ডিজিটাল একাউন্টস:</b> ওটিটি, এআই টুলস ও সফটওয়্যার এক্সেস\n"
+            f"• {em_gft} <b>ফ্রি ড্রপ হাব:</b> আনলিমিটেড ফ্রী কম্বো, কুকিজ ও ভিআইপি চ্যানেল গিভঅ্যাওয়ে\n"
+            f"• {em_res} <b>রিসেলার প্রোগ্রাম:</b> পাইকারি রেটে কিনে ঘরে বসে আনলিমিটেড ইনকাম\n\n"
+            f"👉 <i>নিচের ইন্টারেক্টিভ মেনু থেকে আপনার কাঙ্ক্ষিত অপশন বেছে নিন:</i>"
+        )
+    return text
+
+def format_user_orders_data(user_id: int, lang: str = "bn"):
+    """Renders user past orders with one-click back navigation."""
+    orders = db.get_user_orders(user_id)
+    em_box = em_tag("box", "📦")
+    em_wal = em_tag("wallet", "💰")
+    
+    if not orders:
+        text = (
+            f"{em_box} <b>আপনার অর্ডার ভল্ট বর্তমানে খালি!</b>\n\n"
+            f"আপনি এখনও কোনো কোর্স বা ডিজিটাল প্রোডাক্ট ক্রয় করেননি।\n"
+            f"কোর্স দেখতে নিচের <b>🛍️ Browse Courses</b> অপশনে যান!"
+        )
+    else:
+        text = (
+            f"{em_box} <b>ডিজিটাল অর্ডার হিস্ট্রি ও এক্সেস ভল্ট</b> {em_box}\n"
+            f"<i>আপনার সাম্প্রতিক সব অর্ডার ও এক্সেস ডাটা নিচে দেওয়া হলো (১-ট্যাপে কপি করুন):</i>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        )
+        for idx, order in enumerate(orders[:10], start=1):
+            clean_title = html.escape(str(order.get("product_title", "Product")))
+            clean_delivery = html.escape(str(order.get("delivery_content", "Delivered")))
+            text += (
+                f"<b>#{idx} | {clean_title}</b>\n"
+                f"{em_wal} পরিশোধিত মূল্য: <code>৳{order['amount_paid']} {order['currency']}</code>\n"
+                f"📅 তারিখ: <code>{order['created_at'][:16]}</code>\n"
+                f"🔑 <b>এক্সেস ডাটা / ডেলিভারি ক্রেডেনশিয়াল:</b>\n"
+                f"<pre>{clean_delivery}</pre>\n"
+                f"────────────────────────────\n"
+            )
+        if len(orders) > 10:
+            text += f"\n<i>(ডাটাবেজে আরও {len(orders)-10} টি অতীত অর্ডার সংরক্ষিত রয়েছে)</i>\n"
+
+    kb_buttons = [
+        [
+            make_custom_button(text="🛍️ Browse Courses (শপ)", callback_data="back_cats", emoji_key="courses"),
+            make_custom_button(text="🏠 মূল মেনু (Home)", callback_data="main_menu", emoji_key="home")
+        ]
+    ]
+    return text, InlineKeyboardMarkup(inline_keyboard=kb_buttons)
+
+@router.message(CommandStart())
+async def handle_start(message: Message, state: FSMContext = None):
+    if state:
+        await state.clear()
+    user = message.from_user
+    db_user = db.register_or_update_user(user.id, user.username, user.first_name)
+    lang = db.get_user_language(user.id)
+    admin_flag = is_admin(user.id)
+    
+    args = message.text.split(maxsplit=1) if message.text else []
+    deep_param = args[1].strip() if len(args) > 1 else None
+
+    # Handle deep-link reseller verification (e.g., ?start=verify_RS-1002)
+    if deep_param and (deep_param.startswith("verify_") or deep_param.startswith("v_")):
+        from handlers.verify import generate_verification_certificate
+        from keyboards.user_kb import get_reseller_verification_kb
+        query = deep_param.replace("verify_", "").replace("v_", "")
+        target = db.verify_reseller(query)
+        cert = generate_verification_certificate(target, query)
+        uname = target.get("username") if target else None
+
+        safe_fname = html.escape(user.first_name or "Partner")
+        await message.answer(
+            f"👋 <b>স্বাগতম, {safe_fname}!</b>\n\n🛡️ <b>রিসেলার সততা যাচাইকরণ রেজাল্ট নিচে দেওয়া হলো:</b>",
+            reply_markup=get_main_dashboard_inline_kb(lang, is_admin=admin_flag),
+            parse_mode="HTML"
+        )
+        try:
+            await message.answer(cert, reply_markup=get_reseller_verification_kb(uname), parse_mode="HTML")
+        except Exception:
+            await message.answer(cert, reply_markup=get_reseller_verification_kb(uname))
+        return
+
+    # Handle deep-link referral (e.g., ?start=ref_12345, ?start=ref_12345_c12, or ?start=12345)
+    welcome_bonus_text = ""
+    target_course_info = None
+    if deep_param:
+        target_ref_id = None
+        target_course_id = None
+        cleaned = deep_param.replace("ref_", "")
+        if "_c" in cleaned:
+            parts = cleaned.split("_c")
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                target_ref_id = int(parts[0])
+                target_course_id = int(parts[1])
+        elif cleaned.isdigit():
+            target_ref_id = int(cleaned)
+
+        if target_ref_id and target_ref_id != user.id:
+            reward_res = db.process_referral_join(user.id, target_ref_id, course_id=target_course_id)
+            if reward_res:
+                from utils.notifier import notify_referral_rewards
+                user_info = {
+                    "id": user.id,
+                    "first_name": user.first_name,
+                    "username": user.username
+                }
+                await notify_referral_rewards(message.bot, user_info, reward_res)
+                if reward_res.get("welcome_bonus", 0) > 0:
+                    welcome_bonus_text = f"\n🎁 <b>রেফারেল স্পেশাল গিফট:</b> আপনার ওয়ালেটে <code>+৳{reward_res['welcome_bonus']:.2f} BDT</code> ফ্রি স্টার্টার ব্যালেন্স যুক্ত হয়েছে!\n"
+                db_user = db.get_user(user.id)
+            if target_course_id:
+                target_course_info = db.get_product(target_course_id)
+
+    course_invite_html = ""
+    if target_course_info:
+        course_invite_html = (
+            f"\n🎯 <b>বিশেষ আমন্ত্রণ:</b> আপনার বন্ধু আপনাকে <b>{html.escape(target_course_info['title'])}</b> "
+            f"কোর্সটি দেখার জন্য ইনভাইট করেছেন!\n"
+        )
+
+
+    welcome_text = format_main_dashboard_text(
+        user_id=user.id,
+        user_obj=user,
+        lang=lang,
+        bonus_html=welcome_bonus_text,
+        course_invite_html=course_invite_html
+    )
+    kb = get_main_dashboard_inline_kb(lang, is_admin=admin_flag)
+    try:
+        await message.answer(welcome_text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await message.answer(welcome_text, reply_markup=kb)
+
+
+@router.message(Command("menu"))
+@router.message(F.text.in_([
+    "Menu", "মেনু", "Main Menu", "মূল মেনু", "হোম", "Home",
+    "🏠 মূল মেনু (Start / Menu)", "🏠 Main Menu (Start)", "🏠 मुख्य मेनू (Start)",
+    "মূল মেনু (Start / Menu)", "Main Menu (Start)", "Start", "স্টার্ট", "🏠 Start"
+]))
+async def handle_menu_cmd(message: Message, state: FSMContext = None):
+    if state:
+        await state.clear()
+    user = message.from_user
+    lang = db.get_user_language(user.id)
+    text = format_main_dashboard_text(user.id, user, lang)
+    kb = get_main_dashboard_inline_kb(lang, is_admin=is_admin(user.id))
+    try:
+        await message.answer(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await message.answer(text, reply_markup=kb)
+
+@router.message(Command("language"))
+@router.message(F.text.in_([
+    "Language / ভাষা / भाषा", "🌐 Language / ভাষা / भाषा", "Language", "ভাষা", "भाषा"
+]))
+async def handle_language_cmd(message: Message):
+    lang = db.get_user_language(message.from_user.id)
+    prompt = t("lang_select_prompt", lang)
+    await message.answer(prompt, reply_markup=get_language_kb(lang), parse_mode="HTML")
+
+@router.callback_query(F.data == "nav_lang")
+async def handle_language_nav(call: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    await call.answer()
+    lang = db.get_user_language(call.from_user.id)
+    prompt = t("lang_select_prompt", lang)
+    await render_screen(call, prompt, reply_markup=get_language_kb(lang), parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("set_lang:"))
+async def handle_set_language_callback(call: CallbackQuery):
+    new_lang = call.data.split(":")[1]
+    user_id = call.from_user.id
+    db.set_user_language(user_id, new_lang)
+    lang_name = LANGUAGES.get(new_lang, 'English')
+    await call.answer(f"🌐 Language updated to {lang_name}!", show_alert=False)
+    
+    # Seamlessly re-render the master dashboard in the new language in-place!
+    text = format_main_dashboard_text(user_id, call.from_user, new_lang)
+    kb = get_main_dashboard_inline_kb(new_lang, is_admin=is_admin(user_id))
+    await render_screen(call, text, reply_markup=kb, parse_mode="HTML")
+
+def format_user_profile_data(user_id: int, user_obj=None):
+    db_user = db.get_user(user_id)
+    if not db_user and user_obj:
+        db_user = db.register_or_update_user(user_id, user_obj.username, user_obj.first_name)
+    orders = db.get_user_orders(user_id)
+    ref_summary = db.get_user_referral_summary(user_id)
+    lang = db.get_user_language(user_id)
+    
+    is_reseller = db_user.get("is_reseller", 0) >= 1
+    tier_label = "👑 VIP Reseller Partner" if is_reseller else "⭐ Verified Customer"
+    
+    first_name = user_obj.first_name if user_obj else db_user.get("first_name", "Customer")
+    username = user_obj.username if user_obj else db_user.get("username")
+    safe_name = html.escape(first_name or "Customer")
+    uname = f"@{html.escape(username)}" if username else "N/A"
+
+    em_dia = em_tag("diamond", "💎")
+    em_wal = em_tag("wallet", "💰")
+    em_usr = em_tag("profile", "👤")
+    em_shd = em_tag("verify", "🛡️")
+    em_ord = em_tag("orders", "📦")
+    em_crs = em_tag("courses", "🎓")
+
+    profile_text = (
+        f"{em_dia} <b>VIP CUSTOMER MEMBERSHIP PROFILE</b> {em_dia}\n"
+        f"<i>স্বাগতম {safe_name}! আপনার সম্পূর্ণ অ্যাকাউন্ট প্রোফাইল ও রেফারেল ভল্ট:</i>\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{em_usr} <b>কাস্টমার আইডি:</b> <code>#{user_id}</code>\n"
+        f"{em_shd} <b>মেম্বারশিপ টায়ার:</b> <code>{tier_label}</code>\n"
+        f"🏷️ <b>টেলিগ্রাম ইউজার:</b> {uname}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{em_wal} <b>ওয়ালেট ব্যালেন্স:</b>\n"
+        f"• <b>BDT:</b> <b>৳{db_user['balance_bdt']:.2f} BDT</b>\n"
+        f"• <b>USD:</b> <b>${db_user['balance_usd']:.2f} USD</b>\n\n"
+        f"💎 <b>রেফারেল আর্নিং ও পয়েন্ট ভল্ট:</b>\n"
+        f"• 🌟 <b>ব্যবহারযোগ্য পয়েন্ট:</b> <b>{ref_summary['available_points']} Pts</b> <i>(~৳{ref_summary['bdt_value']:.0f} BDT সমমূল্য)</i>\n"
+        f"• 👥 মোট আমন্ত্রিত বন্ধু: <b>{ref_summary['total_referrals']} জন</b> (সরাসরি: {ref_summary['t1_count']} | টিম: {ref_summary['t2_count']})\n"
+        f"• {em_crs} <b>কোর্স রেফারেল সংখ্যা:</b> <b>{ref_summary['course_referrals']} টি</b>\n"
+        f"• 💱 মোট কনভার্টকৃত টাকা: <b>৳{ref_summary['converted_bdt_total']:.2f} BDT</b>\n\n"
+        f"{em_ord} <b>শপিং হিস্ট্রি ও সামারি:</b>\n"
+        f"• মোট কেনাকাটা: <b>৳{db_user['total_spent_bdt']:.2f} BDT</b> (${db_user['total_spent_usd']:.2f} USD)\n"
+        f"• মোট সম্পন্ন অর্ডার: <b>{len(orders)} টি</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"💡 <i>পয়েন্ট টাকায় রূপান্তর করতে বা সরাসরি কোর্স কিনতে নিচের বাটন ব্যবহার করুন:</i>"
+    )
+    kb = get_user_profile_kb(
+        user_id=user_id,
+        available_points=ref_summary['available_points'],
+        balance_bdt=db_user['balance_bdt'],
+        lang=lang
+    )
+    return profile_text, kb
+
+@router.message(F.text.in_([
+    "My Profile (প্রোফাইল)", "👤 My Profile (প্রোফাইল)", "My Profile", "👤 My Profile", 
+    "मेरी प्रोफाइल (Profile)", "👤 मेरी प्रोफाइल (Profile)", "Profile", "প্রোফাইল"
+]))
+async def handle_profile(message: Message):
+    text, kb = format_user_profile_data(message.from_user.id, message.from_user)
+    try:
+        await message.answer(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await message.answer(text, reply_markup=kb)
+
+@router.callback_query(F.data.in_(["profile_refresh", "nav_profile"]))
+async def handle_profile_refresh_callback(call: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    await call.answer("🔄 প্রোফাইল ডাটা আপডেট করা হয়েছে!")
+    text, kb = format_user_profile_data(call.from_user.id, call.from_user)
+    await render_screen(call, text, reply_markup=kb, parse_mode="HTML")
+
+@router.message(Command("orders"))
+@router.message(F.text.in_([
+    "My Purchases (অর্ডার)", "📦 My Purchases (অর্ডার)", "My Purchases", "📦 My Purchases",
+    "मेरी खरीदारी (Orders)", "📦 मेरी खरीदारी (Orders)", "Orders", "অর্ডার"
+]))
+async def handle_my_purchases(message: Message):
+    user_id = message.from_user.id
+    lang = db.get_user_language(user_id)
+    text, kb = format_user_orders_data(user_id, lang)
+    try:
+        await message.answer(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await message.answer(text, reply_markup=kb)
+
+@router.callback_query(F.data == "nav_orders")
+async def handle_orders_nav(call: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    await call.answer()
+    user_id = call.from_user.id
+    lang = db.get_user_language(user_id)
+    text, kb = format_user_orders_data(user_id, lang)
+    await render_screen(call, text, reply_markup=kb, parse_mode="HTML")
+
+@router.message(F.text.in_([
+    "Support & Help (হেল্প)", "💬 Support & Help (হেল্প)", "Support & Help", "💬 Support & Help",
+    "সাপোর্ট এবং सहायता (Help)", "💬 সাপোর্ট এবং सहायता (Help)", "सपोर्ट और सहायता (Help)", "Support", "হেল্প"
+]))
+async def handle_support(message: Message):
+    lang = db.get_user_language(message.from_user.id)
+    em_sup = em_tag("support", "💬")
+    em_adm = em_tag("admin", "👑")
+    em_chn = em_tag("channel", "📢")
+    
+    support_text = (
+        f"{em_sup} <b>অফিসিয়াল কাস্টমার সাপোর্ট ও হেল্পডেস্ক</b> {em_sup}\n\n"
+        f"যেকোনো প্রশ্ন, কোর্স সম্পর্কিত তথ্য বা পেমেন্ট ভেরিফিকেশনের জন্য সরাসরি আমাদের সাথে যোগাযোগ করুন:\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{em_adm} <b>সাপোর্ট অ্যাডমিন:</b> @{ADMIN_USERNAME}\n"
+        f"{em_chn} <b>অফিসিয়াল আপডেট চ্যানেল:</b> {OFFICIAL_CHANNEL}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"⚡ <i>জরুরি প্রয়োজনে সরাসরি অ্যাডমিনকে ইনবক্স করতে নিচের বাটনে চাপুন:</i>"
+    )
+    await message.answer(
+        support_text,
+        reply_markup=get_pending_deposit_kb(ADMIN_USERNAME, lang),
+        parse_mode="HTML"
+    )
+
+@router.callback_query(F.data == "main_menu")
+async def callback_main_menu(call: CallbackQuery, state: FSMContext = None):
+    """Central back button handler that returns user seamlessly in-place to the Master Dashboard."""
+    if state:
+        await state.clear()
+    await call.answer()
+    user = call.from_user
+    lang = db.get_user_language(user.id)
+    text = format_main_dashboard_text(user.id, user, lang)
+    kb = get_main_dashboard_inline_kb(lang, is_admin=is_admin(user.id))
+    await render_screen(call, text, reply_markup=kb, parse_mode="HTML")

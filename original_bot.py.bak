@@ -1,0 +1,199 @@
+Created At: 2026-10-12T22:12:03+06:00
+Completed At: 2026-10-12T22:12:03+06:00
+File Path: `file:///d:/resellar%20bot/bot.py`
+Total Lines: 191
+Total Bytes: 9655
+Showing lines 1 to 191
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: # Main Bot Runner for Reseller Bot
+2: import asyncio
+3: import logging
+4: import sys
+5: if hasattr(sys.stdout, 'reconfigure'):
+6:     sys.stdout.reconfigure(encoding='utf-8')
+7: from aiogram import Bot, Dispatcher
+8: from aiogram.fsm.storage.memory import MemoryStorage
+9: from config import BOT_TOKEN, ADMIN_IDS
+10: from handlers import start, deposit, admin_deposit, catalog, admin_panel, reseller, verify, referral, free_claim
+11: 
+12: # Configure Logging
+13: logging.basicConfig(
+14:     level=logging.INFO,
+15:     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+16:     handlers=[
+17:         logging.StreamHandler(sys.stdout),
+18:         logging.FileHandler("bot.log", encoding="utf-8")
+19:     ]
+20: )
+21: logger = logging.getLogger("ResellerBot")
+22: from database.db import db
+23: 
+24: async def reseller_quota_scheduler(bot: Bot):
+25:     """Background worker running every 24 hours to enforce 30-day reseller quota."""
+26:     while True:
+27:         try:
+28:             await asyncio.sleep(86400) # Check once every 24 hours
+29:             deactivated = db.enforce_reseller_quotas()
+30:             if deactivated:
+31:                 logger.info(f"Enforced quotas: {len(deactivated)} resellers deactivated.")
+32:                 for uid in deactivated:
+33:                     try:
+34:                         await bot.send_message(
+35:                             chat_id=uid,
+36:                             text="❌ **আপনার রিসেলার অ্যাকাউন্ট স্থায়ীভাবে বাতিল (Deactivated) করা হয়েছে!**\n\n"
+37:                                  "কারণ: ৩০ দিনের মধ্যে ন্যূনতম মাসিক সেলস কোটা পূরণ করতে ব্যর্থ হয়েছেন। পলিসি অনুযায়ী এই সিদ্ধান্ত স্থায়ী।",
+38:                             parse_mode="Markdown"
+39:                         )
+40:                     except Exception:
+41:                         pass
+42:                 for aid in ADMIN_IDS:
+43:                     if aid > 0:
+44:                         try:
+45:                             await bot.send_message(
+46:                                 chat_id=aid,
+47:                                 text=f"⚠️ **দৈনিক কোটা স্ক্যান রিপোর্ট:** সেলস কোটা অপূর্ণ থাকায় `{len(deactivated)} জন` রিসেলারের অ্যাকাউন্ট স্থায়ীভাবে বাতিল করা হয়েছে।",
+48:                                 parse_mode="Markdown"
+49:                             )
+50:                         except Exception:
+51:                             pass
+52:         except asyncio.CancelledError:
+53:             break
+54:         except Exception as e:
+55:             logger.error(f"Error in reseller quota scheduler: {e}")
+56: 
+57: from aiogram.client.session.middlewares.base import BaseRequestMiddleware
+58: from aiogram.exceptions import TelegramBadRequest
+59: 
+60: class SafeMarkdownMiddleware(BaseRequestMiddleware):
+61:     """
+62:     Globally intercepts Telegram entity parsing errors and custom emoji incompatibilities,
+63:     automatically converting text emojis into Telegram Premium custom emojis (<tg-emoji>)
+64:     and applying native animated custom emoji icons to all buttons.
+65:     Ensures zero user-facing error crashes.
+66:     """
+67:     async def __call__(self, make_request, bot, method):
+68:         # 1. Automatically enrich all keyboard buttons with Telegram Premium custom emojis
+69:         if hasattr(method, "reply_markup") and method.reply_markup is not None:
+70:             try:
+71:                 from utils.emojis import apply_premium_emojis_to_keyboard
+72:                 method.reply_markup = apply_premium_emojis_to_keyboard(method.reply_markup)
+73:             except Exception:
+74:                 pass
+75: 
+76:         # 2. Automatically enrich outgoing message text & caption with Telegram Premium animated emojis (<tg-emoji>)
+77:         try:
+78:             from utils.emojis import prepare_premium_message_content
+79:             pm = getattr(method, "parse_mode", None)
+80:             if hasattr(method, "text") and method.text:
+81:                 new_text, new_pm = prepare_premium_message_content(method.text, pm)
+82:                 method.text = new_text
+83:                 if new_pm:
+84:                     method.parse_mode = new_pm
+85:             if hasattr(method, "caption") and method.caption:
+86:                 new_caption, new_pm = prepare_premium_message_content(method.caption, pm)
+87:                 method.caption = new_caption
+88:                 if new_pm:
+89:                     method.parse_mode = new_pm
+90:         except Exception:
+91:             pass
+92: 
+93:         try:
+94:             return await make_request(bot, method)
+95:         except TelegramBadRequest as e:
+96:             err_msg = str(e).lower()
+97:             if "can't parse entities" in err_msg or "can't find end of the entity" in err_msg:
+98:                 if hasattr(method, "parse_mode") and method.parse_mode is not None:
+99:                     logger.warning(f"Auto-handled Markdown entity error in {type(method).__name__}. Retrying with parse_mode=None.")
+100:                     method.parse_mode = None
+101:                     return await make_request(bot, method)
+102:             if "custom_emoji" in err_msg or "emoji_invalid" in err_msg or "button" in err_msg and "emoji" in err_msg:
+103:                 if hasattr(method, "reply_markup") and method.reply_markup is not None:
+104:                     from utils.emojis import strip_button_custom_emojis
+105:                     logger.warning(f"Auto-handled custom emoji restriction in {type(method).__name__}. Retrying without button custom emojis.")
+106:                     method.reply_markup = strip_button_custom_emojis(method.reply_markup)
+107:                     return await make_request(bot, method)
+108:             raise e
+109: 
+110: async def main():
+111:     if not BOT_TOKEN or BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
+112:         logger.error("❌ BOT_TOKEN is not configured in .env file! Please edit .env with your bot token.")
+113:         print("\n=======================================================")
+114:         print("⚠️  সতর্কবার্তা: আপনি এখনও .env ফাইলে BOT_TOKEN বসাননি!")
+115:         print("Telegram @BotFather থেকে বটের টোকেন নিয়ে .env ফাইলে বসিয়ে দিন।")
+116:         print("=======================================================\n")
+117:         return
+118: 
+119:     bot = Bot(token=BOT_TOKEN)
+120:     bot.session.middleware(SafeMarkdownMiddleware())
+121:     storage = MemoryStorage()
+122:     dp = Dispatcher(storage=storage)
+123: 
+124:     from aiogram.types import BotCommand
+125: 
+126:     # Register Routers in proper order (Admin routers first)
+127:     dp.include_router(admin_panel.router)
+128:     dp.include_router(admin_deposit.router)
+129:     dp.include_router(verify.router)
+130:     dp.include_router(referral.router)
+131:     dp.include_router(start.router)
+132:     dp.include_router(reseller.router)
+133:     dp.include_router(free_claim.router)
+134:     dp.include_router(deposit.router)
+135:     dp.include_router(catalog.router)
+136: 
+137:     # Global Exception & Telegram API Error Handler
+138:     @dp.error()
+139:     async def global_error_handler(event):
+140:         logger.exception(f"Unhandled error in update {event.update}: {event.exception}")
+141:         try:
+142:             if event.update and event.update.message:
+143:                 await event.update.message.answer("⚠️ একটি সমস্যা দেখা দিয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।")
+144:             elif event.update and event.update.callback_query:
+145:                 await event.update.callback_query.answer("⚠️ একটি সমস্যা দেখা দিয়েছে। আবার চেষ্টা করুন।", show_alert=True)
+146:         except Exception:
+147:             pass
+148: 
+149:     try:
+150:         await bot.set_my_commands([
+151:             BotCommand(command="start", description="🏠 Main Menu / মেনু"),
+152:             BotCommand(command="free", description="🎁 Free Claim / গিভঅ্যাওয়ে"),
+153:             BotCommand(command="claim", description="🎁 Instant Claim / ক্লেইম"),
+154:             BotCommand(command="verify", description="🛡️ Verify Reseller / রিসেলার যাচাই"),
+155:             BotCommand(command="admin", description="👑 Admin Panel / অ্যাডমিন প্যানেল"),
+156:             BotCommand(command="language", description="🌐 Change Language / ভাষা"),
+157:             BotCommand(command="resellers", description="💎 Reseller List / রিসেলার তালিকা")
+158:         ])
+159:     except Exception as e:
+160:         logger.warning(f"Could not set bot commands: {e}")
+161: 
+162:     logger.info("🚀 Reseller Bot is starting...")
+163:     
+164:     # Notify admin on start
+165:     for aid in ADMIN_IDS:
+166:         if aid > 0:
+167:             try:
+168:                 await bot.send_message(chat_id=aid, text="🚀 **রিসেলার বট সফলভাবে চালু হয়েছে এবং সক্রিয় আছে!**", parse_mode="Markdown")
+169:             except Exception:
+170:                 pass
+171: 
+172:     quota_task = asyncio.create_task(reseller_quota_scheduler(bot))
+173: 
+174:     try:
+175:         # Keep pending updates so any commands sent while restarting are processed immediately!
+176:         await bot.delete_webhook(drop_pending_updates=False)
+177:         await dp.start_polling(
+178:             bot,
+179:             allowed_updates=dp.resolve_used_update_types(),
+180:             polling_timeout=20
+181:         )
+182:     finally:
+183:         quota_task.cancel()
+184:         await bot.session.close()
+185: 
+186: if __name__ == "__main__":
+187:     try:
+188:         asyncio.run(main())
+189:     except (KeyboardInterrupt, SystemExit):
+190:         logger.info("Bot stopped.")
+191: 
+The above content shows the entire, complete file contents of the requested file.

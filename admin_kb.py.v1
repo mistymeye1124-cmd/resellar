@@ -1,0 +1,32 @@
+import re
+import glob
+
+with open('keyboards/admin_kb.py', encoding='utf-8') as f:
+    admin_kb = f.read()
+with open('keyboards/user_kb.py', encoding='utf-8') as f:
+    user_kb = f.read()
+
+# Match callback_data="xyz" or callback_data=f"xyz:{id}"
+cbs = set(re.findall(r'callback_data=(?:f?["\'])([^:"\'\s]+)', admin_kb + user_kb))
+print(f"Total callbacks extracted: {len(cbs)}")
+
+handlers_code = ""
+for p in glob.glob('handlers/*.py'):
+    with open(p, encoding='utf-8') as f:
+        handlers_code += f.read() + "\n"
+
+missing = []
+for c in sorted(cbs):
+    pattern1 = f'"{c}"'
+    pattern2 = f"'{c}'"
+    pattern3 = f'"{c}:'
+    pattern4 = f"'{c}:"
+    pattern5 = f'.startswith("{c}")'
+    pattern6 = f'.startswith("{c}:")'
+    if pattern1 in handlers_code or pattern2 in handlers_code or pattern3 in handlers_code or pattern4 in handlers_code or pattern5 in handlers_code or pattern6 in handlers_code:
+        continue
+    missing.append(c)
+
+print("MISSING CALLBACKS in handlers:")
+for m in missing:
+    print(f"  -> {m}")
