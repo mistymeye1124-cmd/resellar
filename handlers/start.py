@@ -249,6 +249,7 @@ async def handle_start(message: Message, state: FSMContext = None):
 @router.message(Command("menu"))
 @router.message(F.text.in_([
     "Menu", "মেনু", "Main Menu", "মূল মেনু", "হোম", "Home",
+    "🏠 মূল মেনু", "🏠 Main Menu", "🏠 मुख्य मेनू",
     "🏠 মূল মেনু (Start / Menu)", "🏠 Main Menu (Start)", "🏠 मुख्य मेनू (Start)",
     "মূল মেনু (Start / Menu)", "Main Menu (Start)", "Start", "স্টার্ট", "🏠 Start"
 ]))

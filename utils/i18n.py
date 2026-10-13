@@ -1151,6 +1151,23 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "bn": "প্রোডাক্ট পাওয়া যায়নি!",
         "en": "Product not found!",
         "hi": "उत्पाद नहीं मिला!"
+    },
+
+    # Product Stock Status Badges
+    "product_stock_out": {
+        "bn": "🔴 আউট অব স্টক (Out of Stock)",
+        "en": "🔴 Out of Stock",
+        "hi": "🔴 आउट ऑफ स्टॉक (Out of Stock)"
+    },
+    "product_stock_in": {
+        "bn": "🟢 ইন-স্টক ({count} টি অবশিষ্ট)",
+        "en": "🟢 In Stock ({count} available)",
+        "hi": "🟢 स्टॉक में उपलब्ध ({count})"
+    },
+    "product_stock_instant": {
+        "bn": "🟢 ইন-স্টক (স্বয়ংক্রিয় ইনস্ট্যান্ট এক্সেস)",
+        "en": "🟢 In Stock (Instant Delivery)",
+        "hi": "🟢 स्टॉक में उपलब्ध (त्वरित डिलीवरी)"
     }
 }
 

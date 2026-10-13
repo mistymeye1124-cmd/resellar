@@ -209,9 +209,10 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
     # Skip if text belongs to recognized reply buttons (handled elsewhere)
     t_lower = text.lower()
     for known in [
+        "main menu", "মূল মেনু", "menu", "মেনু", "হোম", "home",
         "browse courses", "কোর্স সমূহ", "digital accounts", "ডিজিটাল শপ",
         "free drops", "ফ্রি গিভঅ্যাওয়ে", "refer & earn", "ফ্রি কোর্স",
-        "add balance", "ডিপোজিট", "reseller hub", "রিসেলার প্যানেল",
+        "add balance", "ডিপোজিট", "reseller hub", "রিসেলার প্যানেল", "রিসেলার হাব", "reseller",
         "my profile", "প্রোফাইল", "my purchases", "অর্ডার", "verify reseller",
         "সততা যাচাই", "support & help", "হেল্প", "language", "admin panel"
     ]:

@@ -211,6 +211,7 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
 
 @router.message(F.text.in_([
     "Reseller Hub (রিসেলার প্যানেল)", "🤝 Reseller Hub (রিসেলার প্যানেল)", "Reseller Hub", "🤝 Reseller Hub", 
+    "🤝 রিসেলার হাব", "রিসেলার হাব", "🤝 रीसेलर हब", "रीसेलर हब",
     "रीसेलर हब (Reseller Hub)", "🤝 रीसेलर हब (Reseller Hub)", "রিসেলার প্যানেল", "রিসেলার",
     "🤝 Reseller Hub (রিসেলার)", "Reseller Hub (রিসেলার)"
 ]))
