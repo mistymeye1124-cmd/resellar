@@ -34,7 +34,8 @@ DEFAULT_CUSTOM_EMOJIS: Dict[str, str] = {
     "wallet": "5395542928909150340",       # 💰 Wallet / Balance / Deposit
     "deposit": "5395542928909150340",      # 💳 Deposit / Money / Cash
     "cash": "5395542928909150340",         # 💵 Cash
-    "cart": "6271494293383286950",         # 🛒 Cart / Buy Now (VIP Diamond)
+    "cart": "6214990154608681626",         # 🛒 / 🛍️ Browse Store / Cart
+    "shop": "6214990154608681626",         # 🛍️ Browse Store
     "coupon": "5393383127294953991",       # 🎟️ Coupon / Voucher / Ticket
 
     # Resellers & Verification

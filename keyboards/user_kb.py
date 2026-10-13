@@ -115,7 +115,7 @@ def get_main_dashboard_inline_kb(lang: str = "bn", is_admin: bool = False, admin
 
     buttons = [
         [
-            make_custom_button(text=shop_txt, callback_data="back_cats", emoji_key="cart"),
+            make_custom_button(text=shop_txt, callback_data="back_cats", custom_emoji_id="6214990154608681626", emoji_key="cart"),
             make_custom_button(text=prof_txt, callback_data="nav_profile", emoji_key="profile")
         ],
         [
