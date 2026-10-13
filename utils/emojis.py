@@ -45,8 +45,7 @@ DEFAULT_CUSTOM_EMOJIS: Dict[str, str] = {
     # Resellers & Verification
     "diamond": "6271494293383286950",      # 💎 Reseller Diamond / VIP
     "reseller": "6271494293383286950",     # 💎 Reseller Hub
-    "verify": "5465154440287757794",       # 🛡️ Verify Reseller Shield / 🔐 Lock
-    "shield": "5465154440287757794",       # 🔰 Security Shield
+    # Native high-definition shield emoji (prevents DEF sticker glitch)
     "trophy": "5226431245918942763",       # 🏆 Trophy / Leaderboard
     "star": "6181535395914718008",         # ⭐ Star / Rating
     "target": "5310278924616356636",       # 🎯 Quota / Target / Race
