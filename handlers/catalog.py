@@ -70,12 +70,15 @@ async def handle_category_select(call: CallbackQuery):
     has_lead_emoji = any(ord(c) > 10000 for c in clean_cat_name[:3]) if clean_cat_name else False
     cat_header = clean_cat_name if has_lead_emoji else f"{em_cat} {clean_cat_name}"
     
+    box_border = "━━━━━━━━━━━━━━━━━━━━"
     # Check if this category has subcategories
     if db.has_subcategories(cat_id):
         subcats = db.get_subcategories(cat_id)
         sub_prompt = t("subcat_selector_prompt", lang)
         text = (
-            f"<b>{html.escape(cat_header)}</b>\n\n"
+            f"{box_border}\n"
+            f"<b>{html.escape(cat_header)}</b>\n"
+            f"{box_border}\n\n"
             f"{sub_prompt}"
         )
         await render_screen(call, text, reply_markup=get_subcategories_kb(subcats, cat_id, lang), parse_mode="HTML")
@@ -86,7 +89,9 @@ async def handle_category_select(call: CallbackQuery):
     if not products:
         no_prod_text = t("cat_no_products", lang)
         text = (
-            f"<b>{html.escape(cat_header)}</b>\n\n"
+            f"{box_border}\n"
+            f"<b>{html.escape(cat_header)}</b>\n"
+            f"{box_border}\n\n"
             f"{no_prod_text}"
         )
         from utils.emojis import make_custom_button
@@ -99,7 +104,9 @@ async def handle_category_select(call: CallbackQuery):
         
     count_prompt = t("cat_products_count_prompt", lang, count=len(products))
     text = (
-        f"<b>{html.escape(cat_header)}</b>\n\n"
+        f"{box_border}\n"
+        f"<b>{html.escape(cat_header)}</b>\n"
+        f"{box_border}\n\n"
         f"{count_prompt}"
     )
     await render_screen(call, text, reply_markup=get_products_kb(products, cat_id, lang=lang), parse_mode="HTML")
@@ -123,10 +130,13 @@ async def handle_subcategory_select(call: CallbackQuery):
     
     products = db.get_products_by_subcategory(subcat_id)
     from utils.emojis import make_custom_button
+    box_border = "━━━━━━━━━━━━━━━━━━━━"
     if not products:
         empty_text = t("subcat_empty_notice", lang)
         text = (
-            f"<b>{parent_name}{html.escape(subcat_clean)}</b>\n\n"
+            f"{box_border}\n"
+            f"<b>{parent_name}{html.escape(subcat_clean)}</b>\n"
+            f"{box_border}\n\n"
             f"{empty_text}"
         )
         parent_id = subcat.get('parent_id')
@@ -140,7 +150,9 @@ async def handle_subcategory_select(call: CallbackQuery):
         
     count_prompt = t("cat_products_count_prompt", lang, count=len(products))
     text = (
-        f"<b>{parent_name}{html.escape(subcat_clean)}</b>\n\n"
+        f"{box_border}\n"
+        f"<b>{parent_name}{html.escape(subcat_clean)}</b>\n"
+        f"{box_border}\n\n"
         f"{count_prompt}"
     )
     await render_screen(call, text, reply_markup=get_products_kb(products, category_id=subcat.get("parent_id", subcat_id), subcategory_id=subcat_id, parent_id=subcat.get("parent_id"), lang=lang), parse_mode="HTML")
@@ -337,13 +349,13 @@ async def handle_product_detail(call: CallbackQuery):
         f"{em_crs} <b>{html.escape(clean_title)}</b> {em_crs}\n\n"
         f"📝 <b>{sales_title if not prod.get('sales_page_url') else 'Curriculum & Overview:'}</b>\n{render_safe_html_text(prod['description'])}\n\n"
         f"{sales_info}"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
         f"{category_label}"
         f"{em_box} <b>{access_title}</b> {type_labels.get(prod['product_type'], 'Digital')}\n"
         f"📊 <b>{stock_title}</b> {stock_str}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
         f"{price_section}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n\n"
         f"{cta_text}"
     )
     

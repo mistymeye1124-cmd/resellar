@@ -165,17 +165,37 @@ def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admi
             [make_custom_button(text=t("btn_back", lang), callback_data="main_menu", emoji_key="back")]
         ])
 
-    price_label = "Wholesale Price List (পাইকারি রেট শিট)" if lang != "hi" else "थोक मूल्य सूची (Wholesale Price List)"
+    if lang == "en":
+        price_label = "💎 Wholesale Price List"
+        lb_label = "🏆 Leaderboard"
+        post_label = "📢 Marketing Posts"
+        order_label = "🛍️ Wholesale Catalog"
+        race_label = "🏁 Live Sales Race"
+        apply_label = "📝 Apply as Reseller"
+        knock_label = "⚡ Quick Activation"
+    elif lang == "hi":
+        price_label = "💎 थोक मूल्य सूची"
+        lb_label = "🏆 लीडरबोर्ड"
+        post_label = "📢 मार्केटिंग पोस्ट"
+        order_label = "🛍️ थोक स्टोर"
+        race_label = "🏁 लाइव सेल्स रेस"
+        apply_label = "📝 रीसेलर आवेदन"
+        knock_label = "⚡ त्वरित संपर्क"
+    else:
+        price_label = "💎 পাইকারি মূল্য তালিকা"
+        lb_label = "🏆 লিডারবোর্ড"
+        post_label = "📢 মার্কেটিং পোস্ট"
+        order_label = "🛍️ পাইকারি ক্যাটালগ"
+        race_label = "🏁 লাইভ সেলস রেস"
+        apply_label = "📝 রিসেলার আবেদন"
+        knock_label = "⚡ দ্রুত অ্যাক্টিভেশন নক"
+
     buttons = [
         [
             make_custom_button(text=price_label, callback_data="reseller_pricelist", emoji_key="diamond")
         ]
     ]
     if is_reseller:
-        lb_label = "Leaderboard (রিসেলার তালিকা)" if lang == "en" else ("লিডারবোর্ড (সেরা রিসেলার)" if lang == "bn" else "लीडरबोर्ड")
-        post_label = "Ready Marketing Posts" if lang == "en" else ("রেডি মার্কেটিং পোস্টস" if lang == "bn" else "रेडीमेड मार्केटिंग पोस्ट")
-        order_label = "Order at Wholesale Rate" if lang == "en" else ("পাইকারি মূল্যে অর্ডার করুন" if lang == "bn" else "थोक भाव पर ऑर्डर करें")
-        race_label = "Live Race & Challenge" if lang == "en" else ("সেলস চ্যালেঞ্জ ও লাইভ রেস" if lang == "bn" else "लाइव सेल्स रेस और चैलेंज")
         buttons.append([
             make_custom_button(text=race_label, callback_data="reseller_live_race", emoji_key="flag")
         ])
@@ -187,9 +207,6 @@ def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admi
             make_custom_button(text=order_label, callback_data="back_cats", emoji_key="cart")
         ])
     else:
-        lb_label = "Leaderboard" if lang == "en" else ("রিসেলার লিডারবোর্ড" if lang == "bn" else "लीडरबोर्ड")
-        apply_label = "Apply for Reseller Account" if lang == "en" else ("রিসেলার হতে আবেদন করুন" if lang == "bn" else "रीसेलर बनने के लिए आवेदन करें")
-        knock_label = "Contact Admin (দ্রুত নক দিন)" if lang == "en" else ("দ্রুত অ্যাক্টিভেশন নক দিন 💬" if lang == "bn" else "एडमिन से संपर्क करें 💬")
         buttons.append([
             make_custom_button(text=lb_label, callback_data="reseller_leaderboard", emoji_key="trophy")
         ])
@@ -510,19 +527,10 @@ def get_deposit_methods_kb(lang: str = "bn") -> InlineKeyboardMarkup:
     rocket_active = db.is_gateway_active("rocket")
     binance_active = db.is_gateway_active("binance")
 
-    if lang in ["en", "hi"]:
-        maint_txt = "(Maintenance)"
-        cashout_txt = "(Cash Out)"
-        send_txt = "(Send Money)"
-    else:
-        maint_txt = "(সাময়িক বন্ধ)"
-        cashout_txt = "(ক্যাশ আউট)"
-        send_txt = "(সেন্ড মানি)"
-
-    bkash_txt = f"bKash {cashout_txt}" if bkash_active else f"bKash {maint_txt}"
-    nagad_txt = f"Nagad {cashout_txt}" if nagad_active else f"Nagad {maint_txt}"
-    rocket_txt = f"Rocket {send_txt}" if rocket_active else f"Rocket {maint_txt}"
-    binance_txt = "Binance Pay / USDT" if binance_active else f"Binance {maint_txt}"
+    bkash_txt = "🔴 bKash" if bkash_active else "🔴 bKash (Off)"
+    nagad_txt = "🟠 Nagad" if nagad_active else "🟠 Nagad (Off)"
+    rocket_txt = "🟣 Rocket" if rocket_active else "🟣 Rocket (Off)"
+    binance_txt = "🟡 Binance Pay" if binance_active else "🟡 Binance (Off)"
 
     buttons = [
         [
@@ -568,19 +576,19 @@ def get_free_claim_categories_kb(counts: Dict[str, int], lang: str = "bn") -> In
     tot_cnt = counts.get("total", 0)
 
     if lang in ["en", "hi"]:
-        acc_txt = f"🔐 Premium Accounts ({acc_cnt})"
-        ck_txt = f"🍪 Browser Cookies ({ck_cnt})"
-        sub_txt = f"👑 Subscriptions & Keys ({sub_cnt})"
-        ch_txt = f"📢 VIP Channels ({ch_cnt})"
-        drv_txt = f"💾 Tools & Cloud Drive ({drv_cnt})"
-        tot_txt = f"🔥 All Active Giveaways ({tot_cnt})"
+        acc_txt = f"🔐 Accounts ({acc_cnt})"
+        ck_txt = f"🍪 Cookies ({ck_cnt})"
+        sub_txt = f"👑 Keys & Codes ({sub_cnt})"
+        ch_txt = f"📢 Channels ({ch_cnt})"
+        drv_txt = f"💾 Cloud Drive & Tools ({drv_cnt})"
+        tot_txt = f"🔥 All Active Drops ({tot_cnt})"
     else:
-        acc_txt = f"🔐 প্রিমিয়াম একাউন্টস ({acc_cnt} টি)"
-        ck_txt = f"🍪 ব্রাউজার কুকিজ ({ck_cnt} টি)"
-        sub_txt = f"👑 সাবস্ক্রিপশন ও কি ({sub_cnt} টি)"
-        ch_txt = f"📢 ভিআইপি চ্যানেল ({ch_cnt} টি)"
-        drv_txt = f"💾 টুলস ও ক্লাউড ড্রাইভ ({drv_cnt} টি)"
-        tot_txt = f"🔥 সব সক্রিয় গিভঅ্যাওয়ে ({tot_cnt} টি)"
+        acc_txt = f"🔐 একাউন্টস ({acc_cnt})"
+        ck_txt = f"🍪 কুকিজ ({ck_cnt})"
+        sub_txt = f"👑 কি ও কোড ({sub_cnt})"
+        ch_txt = f"📢 চ্যানেল ({ch_cnt})"
+        drv_txt = f"💾 ড্রাইভ ও টুলস ({drv_cnt})"
+        tot_txt = f"🔥 সকল সক্রিয় ড্রপ ({tot_cnt})"
 
     buttons = [
         [
@@ -701,19 +709,26 @@ def get_claim_action_kb(
 def get_user_profile_kb(user_id: int, available_points: int = 0, balance_bdt: float = 0.0, lang: str = "bn") -> InlineKeyboardMarkup:
     """Action buttons attached to My Profile card."""
     if lang == "bn":
-        pts_txt = f"💱 পয়েন্ট ➔ টাকা ({available_points} Pts)"
-        conv_curr_txt = "💵 টাকা ➔ ডলার (BDT ➔ USD)"
-        crs_ref_txt = "📚 কোর্স রেফারেলস"
-        hist_txt = "📜 কনভার্সন হিস্ট্রি"
+        pts_txt = "💱 পয়েন্ট কনভার্ট"
+        conv_curr_txt = "💵 BDT ➔ USD"
+        crs_ref_txt = "📚 কোর্স রেফারেল"
+        hist_txt = "📜 হিস্ট্রি"
         ref_hub_txt = "👥 রেফারেল হাব"
-        refresh_txt = "🔄 রিফ্রেশ প্রোফাইল"
+        refresh_txt = "🔄 রিফ্রেশ"
+    elif lang == "hi":
+        pts_txt = "💱 पॉइंट्स बदलें"
+        conv_curr_txt = "💵 BDT ➔ USD"
+        crs_ref_txt = "📚 कोर्स रेफरल"
+        hist_txt = "📜 हिस्ट्री"
+        ref_hub_txt = "👥 रेफरल हब"
+        refresh_txt = "🔄 रीफ्रेश"
     else:
-        pts_txt = f"💱 Points ➔ Cash ({available_points} Pts)"
-        conv_curr_txt = "💵 Currency (BDT ➔ USD)"
-        crs_ref_txt = "📚 Course Referrals"
-        hist_txt = "📜 Conversion History"
+        pts_txt = "💱 Convert Points"
+        conv_curr_txt = "💵 BDT ➔ USD"
+        crs_ref_txt = "📚 Course Refs"
+        hist_txt = "📜 History"
         ref_hub_txt = "👥 Referral Hub"
-        refresh_txt = "🔄 Refresh Profile"
+        refresh_txt = "🔄 Refresh"
 
     buttons = [
         [

@@ -87,7 +87,7 @@ async def handle_select_method(call: CallbackQuery, state: FSMContext):
             f"<i>(Tap the number above to copy instantly)</i>\n\n"
             f"📝 <b>Instructions:</b> {html.escape(active_instruction)}\n"
             f"⚠️ <b>Minimum Deposit:</b> <b>{int(min_dep) if min_dep.is_integer() else min_dep} {unit}</b>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
             f"👉 Please enter the amount in <b>{unit}</b> that you {action_verb} below:\n"
             f"<i>(Example: 500 or 1000)</i>"
         )
@@ -99,7 +99,7 @@ async def handle_select_method(call: CallbackQuery, state: FSMContext):
             f"<i>(নম্বরের উপর ১-ট্যাপ করলেই সাথে সাথে কপি হয়ে যাবে)</i>\n\n"
             f"📝 <b>নিয়মাবলী:</b> {html.escape(active_instruction)}\n"
             f"⚠️ <b>সর্বনিম্ন ডিপোজিট:</b> <b>{int(min_dep) if min_dep.is_integer() else min_dep} {unit}</b>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
             f"👉 আপনি কত <b>{unit}</b> {action_verb} করেছেন তা নিচে লিখে সেন্ড করুন:\n"
             f"<i>(উদাহরণ: 500 অথবা 1000)</i>"
         )

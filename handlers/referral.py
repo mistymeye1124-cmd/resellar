@@ -46,7 +46,7 @@ async def handle_referral_hub(event: Message | CallbackQuery, bot: Bot, state: F
     if lang == "en":
         text = (
             "🌟 <b>Referral Hub & Free Reward Center</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
             "🔗 <b>Your Personal Referral Link:</b>\n"
             f"<code>{ref_link}</code>\n"
             "<i>(Tap code to copy or click the buttons below)</i>\n\n"
@@ -59,7 +59,7 @@ async def handle_referral_hub(event: Message | CallbackQuery, bot: Bot, state: F
             f"🎯 <b>Next Milestone:</b> {stats.get('next_title')} ({stats.get('next_target')} users)\n"
             f"⚡ <b>Milestone Progress:</b> <code>{stats.get('progress_bar')}</code>\n"
             f"🎁 <i>(Only {stats.get('needed', 0)} more referrals to unlock extra +৳{stats.get('next_bonus', 0)} BDT bounty!)</i>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
             "💡 <b>How to get free courses and digital tools?</b>\n"
             "1️⃣ Share your referral link with friends or groups.\n"
             f"2️⃣ When they join, you earn direct bonus and they receive a <b>৳{int(stats.get('welcome_bonus', 5.0))} BDT</b> welcome gift!\n"
@@ -69,7 +69,7 @@ async def handle_referral_hub(event: Message | CallbackQuery, bot: Bot, state: F
     else:
         text = (
             "🌟 <b>রেফারেল হাব ও ফ্রি রিওয়ার্ড আর্নিং সেন্টার</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
             "🔗 <b>আপনার পার্সোনাল রেফারেল লিংক:</b>\n"
             f"<code>{ref_link}</code>\n"
             "<i>(ট্যাপ করলেই লিংক কপি হবে অথবা নিচের বাটনে চাপুন)</i>\n\n"
@@ -82,7 +82,7 @@ async def handle_referral_hub(event: Message | CallbackQuery, bot: Bot, state: F
             f"🎯 <b>পরবর্তী মাইলস্টোন:</b> {stats.get('next_title')} ({stats.get('next_target')} জন)\n"
             f"⚡ <b>মাইলস্টোন প্রগ্রেস:</b> <code>{stats.get('progress_bar')}</code>\n"
             f"🎁 <i>(আর মাত্র {stats.get('needed', 0)} টি রেফারেল করলেই পাবেন এক্সট্রা +৳{stats.get('next_bonus', 0)} BDT ক্যাশ বাউন্টি!)</i>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
             "💡 <b>কীভাবে কোর্স ও ডিজিটাল টুলস ফ্রিতে নিবেন?</b>\n"
             "1️⃣ নিচের বাটন দিয়ে বন্ধুদের সাথে আপনার রেফারেল লিংক শেয়ার করুন।\n"
             f"2️⃣ বন্ধু জয়েন করলেই আপনি পাবেন ডিরেক্ট বোনাস, এবং বন্ধু পাবে <b>৳{int(stats.get('welcome_bonus', 5.0))} BDT</b> গিফট!\n"
