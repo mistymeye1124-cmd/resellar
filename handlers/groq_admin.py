@@ -403,7 +403,15 @@ def format_groq_preview_text(data: Dict[str, Any], for_caption: bool = False) ->
     ch_res = int(ch_p * 0.70)
     acc_res = int(acc_p * 0.70)
 
-    ch_stat = f"<code>{html.escape(data['channel_target'])}</code> ✅" if data.get("channel_target") else "⚠️ <i>(সেট করা হয়নি — ডিফল্ট ১-টাইম ইনভাইট)</i>"
+    if data.get("channel_target"):
+        ch_target_val = html.escape(str(data["channel_target"]))
+        ch_title_val = html.escape(str(data.get("channel_title") or data["channel_target"]))
+        if data.get("channel_verified"):
+            ch_stat = f"<code>{ch_target_val}</code> (<b>{ch_title_val}</b>) 🟢"
+        else:
+            ch_stat = f"<code>{ch_target_val}</code> ⚠️ <i>(বট পারমিশন চেক বাকি)</i>"
+    else:
+        ch_stat = "⚠️ <i>(সেট করা হয়নি — ইনভাইট বন্ধ)</i>"
     acc_stat = "✅ <i>(সেট হয়েছে)</i>" if data.get("account_data") else "⚠️ <i>(সেট করা হয়নি — ড্রাইভ/অ্যাকাউন্ট লিঙ্ক বাকি)</i>"
 
     sales_url = data.get("sales_page_url", "")
@@ -623,16 +631,58 @@ async def handle_save_shortcut_channel(message: Message, state: FSMContext, bot:
     if not target:
         return
 
-    # Verify channel
-    try:
-        from handlers.admin_panel import verify_telegram_channel_access
-        chk = await verify_telegram_channel_access(bot, target)
-        if chk["success"]:
-            await state.update_data(channel_target=target)
-        else:
-            await state.update_data(channel_target=target)
-    except Exception:
-        await state.update_data(channel_target=target)
+    # Verify channel live
+    from handlers.admin_panel import verify_telegram_channel_access
+    chk = await verify_telegram_channel_access(bot, target)
+
+    if chk.get("success"):
+        ch_title = chk.get("title", target)
+        test_link = chk.get("test_link", "")
+        await state.update_data(
+            channel_target=target,
+            channel_title=ch_title,
+            channel_verified=True,
+            channel_test_link=test_link
+        )
+        confirm_msg = (
+            f"✅ <b>চ্যানেল সফলভাবে কানেক্ট ও ভেরিফাই হয়েছে!</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📢 <b>চ্যানেল:</b> <b>{html.escape(ch_title)}</b>\n"
+            f"🆔 <b>টার্গেট:</b> <code>{html.escape(target)}</code>\n"
+            f"🔑 <b>বট স্ট্যাটাস:</b> <code>Administrator (Invite Rights Active 🟢)</code>\n"
+            f"🔗 <b>টেস্ট ইনভাইট লিংক:</b> {test_link}\n"
+            f"━━━━━━━━━━━━━━━━━━━━"
+        )
+        try:
+            temp_m = await message.answer(confirm_msg, parse_mode="HTML")
+            asyncio.create_task(_auto_del_msg(temp_m, 10))
+        except Exception:
+            pass
+    else:
+        bot_info = await bot.get_me()
+        bot_uname = bot_info.username or "AllInOneProAccess_bot"
+        err_msg = chk.get("message", "Unknown error")
+        await state.update_data(
+            channel_target=target,
+            channel_title=chk.get("title", target),
+            channel_verified=False,
+            channel_error=err_msg
+        )
+        warn_msg = (
+            f"⚠️ <b>চ্যানেল সতর্কবার্তা!</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>সমস্যা:</b> {html.escape(err_msg)}\n\n"
+            f"👉 <b>করণীয়:</b>\n"
+            f"১. আপনার চ্যানেলে যান ➡️ Edit ➡️ Administrators ➡️ Add Admin\n"
+            f"২. <code>@{bot_uname}</code> কে যুক্ত করে <b>'Invite Users via Link'</b> পারমিশন দিন।\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"<i>(চ্যানেলটি সেভ করা হয়েছে। পারমিশন দিয়ে '🧪 টেস্ট ইনভাইট' বাটনে চাপ দিন)</i>"
+        )
+        try:
+            temp_m = await message.answer(warn_msg, parse_mode="HTML")
+            asyncio.create_task(_auto_del_msg(temp_m, 12))
+        except Exception:
+            pass
 
     await state.set_state(GroqAutoCourseState.review_and_shortcuts)
     updated_data = await state.get_data()
@@ -640,6 +690,44 @@ async def handle_save_shortcut_channel(message: Message, state: FSMContext, bot:
     text = format_groq_preview_text(updated_data)
     kb = get_groq_preview_kb(updated_data)
     await edit_groq_card_in_place(bot, chat_id, card_msg_id, text, kb, is_photo)
+
+
+async def _auto_del_msg(m: Message, sec: int = 10):
+    await asyncio.sleep(sec)
+    try:
+        await m.delete()
+    except Exception:
+        pass
+
+
+@router.callback_query(F.data == "groq_test_channel", GroqAutoCourseState.review_and_shortcuts)
+async def handle_groq_test_channel_live(call: CallbackQuery, state: FSMContext, bot: Bot):
+    data = await state.get_data()
+    target = data.get("channel_target")
+    if not target:
+        await call.answer("⚠️ কোনো চ্যানেল টার্গেট সেট করা নেই!", show_alert=True)
+        return
+    await call.answer("🔍 টেলিগ্রাম সার্ভারে চ্যানেল টেস্ট করা হচ্ছে...", show_alert=False)
+    from handlers.admin_panel import verify_telegram_channel_access
+    chk = await verify_telegram_channel_access(bot, target)
+    if chk.get("success"):
+        await state.update_data(
+            channel_title=chk.get("title", target),
+            channel_verified=True,
+            channel_test_link=chk.get("test_link")
+        )
+        test_link = chk.get("test_link")
+        await call.message.answer(
+            f"✅ <b>চ্যানেল ভেরিফিকেশন টেস্ট সফল!</b>\n\n"
+            f"📢 চ্যানেল: <b>{html.escape(chk.get('title', target))}</b>\n"
+            f"🔑 বট স্ট্যাটাস: <code>Administrator 🟢</code>\n"
+            f"🔗 <b>টেস্ট ইনভাইট লিংক:</b> {test_link}\n\n"
+            f"<i>(লিংকটি টেস্টের জন্য তৈরি হয়েছে, কাস্টমার কিনলে স্বয়ংক্রিয়ভাবে নতুন ১-টাইম লিংক পাবে)</i>",
+            parse_mode="HTML"
+        )
+    else:
+        await state.update_data(channel_verified=False)
+        await call.answer(f"❌ চ্যানেল কানেকশন ফেইল্ড!\n{chk.get('message')}", show_alert=True)
 
 
 @router.callback_query(F.data == "groq_edit:account_data", GroqAutoCourseState.review_and_shortcuts)

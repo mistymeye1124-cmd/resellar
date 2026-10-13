@@ -267,6 +267,10 @@ def get_product_edit_options_kb(product_id: int, is_active: bool = True, has_pho
             make_custom_button(text="Edit Description", callback_data=f"edit_p_desc:{product_id}", emoji_key="edit")
         ],
         [
+            make_custom_button(text="🧪 টেস্ট চ্যানেল ইনভাইট লিংক", callback_data=f"test_p_channel:{product_id}", emoji_key="channel"),
+            make_custom_button(text="🔐 অ্যাকাউন্ট/ড্রাইভ ডাটা দেখুন", callback_data=f"view_p_accdata:{product_id}", emoji_key="box")
+        ],
+        [
             make_custom_button(text="Edit Regular Price", callback_data=f"edit_p_price:{product_id}", emoji_key="cash"),
             make_custom_button(text="Edit Reseller Price", callback_data=f"edit_p_resprice:{product_id}", emoji_key="diamond")
         ],
@@ -279,18 +283,19 @@ def get_product_edit_options_kb(product_id: int, is_active: bool = True, has_pho
             make_custom_button(text="Edit Dual Pricing", callback_data=f"edit_p_tiers:{product_id}", emoji_key="box")
         ],
         [
-            make_custom_button(text="Edit Target (Link/ID)", callback_data=f"edit_p_target:{product_id}", emoji_key="channel"),
-            make_custom_button(text="Edit Banner Photo", callback_data=f"edit_p_photo:{product_id}", emoji_key="sparkle")
+            make_custom_button(text="📢 চ্যানেল সেট/পরিবর্তন", callback_data=f"edit_p_channel:{product_id}", emoji_key="channel"),
+            make_custom_button(text="🔐 অ্যাকাউন্ট ডাটা সেট/পরিবর্তন", callback_data=f"edit_p_accdata:{product_id}", emoji_key="box")
         ],
         [
-            make_custom_button(text=f"Stock Manager ({stock_count})", callback_data=f"edit_p_stock:{product_id}", emoji_key="box"),
+            make_custom_button(text="Edit Banner Photo", callback_data=f"edit_p_photo:{product_id}", emoji_key="sparkle"),
             photo_btn
         ],
         [
-            make_custom_button(text=status_text, callback_data=f"edit_p_toggle:{product_id}", emoji_key=status_em),
-            make_custom_button(text="Delete Product", callback_data=f"edit_p_delete:{product_id}", emoji_key="cross")
+            make_custom_button(text=f"Stock Manager ({stock_count})", callback_data=f"edit_p_stock:{product_id}", emoji_key="box"),
+            make_custom_button(text=status_text, callback_data=f"edit_p_toggle:{product_id}", emoji_key=status_em)
         ],
         [
+            make_custom_button(text="Delete Product", callback_data=f"edit_p_delete:{product_id}", emoji_key="cross"),
             make_custom_button(text="Back to Products List", callback_data="admin_list_prods", emoji_key="back")
         ]
     ]
@@ -890,7 +895,15 @@ def get_groq_preview_kb(data: Dict[str, Any]) -> InlineKeyboardMarkup:
         [
             make_custom_button(text=f"{has_ch} Set Channel ID/Link", callback_data="groq_edit:channel_target", emoji_key="channel"),
             make_custom_button(text=f"{has_acc} Set Account/Drive", callback_data="groq_edit:account_data", emoji_key="box")
-        ],
+        ]
+    ]
+
+    if data.get("channel_target"):
+        buttons.append([
+            make_custom_button(text="🧪 টেস্ট চ্যানেল ইনভাইট লিংক", callback_data="groq_test_channel", emoji_key="channel")
+        ])
+
+    buttons.extend([
         [
             make_custom_button(text=f"📁 Cat: {cat_name}", callback_data="groq_edit:category", emoji_key="category"),
             make_custom_button(text="✏️ Edit Title / Desc", callback_data="groq_edit:content", emoji_key="edit")
@@ -901,7 +914,7 @@ def get_groq_preview_kb(data: Dict[str, Any]) -> InlineKeyboardMarkup:
         [
             make_custom_button(text="❌ বাতিল (Cancel)", callback_data="cancel_fsm", emoji_key="cross")
         ]
-    ]
+    ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_groq_keys_menu_kb(keys: List[str]) -> InlineKeyboardMarkup:

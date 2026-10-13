@@ -145,6 +145,8 @@ class EditProductState(StatesGroup):
     waiting_for_new_acc_price = State()
     waiting_for_new_target = State()
     waiting_for_new_photo = State()
+    waiting_for_new_channel = State()
+    waiting_for_new_accdata = State()
 
 class AddStockState(StatesGroup):
     waiting_for_product = State()
@@ -3551,17 +3553,32 @@ async def handle_cmd_findprod(message: Message):
     buttons = []
     for p in matched[:15]:
         status_dot = "🟢" if p["is_active"] else "🔴"
+        has_channel = bool(p.get("channel_id") and str(p.get("channel_id")).strip() not in ["", "None", "0"])
+        has_account = bool(p.get("drive_link") and str(p.get("drive_link")).strip() not in ["", "None", "0"])
+        is_dual = p.get("product_type") == "dual_access" or (has_channel and has_account)
+
+        if is_dual:
+            delivery_badge = "🔥 Dual"
+        elif has_channel:
+            delivery_badge = "📢 Ch"
+        elif has_account:
+            delivery_badge = "🔐 Acc"
+        else:
+            delivery_badge = "⚠️ NoLink"
+
+        raw_title = p['title'].strip()
+        short_title = (raw_title[:18] + "..") if len(raw_title) > 20 else raw_title
         buttons.append([
             InlineKeyboardButton(
-                text=f"{status_dot} {p['title']} (৳{int(p['price_bdt'])})",
+                text=f"{status_dot} {short_title} | {delivery_badge} (৳{int(p['price_bdt'])})",
                 callback_data=f"edit_p_select:{p['id']}"
             )
         ])
     buttons.append([InlineKeyboardButton(text="🔙 Admin Main Panel", callback_data="admin_main_dashboard")])
     await message.answer(
-        f"🔍 **'{kw}' এর জন্য {len(matched)} টি ফলাফল পাওয়া গেছে:**\n\nএডিট করতে প্রোডাক্ট সিলেক্ট করুন:",
+        f"🔍 <b>'{kw}' এর জন্য {len(matched)} টি ফলাফল পাওয়া গেছে:</b>\n\nএডিট করতে প্রোডাক্ট সিলেক্ট করুন:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 @router.callback_query(F.data == "admin_list_prods")
@@ -3592,10 +3609,24 @@ async def handle_admin_list_prods(call: CallbackQuery):
     buttons = []
     for p in page_items:
         status_dot = "🟢" if p["is_active"] else "🔴"
-        stock_badge = "🟢 In Stock" if (p.get("is_in_stock", 1) if p.get("is_in_stock") is not None else 1) == 1 else "🔴 Out of Stock"
+        has_channel = bool(p.get("channel_id") and str(p.get("channel_id")).strip() not in ["", "None", "0"])
+        has_account = bool(p.get("drive_link") and str(p.get("drive_link")).strip() not in ["", "None", "0"])
+        is_dual = p.get("product_type") == "dual_access" or (has_channel and has_account)
+
+        if is_dual:
+            delivery_badge = "🔥 Dual"
+        elif has_channel:
+            delivery_badge = "📢 Ch"
+        elif has_account:
+            delivery_badge = "🔐 Acc"
+        else:
+            delivery_badge = "⚠️ NoLink"
+
+        raw_title = p['title'].strip()
+        short_title = (raw_title[:18] + "..") if len(raw_title) > 20 else raw_title
         buttons.append([
             InlineKeyboardButton(
-                text=f"{status_dot} {p['title']} [{stock_badge}] (৳{int(p['price_bdt'])})",
+                text=f"{status_dot} {short_title} | {delivery_badge} (৳{int(p['price_bdt'])})",
                 callback_data=f"edit_p_select:{p['id']}"
             )
         ])
@@ -3615,11 +3646,16 @@ async def handle_admin_list_prods(call: CallbackQuery):
     ])
     
     await call.message.edit_text(
-        f"📋 **কোর্স ও প্রোডাক্ট এডিটর (মোট {len(prods)} টি প্রোডাক্ট)**\n\n"
-        "যেকোনো কোর্সের টাইটেল, ডেসক্রিপশন, প্রাইস, ক্যাটাগরি, ডেলিভারি লিংক বা ব্যানার এডিট করতে সিলেক্ট করুন:\n"
-        "_(শর্টকাট: সরাসরি সার্চ করতে `/findprod <নাম>` লিখুন)_",
+        f"📋 <b>কোর্স ও প্রোডাক্ট এডিটর (মোট {len(prods)} টি প্রোডাক্ট)</b>\n\n"
+        "💡 <i>বাটন নির্দেশিকা:</i>\n"
+        "• <code>🔥 Dual</code> = ভিআইপি চ্যানেল + অ্যাকাউন্ট ২টিই সংযুক্ত\n"
+        "• <code>📢 Ch</code> = শুধু টেলিগ্রাম ভিআইপি চ্যানেল সংযুক্ত\n"
+        "• <code>🔐 Acc</code> = শুধু অ্যাকাউন্ট ক্রেডেনশিয়াল / ড্রাইভ লিংক সংযুক্ত\n"
+        "• <code>⚠️ NoLink</code> = কোনো ডেলিভারি লিংক সংযুক্ত নেই!\n\n"
+        "👇 এডিট, চ্যানেল টেস্ট বা এক্সেস দেখতে কোর্স সিলেক্ট করুন:\n"
+        "<i>(শর্টকাট: সরাসরি খুঁজতে <code>/findprod &lt;নাম&gt;</code> লিখুন)</i>",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 @router.callback_query(F.data.startswith("toggle_p_stock:"))
@@ -3649,7 +3685,26 @@ async def handle_edit_p_select(call: CallbackQuery, target_prod_id: int = None):
     stock_active = bool(p.get("is_in_stock", 1) if p.get("is_in_stock") is not None else 1)
     stock_status_str = "🟢 ইন স্টক (In Stock)" if stock_active else "🔴 আউট অব স্টক (Out of Stock)"
     
-    target_info = p.get("channel_id") or p.get("drive_link") or "None"
+    # VIP Channel status
+    ch_id = p.get("channel_id")
+    has_ch = bool(ch_id and str(ch_id).strip() not in ["", "None", "0"])
+    ch_title = p.get("channel_title")
+    if has_ch:
+        ch_display = f"🟢 <code>{ch_id}</code>"
+        if ch_title:
+            ch_display += f" (<i>{ch_title}</i>)"
+    else:
+        ch_display = "⚪ <i>সংযুক্ত নেই ❌</i>"
+
+    # Account / Drive status
+    acc_data = p.get("drive_link")
+    has_acc = bool(acc_data and str(acc_data).strip() not in ["", "None", "0"])
+    if has_acc:
+        preview_acc = (acc_data[:32] + "...") if len(acc_data) > 32 else acc_data
+        acc_display = f"🟢 <code>{preview_acc}</code>"
+    else:
+        acc_display = "⚪ <i>সংযুক্ত নেই ❌</i>"
+    
     sales_info = p.get("sales_page_url") or "দেওয়া নেই ❌"
     
     tier_info = "বন্ধ (Single Price)"
@@ -3666,19 +3721,20 @@ async def handle_edit_p_select(call: CallbackQuery, target_prod_id: int = None):
     type_str = type_map.get(p.get("product_type"), p.get("product_type"))
 
     text = (
-        f"🛠️ **কোর্স এডিটর: {p['title']}**\n\n"
-        f"• ক্যাটাগরি: **{cat_name}**\n"
-        f"• স্ট্যাটাস: {status_str}\n"
-        f"• স্টক অবস্থা: **{stock_status_str}**\n"
-        f"• খুচরা বিক্রয়মূল্য: `৳{p['price_bdt']} BDT` (${p['price_usd']})\n"
-        f"• রিসেলার পাইকারি রেট: `৳{p['reseller_price_bdt']} BDT` (${p['reseller_price_usd']})\n"
-        f"• ডেলিভারি ধরন: `{type_str}`\n"
-        f"• অবশিষ্ঠ স্টক: `{stock_count} টি`\n"
-        f"• টার্গেট (লিংক/চ্যানেল): `{target_info}`\n"
-        f"• সেলস পেজ লিঙ্ক: `{sales_info}`\n"
-        f"• ডুয়েল অ্যাক্সেস প্যাকেজ: `{tier_info}`\n"
+        f"🛠️ <b>কোর্স ও ডেলিভারি এডিটর: {p['title']}</b>\n\n"
+        f"📋 <b>সাধারণ তথ্য:</b>\n"
+        f"• ক্যাটাগরি: <b>{cat_name}</b>\n"
+        f"• স্ট্যাটাস: {status_str} | স্টক: <b>{stock_status_str}</b> ({stock_count} টি)\n"
+        f"• খুচরা রেট: <code>৳{p['price_bdt']} BDT</code> (${p['price_usd']})\n"
+        f"• রিসেলার রেট: <code>৳{p['reseller_price_bdt']} BDT</code> (${p['reseller_price_usd']})\n\n"
+        f"📡 <b>ডেলিভারি ও অ্যাক্সেস স্ট্যাটাস:</b>\n"
+        f"• প্যাকেজ মোড: <b>{type_str}</b>\n"
+        f"• 📢 <b>VIP চ্যানেল:</b> {ch_display}\n"
+        f"• 🔐 <b>অ্যাকাউন্ট / ড্রাইভ:</b> {acc_display}\n"
+        f"• ডুয়েল প্রাইসিং: <code>{tier_info}</code>\n"
+        f"• সেলস পেজ: <code>{sales_info}</code>\n"
         f"• ব্যানার ফটো: {'আছে ✅' if p.get('photo_file_id') else 'নেই ❌'}\n\n"
-        "👇 কি পরিবর্তন করতে চান বেছে নিন:"
+        "👇 <b>কী পরিবর্তন করতে চান অথবা টেস্ট করতে চান বেছে নিন:</b>"
     )
     await call.message.edit_text(
         text,
@@ -3689,7 +3745,7 @@ async def handle_edit_p_select(call: CallbackQuery, target_prod_id: int = None):
             stock_count=stock_count,
             is_in_stock=stock_active
         ),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 # --- Category Change for Product ---
@@ -4068,6 +4124,255 @@ async def handle_edit_p_target_save(message: Message, state: FSMContext):
         db.update_product_target(prod_id, drive_link=new_target)
         
     await message.answer("✅ **ডেলিভারি টার্গেট লিংক/চ্যানেল সফলভাবে আপডেট হয়েছে!**", reply_markup=get_admin_main_kb(db.get_extended_bot_stats()))
+
+@router.callback_query(F.data.startswith("test_p_channel:"))
+async def handle_test_p_channel(call: CallbackQuery, bot: Bot):
+    if not is_admin(call.from_user.id):
+        return
+    prod_id = int(call.data.split(":")[1])
+    p = db.get_product(prod_id)
+    if not p:
+        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        return
+        
+    ch_id = p.get("channel_id")
+    if not ch_id or str(ch_id).strip() in ["", "None", "0"]:
+        await call.answer("⚠️ এই প্রোডাক্টে কোনো টেলিগ্রাম চ্যানেল সেট করা নেই! আগে '📢 চ্যানেল সেট/পরিবর্তন' করুন।", show_alert=True)
+        return
+        
+    await call.answer("🔄 চ্যানেল ভেরিফিকেশন টেস্ট চলছে...")
+    res = await verify_telegram_channel_access(bot, str(ch_id).strip())
+    
+    if res["success"]:
+        db.update_product_channel(prod_id, channel_id=str(ch_id).strip(), channel_title=res["title"], channel_verified=1)
+        test_card = (
+            f"🧪 <b>টেলিগ্রাম চ্যানেল টেস্ট রিপোর্ট: সফল! ✅</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏷️ <b>কোর্স:</b> {p['title']}\n"
+            f"📢 <b>চ্যানেল নাম:</b> <b>{res['title']}</b>\n"
+            f"🆔 <b>চ্যানেল আইডি:</b> <code>{res['channel_id']}</code>\n"
+            f"🟢 <b>বট অ্যাডমিন পারমিশন:</b> সক্রিয় (OK)\n\n"
+            f"🔗 <b>১-টাইম টেস্ট ইনভাইট লিংক:</b>\n"
+            f"{res['test_link']}\n\n"
+            f"<i>(নোট: কাস্টমার পেমেন্ট করার পর স্বয়ংক্রিয়ভাবে ঠিক এই ধরনের সিঙ্গেল-ইউজ ইনভাইট লিংক পাবে।)</i>"
+        )
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Product", callback_data=f"edit_p_select:{prod_id}")]
+        ])
+        await call.message.answer(test_card, reply_markup=back_kb, parse_mode="HTML")
+    else:
+        db.update_product_channel(prod_id, channel_id=str(ch_id).strip(), channel_title=res.get("title"), channel_verified=0)
+        bot_info = await bot.get_me()
+        bot_uname = bot_info.username or "bot"
+        err_card = (
+            f"⚠️ <b>টেলিগ্রাম চ্যানেল টেস্ট রিপোর্ট: ব্যর্থ! ❌</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏷️ <b>কোর্স:</b> {p['title']}\n"
+            f"🆔 <b>টার্গেট:</b> <code>{ch_id}</code>\n"
+            f"📌 <b>সমস্যা:</b> {res['message']}\n\n"
+            f"👉 <b>সমাধান:</b>\n"
+            f"১. চ্যানেলে গিয়ে <code>@{bot_uname}</code> কে Administrator বানান।\n"
+            f"২. <b>'Invite Users via Link'</b> পারমিশন চালু করুন।\n"
+            f"৩. এরপর আবার এখানে এসে টেস্ট বাটনে চাপ দিন।"
+        )
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 আবার টেস্ট করুন", callback_data=f"test_p_channel:{prod_id}")],
+            [InlineKeyboardButton(text="🔙 Back to Product", callback_data=f"edit_p_select:{prod_id}")]
+        ])
+        await call.message.answer(err_card, reply_markup=back_kb, parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("view_p_accdata:"))
+async def handle_view_p_accdata(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    prod_id = int(call.data.split(":")[1])
+    p = db.get_product(prod_id)
+    if not p:
+        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        return
+        
+    acc_data = p.get("drive_link")
+    stock_count = db.get_stock_count(prod_id)
+    
+    if not acc_data and stock_count == 0:
+        await call.answer("⚠️ এই প্রোডাক্টে কোনো অ্যাকাউন্ট ডাটা বা ড্রাইভ লিংক সংরক্ষিত নেই!", show_alert=True)
+        return
+        
+    await call.answer()
+    card = (
+        f"🔐 <b>ডেলিভারি অ্যাকাউন্ট / ড্রাইভ ডাটা:</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🏷️ <b>কোর্স:</b> {p['title']}\n"
+        f"📦 <b>মোট স্টক আইটেম:</b> {stock_count} টি\n\n"
+        f"📝 <b>মূল ডেলিভারি টেমপ্লেট / লিংক:</b>\n"
+        f"<code>{acc_data or 'দেওয়া নেই'}</code>\n\n"
+        f"<i>(কাস্টমার পার্সোনাল অ্যাকাউন্ট / ড্রাইভ প্যাকেজ কিনলে এই তথ্য স্বয়ংক্রিয়ভাবে পাবে।)</i>"
+    )
+    back_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✏️ ডাটা পরিবর্তন করুন", callback_data=f"edit_p_accdata:{prod_id}")],
+        [InlineKeyboardButton(text="🔙 Back to Product", callback_data=f"edit_p_select:{prod_id}")]
+    ])
+    await call.message.answer(card, reply_markup=back_kb, parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("edit_p_channel:"))
+async def handle_edit_p_channel_start(call: CallbackQuery, state: FSMContext, bot: Bot):
+    if not is_admin(call.from_user.id):
+        return
+    prod_id = int(call.data.split(":")[1])
+    p = db.get_product(prod_id)
+    if not p:
+        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        return
+    await state.update_data(edit_prod_id=prod_id)
+    await state.set_state(EditProductState.waiting_for_new_channel)
+    await call.answer()
+    
+    bot_info = await bot.get_me()
+    bot_uname = bot_info.username or "bot"
+    
+    current_ch = p.get("channel_id") or "কোনো চ্যানেল সংযুক্ত নেই"
+    await call.message.answer(
+        f"📢 <b>VIP টেলিগ্রাম চ্যানেল সেট / পরিবর্তন:</b>\n\n"
+        f"🏷️ কোর্স: <b>{p['title']}</b>\n"
+        f"📍 বর্তমান চ্যানেল: <code>{current_ch}</code>\n\n"
+        f"👉 নতুন চ্যানেলের <b>@Username</b> অথবা <b>Channel ID</b> (যেমন: <code>-100...</code>) লিখে পাঠান।\n"
+        f"<i>(চ্যানেল পুরোপুরি ডিসকানেক্ট / রিমুভ করতে <code>remove</code> লিখে পাঠান)</i>\n\n"
+        f"⚠️ <b>মনে রাখবেন:</b> <code>@{bot_uname}</code> কে চ্যানেলে Administrator বানিয়ে 'Invite Users via Link' পারমিশন থাকতে হবে।",
+        reply_markup=get_cancel_fsm_kb(),
+        parse_mode="HTML"
+    )
+
+@router.message(EditProductState.waiting_for_new_channel)
+async def handle_edit_p_channel_save(message: Message, state: FSMContext, bot: Bot):
+    if not message.text:
+        await message.answer("❌ অনুগ্রহ করে চ্যানেলের ইউজারনেম বা আইডি টেক্সট আকারে লিখুন:", reply_markup=get_cancel_fsm_kb())
+        return
+    raw_input = message.text.strip()
+    data = await state.get_data()
+    prod_id = data["edit_prod_id"]
+    
+    p = db.get_product(prod_id)
+    if not p:
+        await state.clear()
+        await message.answer("❌ প্রোডাক্টটি পাওয়া যায়নি।", reply_markup=get_admin_main_kb(db.get_extended_bot_stats()))
+        return
+        
+    if raw_input.lower() in ["remove", "none", "0"]:
+        db.update_product_channel(prod_id, channel_id=None, channel_title=None, channel_verified=0)
+        await state.clear()
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Product", callback_data=f"edit_p_select:{prod_id}")]
+        ])
+        await message.answer(
+            f"✅ <b>'{p['title']}' থেকে VIP চ্যানেল সংযোগ সফলভাবে মুছে ফেলা হয়েছে!</b>",
+            reply_markup=back_kb,
+            parse_mode="HTML"
+        )
+        return
+        
+    await message.answer("🔍 টেলিগ্রাম সার্ভারে চ্যানেল ও অ্যাডমিন পারমিশন যাচাই করা হচ্ছে...")
+    res = await verify_telegram_channel_access(bot, raw_input)
+    
+    if res["success"]:
+        db.update_product_channel(prod_id, channel_id=raw_input, channel_title=res["title"], channel_verified=1)
+        await state.clear()
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Product", callback_data=f"edit_p_select:{prod_id}")]
+        ])
+        await message.answer(
+            f"🎉 <b>আলহামদুলিল্লাহ! চ্যানেল সফলভাবে যুক্ত ও ভেরিফাই হয়েছে!</b>\n\n"
+            f"🏷️ কোর্স: <b>{p['title']}</b>\n"
+            f"📢 চ্যানেল নাম: <b>{res['title']}</b>\n"
+            f"🆔 চ্যানেল আইডি: <code>{res['channel_id']}</code>\n"
+            f"🟢 <b>বট অ্যাডমিন স্ট্যাটাস:</b> সক্রিয় (Single-use invite link ready)\n\n"
+            f"🧪 <b>টেস্ট ইনভাইট লিংক:</b>\n{res['test_link']}",
+            reply_markup=back_kb,
+            parse_mode="HTML"
+        )
+    else:
+        db.update_product_channel(prod_id, channel_id=raw_input, channel_title=res.get("title"), channel_verified=0)
+        await state.clear()
+        bot_info = await bot.get_me()
+        bot_uname = bot_info.username or "bot"
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 আবার টেস্ট করুন", callback_data=f"test_p_channel:{prod_id}")],
+            [InlineKeyboardButton(text="🔙 Back to Product", callback_data=f"edit_p_select:{prod_id}")]
+        ])
+        await message.answer(
+            f"⚠️ <b>চ্যানেল সেভ হয়েছে, কিন্তু বটের অ্যাডমিন এক্সেস সক্রিয় হয়নি!</b>\n\n"
+            f"🏷️ কোর্স: <b>{p['title']}</b>\n"
+            f"🆔 টার্গেট: <code>{raw_input}</code>\n"
+            f"📌 সমস্যা: {res['message']}\n\n"
+            f"👉 <b>কী করবেন:</b>\n"
+            f"১. চ্যানেলে গিয়ে <code>@{bot_uname}</code> কে Administrator বানান।\n"
+            f"২. 'Invite Users via Link' পারমিশন চালু করুন।\n"
+            f"৩. এরপর নিচের 'আবার টেস্ট করুন' বাটনে চাপ দিন।",
+            reply_markup=back_kb,
+            parse_mode="HTML"
+        )
+
+@router.callback_query(F.data.startswith("edit_p_accdata:"))
+async def handle_edit_p_accdata_start(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    prod_id = int(call.data.split(":")[1])
+    p = db.get_product(prod_id)
+    if not p:
+        await call.answer("প্রোডাক্ট পাওয়া যায়নি!", show_alert=True)
+        return
+    await state.update_data(edit_prod_id=prod_id)
+    await state.set_state(EditProductState.waiting_for_new_accdata)
+    await call.answer()
+    
+    current_acc = p.get("drive_link") or "কোনো ডাটা নেই"
+    await call.message.answer(
+        f"🔐 <b>অ্যাকাউন্ট ডাটা / ড্রাইভ লিংক সেট / পরিবর্তন:</b>\n\n"
+        f"🏷️ কোর্স: <b>{p['title']}</b>\n"
+        f"📍 বর্তমান ডাটা:\n<code>{current_acc}</code>\n\n"
+        f"👉 নতুন অ্যাকাউন্ট ক্রেডেনশিয়াল (ইমেইল:পাসওয়ার্ড), গুগল ড্রাইভ লিংক অথবা লগইন গাইড লিখে সেন্ড করুন।\n"
+        f"<i>(ডাটা মুছে ফেলতে চাইলে <code>remove</code> লিখে পাঠান)</i>",
+        reply_markup=get_cancel_fsm_kb(),
+        parse_mode="HTML"
+    )
+
+@router.message(EditProductState.waiting_for_new_accdata)
+async def handle_edit_p_accdata_save(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer("❌ অনুগ্রহ করে টেক্সট আকারে লিখুন:", reply_markup=get_cancel_fsm_kb())
+        return
+    raw_input = message.text.strip()
+    data = await state.get_data()
+    prod_id = data["edit_prod_id"]
+    await state.clear()
+    
+    p = db.get_product(prod_id)
+    if not p:
+        await message.answer("❌ প্রোডাক্টটি পাওয়া যায়নি।", reply_markup=get_admin_main_kb(db.get_extended_bot_stats()))
+        return
+        
+    if raw_input.lower() in ["remove", "none", "0"]:
+        db.update_product_drive_link(prod_id, None)
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Product", callback_data=f"edit_p_select:{prod_id}")]
+        ])
+        await message.answer(
+            f"✅ <b>'{p['title']}' এর অ্যাকাউন্ট/ড্রাইভ ডাটা সফলভাবে মুছে ফেলা হয়েছে!</b>",
+            reply_markup=back_kb,
+            parse_mode="HTML"
+        )
+        return
+        
+    db.update_product_drive_link(prod_id, raw_input)
+    back_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Back to Product", callback_data=f"edit_p_select:{prod_id}")]
+    ])
+    await message.answer(
+        f"✅ <b>'{p['title']}' এর অ্যাকাউন্ট ডাটা / ড্রাইভ লিংক সফলভাবে আপডেট করা হয়েছে!</b>\n\n"
+        f"📝 <b>নতুন ডাটা:</b>\n<code>{raw_input}</code>",
+        reply_markup=back_kb,
+        parse_mode="HTML"
+    )
+
 
 @router.callback_query(F.data.startswith("edit_p_photo:"))
 async def handle_edit_p_photo_start(call: CallbackQuery, state: FSMContext):

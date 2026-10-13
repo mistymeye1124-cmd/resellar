@@ -341,6 +341,10 @@ class Database:
                 cursor.execute("ALTER TABLE products ADD COLUMN reseller_price_account_bdt REAL DEFAULT 0.0")
             if "is_in_stock" not in prod_cols:
                 cursor.execute("ALTER TABLE products ADD COLUMN is_in_stock INTEGER DEFAULT 1")
+            if "channel_title" not in prod_cols:
+                cursor.execute("ALTER TABLE products ADD COLUMN channel_title TEXT DEFAULT NULL")
+            if "channel_verified" not in prod_cols:
+                cursor.execute("ALTER TABLE products ADD COLUMN channel_verified INTEGER DEFAULT 0")
 
             cursor.execute("PRAGMA table_info(orders)")
             order_cols = [row["name"] for row in cursor.fetchall()]
@@ -1268,6 +1272,24 @@ class Database:
             cursor.execute("UPDATE products SET channel_id = ?, drive_link = ? WHERE id = ?", (channel_id, drive_link, product_id))
             conn.commit()
             return cursor.rowcount > 0
+
+    def update_product_channel(self, product_id: int, channel_id: Optional[str], channel_title: Optional[str] = None, channel_verified: int = 1) -> bool:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE products SET channel_id = ?, channel_title = ?, channel_verified = ? WHERE id = ?",
+                (channel_id, channel_title, channel_verified, product_id)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_product_drive_link(self, product_id: int, drive_link: Optional[str]) -> bool:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE products SET drive_link = ? WHERE id = ?", (drive_link, product_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
 
     def update_product_photo(self, product_id: int, photo_file_id: Optional[str]) -> bool:
         with self._get_connection() as conn:
