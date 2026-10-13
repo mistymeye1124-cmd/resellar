@@ -13,13 +13,10 @@ __pycache__/
 dist/
 build/
 
-# Database files (live data -- never in git)
-database/bot_database.db
-database/bot_database.db-shm
-database/bot_database.db-wal
-database/*.db
+# Database runtime locks and temporary files -- NEVER commit
 database/*.db-shm
 database/*.db-wal
+database/*.bak
 
 # Local backup archives
 backups/
