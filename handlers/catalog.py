@@ -257,18 +257,18 @@ async def handle_product_detail(call: CallbackQuery):
                 r_acc_b = float(prod.get("reseller_price_account_bdt") or round(acc_b * 0.70, 2))
                 price_section = (
                     f"💳 <b>Package Options & Wholesale Rates:</b>\n"
-                    f"• 📢 <b>VIP Channel:</b> <b>${round(r_ch_b/live_rate, 2)} USD</b> (৳{int(r_ch_b)}) <i>(Retail: ${ch_u})</i>\n"
-                    f"• 🔐 <b>Personal Account:</b> <b>${round(r_acc_b/live_rate, 2)} USD</b> (৳{int(r_acc_b)}) <i>(Retail: ${acc_u})</i>\n\n"
+                    f"• 📢 <b>VIP Channel:</b> <b>৳{int(r_ch_b)} BDT</b> (${round(r_ch_b/live_rate, 2)} USD) <i>(Retail: ৳{int(ch_b)})</i>\n"
+                    f"• 🔐 <b>Personal Account:</b> <b>৳{int(r_acc_b)} BDT</b> (${round(r_acc_b/live_rate, 2)} USD) <i>(Retail: ৳{int(acc_b)})</i>\n\n"
                     f"🎁 <b>Unlock Free with Referrals:</b> <code>{refs_needed} referrals</code>\n"
-                    f"📊 <b>Your Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ${user_bal_bdt/live_rate:.2f})</i>"
+                    f"📊 <b>Your Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ৳{user_bal_bdt:.0f} / ${user_bal_bdt/live_rate:.2f})</i>"
                 )
             else:
                 price_section = (
                     f"💳 <b>Access Packages & Price List:</b>\n"
-                    f"• 📢 <b>VIP Channel:</b> <b>${ch_u} USD</b> (৳{int(ch_b)} BDT)\n"
-                    f"• 🔐 <b>Personal Account:</b> <b>${acc_u} USD</b> (৳{int(acc_b)} BDT)\n\n"
+                    f"• 📢 <b>VIP Channel:</b> <b>৳{int(ch_b)} BDT</b> (${ch_u} USD)\n"
+                    f"• 🔐 <b>Personal Account:</b> <b>৳{int(acc_b)} BDT</b> (${acc_u} USD)\n\n"
                     f"🎁 <b>Unlock Free with Referrals:</b> <code>{refs_needed} referrals</code>\n"
-                    f"📊 <b>Your Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ${user_bal_bdt/live_rate:.2f})</i>"
+                    f"📊 <b>Your Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ৳{user_bal_bdt:.0f} / ${user_bal_bdt/live_rate:.2f})</i>"
                 )
         else:
             if is_reseller:
@@ -294,10 +294,10 @@ async def handle_product_detail(call: CallbackQuery):
     elif is_reseller:
         if lang in ["en", "hi"]:
             price_section = (
-                f"💎 <b>Wholesale Reseller Rate:</b> <b>${res_usd} USD</b> | <b>৳{res_bdt} BDT</b>\n"
-                f"🏷️ <i>(Retail: ${reg_usd} — You save ${reg_usd - res_usd:.2f}!)</i>\n"
+                f"💎 <b>Wholesale Reseller Rate:</b> <b>৳{res_bdt} BDT</b> | <b>${res_usd} USD</b>\n"
+                f"🏷️ <i>(Retail: ৳{reg_bdt} — You save ৳{reg_bdt - res_bdt}!)</i>\n"
                 f"🎁 <b>Unlock Free with Referrals:</b> <code>{refs_needed} referrals</code>\n"
-                f"📊 <b>Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ${user_bal_bdt/live_rate:.2f})</i>"
+                f"📊 <b>Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ৳{user_bal_bdt:.0f} / ${user_bal_bdt/live_rate:.2f})</i>"
             )
         else:
             price_section = (
@@ -312,9 +312,9 @@ async def handle_product_detail(call: CallbackQuery):
     else:
         if lang in ["en", "hi"]:
             price_section = (
-                f"💰 <b>Price:</b> <b>${reg_usd} USD</b> or <b>৳{reg_bdt} BDT</b>\n"
+                f"💰 <b>Price:</b> <b>৳{reg_bdt} BDT</b> or <b>${reg_usd} USD</b>\n"
                 f"🎁 <b>Or Unlock Free with Referrals:</b> <code>{refs_needed} referrals</code>\n"
-                f"📊 <b>Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ${user_bal_bdt/live_rate:.2f})</i>"
+                f"📊 <b>Balance Progress:</b> <code>{prog_bar}</code> <i>(Balance: ৳{user_bal_bdt:.0f} / ${user_bal_bdt/live_rate:.2f})</i>"
             )
         else:
             price_section = (

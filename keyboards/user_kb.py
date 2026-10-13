@@ -259,16 +259,21 @@ def get_products_kb(products: List[Dict[str, Any]], category_id: int, subcategor
     buttons = []
     for prod in products:
         clean_title = localize_item_name(prod['title'], lang)
-        # Limit title to 22 chars so button never truncates on mobile
-        if len(clean_title) > 24:
-            short_title = clean_title[:22].strip() + "…"
+        bdt_val = int(prod.get('price_bdt') or 0)
+        usd_val = prod.get('price_usd')
+        if not usd_val:
+            from config import get_live_usd_rate
+            usd_val = round(bdt_val / get_live_usd_rate(), 2)
+            
+        price_tag = f"৳{bdt_val} (${usd_val})"
+        # Max title len to prevent truncation on mobile screens
+        max_title_len = 24 if len(price_tag) <= 14 else 20
+        if len(clean_title) > max_title_len:
+            short_title = clean_title[:max_title_len - 1].strip() + "…"
         else:
             short_title = clean_title
             
-        if lang in ["en", "hi"]:
-            btn_text = f"{short_title} • ${prod['price_usd']}"
-        else:
-            btn_text = f"{short_title} • ৳{int(prod['price_bdt'])}"
+        btn_text = f"{short_title} • {price_tag}"
         buttons.append([make_custom_button(text=btn_text, callback_data=f"prod:{prod['id']}")])
     
     if subcategory_id and parent_id:
@@ -306,8 +311,8 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
             acc_bdt = int(product.get("price_account_bdt") or 0)
             acc_usd = product.get("price_account_usd") or round(acc_bdt / live_rate, 2)
             
-            ch_label = f"📢 VIP Channel Access (${ch_usd} / ৳{ch_bdt})" if lang in ["en", "hi"] else f"📢 VIP Channel Access (৳{ch_bdt} / ${ch_usd})"
-            acc_label = f"🔐 Account / Drive Access (${acc_usd} / ৳{acc_bdt})" if lang in ["en", "hi"] else f"🔐 Account / Drive Access (৳{acc_bdt} / ${acc_usd})"
+            ch_label = f"📢 VIP Channel Access (৳{ch_bdt} / ${ch_usd})"
+            acc_label = f"🔐 Account / Drive Access (৳{acc_bdt} / ${acc_usd})"
             
             buttons.append([
                 make_custom_button(
@@ -324,10 +329,15 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
                 )
             ])
         else:
+            bdt_val = int(product.get('price_bdt') or 0)
+            usd_val = product.get('price_usd')
+            if not usd_val:
+                from config import get_live_usd_rate
+                usd_val = round(bdt_val / get_live_usd_rate(), 2)
             if lang in ["en", "hi"]:
-                buy_text = f"🚀 Buy Now (${product['price_usd']} / ৳{int(product['price_bdt'])})"
+                buy_text = f"🚀 Buy Now (৳{bdt_val} / ${usd_val})"
             else:
-                buy_text = f"🚀 এখনই কিনুন (৳{int(product['price_bdt'])} / ${product['price_usd']})"
+                buy_text = f"🚀 এখনই কিনুন (৳{bdt_val} / ${usd_val})"
             buy_cb = f"buy:{product['id']}"
             buttons.append([
                 make_custom_button(
@@ -369,12 +379,8 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
 
 def get_access_tier_selection_kb(product_id: int, ch_bdt: float, ch_usd: float, acc_bdt: float, acc_usd: float, lang: str = "bn") -> InlineKeyboardMarkup:
     """Choose between VIP Channel Access and Personal Account Access."""
-    if lang in ["en", "hi"]:
-        ch_text = f"📢 VIP Channel Access — ${ch_usd} / ৳{int(ch_bdt)}"
-        acc_text = f"🔐 Personal Account / Drive — ${acc_usd} / ৳{int(acc_bdt)}"
-    else:
-        ch_text = f"📢 VIP Channel Access — ৳{int(ch_bdt)} / ${ch_usd}"
-        acc_text = f"🔐 Personal Account / Drive — ৳{int(acc_bdt)} / ${acc_usd}"
+    ch_text = f"📢 VIP Channel Access — ৳{int(ch_bdt)} (${ch_usd})"
+    acc_text = f"🔐 Personal Account / Drive — ৳{int(acc_bdt)} (${acc_usd})"
     buttons = [
         [
             make_custom_button(
@@ -943,7 +949,15 @@ def get_course_search_results_kb(products: List[Dict[str, Any]], query: str, lan
     buttons = []
     for prod in products[:6]:
         c_title = localize_item_name(prod['title'], lang)
-        btn_text = f"🎓 {c_title[:28]} — ৳{int(prod['price_bdt'])}"
+        bdt_val = int(prod.get('price_bdt') or 0)
+        usd_val = prod.get('price_usd')
+        if not usd_val:
+            from config import get_live_usd_rate
+            usd_val = round(bdt_val / get_live_usd_rate(), 2)
+        price_tag = f"৳{bdt_val} (${usd_val})"
+        max_len = 24 if len(price_tag) <= 14 else 20
+        short_t = c_title[:max_len].strip() + ("…" if len(c_title) > max_len else "")
+        btn_text = f"🎓 {short_t} — {price_tag}"
         buttons.append([
             make_custom_button(text=btn_text, callback_data=f"prod:{prod['id']}", emoji_key="sparkle")
         ])
