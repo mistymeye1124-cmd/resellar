@@ -17,6 +17,9 @@ class Database:
         conn.execute("PRAGMA synchronous = NORMAL")
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA busy_timeout = 15000")
+        conn.execute("PRAGMA cache_size = -10000")   # ~10MB page cache
+        conn.execute("PRAGMA mmap_size = 134217728") # 128MB memory-mapped I/O
+        conn.execute("PRAGMA temp_store = MEMORY")   # temp tables in RAM
         return conn
 
     def _init_db(self):

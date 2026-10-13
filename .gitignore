@@ -1,0 +1,51 @@
+# ===== Reseller Bot .gitignore =====
+
+# Environment / Secrets -- NEVER commit
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Database files (live data -- never in git)
+database/bot_database.db
+database/bot_database.db-shm
+database/bot_database.db-wal
+database/*.db
+database/*.db-shm
+database/*.db-wal
+
+# Local backup archives
+backups/
+database/backups/
+*.zip
+*.tar.gz
+*.bak
+
+# Log files
+*.log
+bot.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Stale / leftover variant files
+*.original
+*.v1
+*.v2
+*.df134
+*.bak

@@ -16,13 +16,14 @@ from handlers import core, start, deposit, admin_deposit, catalog, admin_panel, 
 from database.db import db
 from utils.backup_manager import daily_database_backup_scheduler
 
-# Configure Logging
+# Configure Logging with rotation (max 5MB per file, keep 3 backups)
+from logging.handlers import RotatingFileHandler
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("bot.log", encoding="utf-8")
+        RotatingFileHandler("bot.log", maxBytes=5*1024*1024, backupCount=3, encoding="utf-8")
     ]
 )
 logger = logging.getLogger("ResellerBot")
@@ -231,7 +232,7 @@ async def main():
         await dp.start_polling(
             bot,
             allowed_updates=dp.resolve_used_update_types(),
-            polling_timeout=20,
+            polling_timeout=30,
             handle_signals=False
         )
     finally:
