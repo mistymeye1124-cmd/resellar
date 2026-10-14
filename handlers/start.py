@@ -298,13 +298,20 @@ async def handle_set_language_callback(call: CallbackQuery):
     kb = get_main_dashboard_inline_kb(new_lang, is_admin=is_admin(user_id))
     await render_screen(call, text, reply_markup=kb, parse_mode="HTML")
 
-    # Synchronize persistent bottom reply keyboard to match selected language immediately
-    reply_kb = get_main_reply_kb(new_lang, is_admin=is_admin(user_id))
+    # Synchronize persistent bottom reply keyboard to match selected language immediately IF enabled
+    is_menu_on = db.get_user_bottom_menu_status(user_id)
     confirm_msg = f"✅ Menu language updated to <b>{lang_name}</b>" if new_lang == "en" else f"✅ মেনু ভাষা পরিবর্তন করা হয়েছে: <b>{lang_name}</b>"
-    try:
-        await call.message.answer(confirm_msg, reply_markup=reply_kb, parse_mode="HTML")
-    except Exception:
-        pass
+    if is_menu_on:
+        reply_kb = get_main_reply_kb(new_lang, is_admin=is_admin(user_id))
+        try:
+            await call.message.answer(confirm_msg, reply_markup=reply_kb, parse_mode="HTML")
+        except Exception:
+            pass
+    else:
+        try:
+            await call.message.answer(confirm_msg, reply_markup=ReplyKeyboardRemove(), parse_mode="HTML")
+        except Exception:
+            pass
 
 def format_user_profile_data(user_id: int, user_obj=None):
     db_user = db.get_user(user_id)
@@ -408,6 +415,65 @@ async def handle_profile_refresh_callback(call: CallbackQuery, state: FSMContext
     alert_txt = "🔄 Profile data refreshed!" if lang == "en" else "🔄 প্রোফাইল ডাটা আপডেট করা হয়েছে!"
     await call.answer(alert_txt)
     text, kb = format_user_profile_data(call.from_user.id, call.from_user)
+    await render_screen(call, text, reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data == "toggle_bottom_menu")
+async def handle_toggle_bottom_menu_callback(call: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    user_id = call.from_user.id
+    lang = db.get_user_language(user_id)
+    current_status = db.get_user_bottom_menu_status(user_id)
+    new_status = 0 if current_status else 1
+    db.set_user_bottom_menu_status(user_id, new_status)
+
+    if new_status == 0:
+        alert_txt = (
+            "🔇 Bottom Menu Hidden!\nIt will not show up automatically."
+            if lang == "en" else (
+                "🔇 बॉटम मेनू छुपा दिया गया!\nयह अब स्वतः नहीं आएगा।"
+                if lang == "hi" else
+                "🔇 বটম মেনু হাইড করা হয়েছে!\nএটি আর স্বয়ংক্রিয়ভাবে ভেসে উঠবে না।"
+            )
+        )
+        await call.answer(alert_txt, show_alert=True)
+        try:
+            hide_note = (
+                "<i>⌨️ Bottom menu disabled. Restore anytime via Profile or /showmenu</i>"
+                if lang == "en" else (
+                    "<i>⌨️ बॉटम मेनू बंद कर दिया गया। प्रोफाइल या /showmenu से चालू करें।</i>"
+                    if lang == "hi" else
+                    "<i>⌨️ বটম মেনু হাইড করা হয়েছে। প্রোফাইল বা /showmenu দিয়ে যেকোনো সময় আনতে পারবেন।</i>"
+                )
+            )
+            await call.message.answer(hide_note, reply_markup=ReplyKeyboardRemove(), parse_mode="HTML")
+        except Exception:
+            pass
+    else:
+        alert_txt = (
+            "🟢 Bottom Menu Restored!"
+            if lang == "en" else (
+                "🟢 बॉटम मेनू चालू कर दिया गया!"
+                if lang == "hi" else
+                "🟢 বটম মেনু পুনরায় চালু করা হয়েছে!"
+            )
+        )
+        await call.answer(alert_txt, show_alert=False)
+        reply_kb = get_main_reply_kb(lang, is_admin=is_admin(user_id))
+        try:
+            restore_note = (
+                "<i>⌨️ Bottom menu restored!</i>"
+                if lang == "en" else (
+                    "<i>⌨️ बॉटम मेनू चालू हो गया!</i>"
+                    if lang == "hi" else
+                    "<i>⌨️ বটম মেনু চালু করা হয়েছে!</i>"
+                )
+            )
+            await call.message.answer(restore_note, reply_markup=reply_kb, parse_mode="HTML")
+        except Exception:
+            pass
+
+    text, kb = format_user_profile_data(user_id, call.from_user)
     await render_screen(call, text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("orders"))

@@ -1,6 +1,6 @@
 # Universal Core & Global Commands Router
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from database.db import db
@@ -154,6 +154,41 @@ async def handle_cmd_reseller(message: Message, state: FSMContext):
     else:
         from handlers.reseller import handle_reseller_hub
         await handle_reseller_hub(message)
+
+@router.message(Command("hidemenu"))
+async def handle_cmd_hidemenu(message: Message, state: FSMContext = None):
+    if state:
+        await state.clear()
+    user_id = message.from_user.id
+    lang = db.get_user_language(user_id)
+    db.set_user_bottom_menu_status(user_id, 0)
+    note = (
+        "🔇 <b>Bottom Menu Hidden!</b>\nIt will not appear automatically. Use /showmenu or Profile to restore."
+        if lang == "en" else (
+            "🔇 <b>बॉटम मेनू छुपा दिया गया!</b>\nयह अब स्वतः नहीं आएगा। चालू करने के लिए /showmenu या प्रोफाइल उपयोग करें।"
+            if lang == "hi" else
+            "🔇 <b>বটম মেনু হাইড করা হয়েছে!</b>\nএটি আর স্বয়ংক্রিয়ভাবে আসবে না। পুনরায় চালু করতে /showmenu বা প্রোফাইল অপশন ব্যবহার করুন।"
+        )
+    )
+    await message.answer(note, reply_markup=ReplyKeyboardRemove(), parse_mode="HTML")
+
+@router.message(Command("showmenu"))
+async def handle_cmd_showmenu(message: Message, state: FSMContext = None):
+    if state:
+        await state.clear()
+    user_id = message.from_user.id
+    lang = db.get_user_language(user_id)
+    db.set_user_bottom_menu_status(user_id, 1)
+    note = (
+        "🟢 <b>Bottom Menu Restored!</b>"
+        if lang == "en" else (
+            "🟢 <b>बॉटम मेनू चालू कर दिया गया!</b>"
+            if lang == "hi" else
+            "🟢 <b>বটম মেনু সক্রিয় করা হয়েছে!</b>"
+        )
+    )
+    reply_kb = get_main_reply_kb(lang, is_admin=is_admin(user_id))
+    await message.answer(note, reply_markup=reply_kb, parse_mode="HTML")
 
 # --- 3. UNIVERSAL FSM ESCAPE GUARD FOR ANY TELEGRAM SLASH COMMAND ---
 @router.message(F.text.startswith("/"))

@@ -46,7 +46,7 @@ def get_main_reply_kb(lang: str = "bn", is_admin: bool = False) -> ReplyKeyboard
         kb.append([
             make_custom_reply_button(reseller_label, emoji_key="reseller")
         ])
-    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True, is_persistent=True)
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True, is_persistent=False)
 
 def get_reseller_verification_kb(username: Optional[str] = None, lang: str = "bn") -> InlineKeyboardMarkup:
     """Action buttons attached to a reseller verification certificate."""
@@ -712,8 +712,15 @@ def get_claim_action_kb(
     ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_user_profile_kb(user_id: int, available_points: int = 0, balance_bdt: float = 0.0, lang: str = "bn") -> InlineKeyboardMarkup:
+def get_user_profile_kb(user_id: int, available_points: int = 0, balance_bdt: float = 0.0, lang: str = "bn", show_bottom_menu: Optional[bool] = None) -> InlineKeyboardMarkup:
     """Action buttons attached to My Profile card."""
+    if show_bottom_menu is None:
+        try:
+            from database.db import db
+            show_bottom_menu = db.get_user_bottom_menu_status(user_id)
+        except Exception:
+            show_bottom_menu = True
+
     if lang == "bn":
         pts_txt = "💱 পয়েন্ট কনভার্ট"
         conv_curr_txt = "💵 BDT ➔ USD"
@@ -721,6 +728,7 @@ def get_user_profile_kb(user_id: int, available_points: int = 0, balance_bdt: fl
         hist_txt = "📜 হিস্ট্রি"
         ref_hub_txt = "👥 রেফারেল হাব"
         refresh_txt = "🔄 রিফ্রেশ"
+        menu_toggle_txt = "⌨️ বটম মেনু: 🟢 চালু (হাইড করুন)" if show_bottom_menu else "⌨️ বটম মেনু: 🔴 বন্ধ (চালু করুন)"
     elif lang == "hi":
         pts_txt = "💱 पॉइंट्स बदलें"
         conv_curr_txt = "💵 BDT ➔ USD"
@@ -728,6 +736,7 @@ def get_user_profile_kb(user_id: int, available_points: int = 0, balance_bdt: fl
         hist_txt = "📜 हिस्ट्री"
         ref_hub_txt = "👥 रेफरल हब"
         refresh_txt = "🔄 रीफ्रेश"
+        menu_toggle_txt = "⌨️ बॉटम मेनू: 🟢 चालू (छुपाएं)" if show_bottom_menu else "⌨️ बॉटम मेनू: 🔴 बंद (चालू करें)"
     else:
         pts_txt = "💱 Convert Points"
         conv_curr_txt = "💵 BDT ➔ USD"
@@ -735,6 +744,7 @@ def get_user_profile_kb(user_id: int, available_points: int = 0, balance_bdt: fl
         hist_txt = "📜 History"
         ref_hub_txt = "👥 Referral Hub"
         refresh_txt = "🔄 Refresh"
+        menu_toggle_txt = "⌨️ Bottom Menu: 🟢 ON (Hide)" if show_bottom_menu else "⌨️ Bottom Menu: 🔴 OFF (Show)"
 
     buttons = [
         [
@@ -771,6 +781,13 @@ def get_user_profile_kb(user_id: int, available_points: int = 0, balance_bdt: fl
                 text=refresh_txt,
                 callback_data="profile_refresh",
                 emoji_key="refresh"
+            )
+        ],
+        [
+            make_custom_button(
+                text=menu_toggle_txt,
+                callback_data="toggle_bottom_menu",
+                emoji_key="settings"
             )
         ],
         [

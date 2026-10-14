@@ -314,6 +314,8 @@ class Database:
             if "referral_points" not in user_cols:
                 cursor.execute("ALTER TABLE users ADD COLUMN referral_points INTEGER DEFAULT 0")
                 cursor.execute("UPDATE users SET referral_points = referral_count_t1 WHERE referral_points = 0 AND referral_count_t1 > 0")
+            if "show_bottom_menu" not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN show_bottom_menu INTEGER DEFAULT 1")
 
             cursor.execute("PRAGMA table_info(products)")
             prod_cols = [row["name"] for row in cursor.fetchall()]
@@ -549,6 +551,19 @@ class Database:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("UPDATE users SET language = ? WHERE user_id = ?", (language, user_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def get_user_bottom_menu_status(self, user_id: int) -> bool:
+        user = self.get_user(user_id)
+        if user and "show_bottom_menu" in user and user["show_bottom_menu"] is not None:
+            return bool(user["show_bottom_menu"])
+        return True
+
+    def set_user_bottom_menu_status(self, user_id: int, status: int) -> bool:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET show_bottom_menu = ? WHERE user_id = ?", (1 if status else 0, user_id))
             conn.commit()
             return cursor.rowcount > 0
 
