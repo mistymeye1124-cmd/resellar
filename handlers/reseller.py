@@ -252,12 +252,12 @@ async def handle_reseller_pricelist(call: CallbackQuery):
     products = db.get_all_active_products()
     
     if not products:
-        alert_msg = "⚠️ No products loaded currently." if lang in ["en", "hi"] else "⚠️ বর্তমানে কোনো প্রোডাক্ট লোড করা নেই।"
+        alert_msg = "⚠️ No products loaded currently." if lang in ["en", "hi", "ur"] else "⚠️ বর্তমানে কোনো প্রোডাক্ট লোড করা নেই।"
         await call.answer(alert_msg, show_alert=True)
         return
         
     em_dia = em_tag("diamond", "💎")
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         text = (
             f"{em_dia} <b>Reseller Wholesale Price List</b> {em_dia}\n\n"
             "<i>Comparison between regular retail prices and your wholesale rates:</i>\n\n"
@@ -295,7 +295,7 @@ async def handle_reseller_pricelist(call: CallbackQuery):
             "\n⚡ <b>অফিসিয়াল সুবিধা:</b> আপনি এই পাইকারি রেটে কিনে আপনার যেকোনো গ্রাহকের কাছে নিজের মূল্যে সেল করতে পারেন।"
         )
     
-    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi"] else "🔙 রিসেলার হাব (Back)"
+    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi", "ur"] else "🔙 রিসেলার হাব (Back)"
     back_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             make_custom_button(text=back_txt, callback_data="back_reseller_hub", emoji_key="back"),
@@ -309,7 +309,7 @@ async def handle_reseller_marketing_posts(call: CallbackQuery):
     await call.answer()
     lang = db.get_user_language(call.from_user.id)
     
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         marketing_template = (
             "📢 <b>Ready-to-Use Marketing Templates (Copy & Sell)</b>\n\n"
             "👇 Copy the formatted text below and post directly to your Facebook groups, page, or Telegram:\n\n"
@@ -338,7 +338,7 @@ async def handle_reseller_marketing_posts(call: CallbackQuery):
             "📌 <b>টিপ:</b> কাস্টমার আপনাকে টাকা দিলে আপনি বটে পাইকারি রেটে কিনে তার জন্য ১-টাইম অ্যাক্সেস লিংক নিয়ে তাকে দিয়ে দেবেন!"
         )
     
-    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi"] else "🔙 রিসেলার হাব (Back)"
+    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi", "ur"] else "🔙 রিসেলার হাব (Back)"
     back_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             make_custom_button(text=back_txt, callback_data="back_reseller_hub", emoji_key="back"),
@@ -366,7 +366,7 @@ async def handle_reseller_leaderboard(call: CallbackQuery):
     lang = db.get_user_language(call.from_user.id)
     leaders = db.get_reseller_leaderboard(limit=10)
     
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         text = (
             "🏆 <b>Top Resellers Leaderboard</b>\n\n"
             "Top performing partners this month:\n"
@@ -407,7 +407,7 @@ async def handle_reseller_leaderboard(call: CallbackQuery):
             "🎁 <b>মাসিক বোনাস:</b> মাসের শেষে শীর্ষ ৩ জন রিসেলারের জন্য রয়েছে বিশেষ নগদ ক্যাশব্যাক ও ফ্রি ভিআইপি অ্যাক্সেস!"
         )
     
-    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi"] else "🔙 রিসেলার হাব (Back)"
+    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi", "ur"] else "🔙 রিসেলার হাব (Back)"
     back_kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             make_custom_button(text=back_txt, callback_data="back_reseller_hub", emoji_key="back"),
@@ -435,7 +435,7 @@ async def handle_reseller_live_race(call: CallbackQuery):
 
     # Check if user already won
     user_won_record = next((w for w in ch.get("winners", []) if w["user_id"] == user_id), None)
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         if user_won_record:
             user_status_note = (
                 f"🏆 <b>Congratulations!</b> You unlocked the VIP Reward Pass as Winner #{user_won_record['rank']}!\n"
@@ -461,7 +461,7 @@ async def handle_reseller_live_race(call: CallbackQuery):
     medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
     racer_rows = []
     if not racers:
-        racer_rows.append("_No reseller sales recorded yet._" if lang in ["en", "hi"] else "_এখনও কোনো রিসেলারের সেলস রেকর্ড হয়নি।_")
+        racer_rows.append("_No reseller sales recorded yet._" if lang in ["en", "hi", "ur"] else "_এখনও কোনো রিসেলারের সেলস রেকর্ড হয়নি।_")
     else:
         for idx, r in enumerate(racers[:10]):
             badge = medals[idx] if idx < len(medals) else f"#{idx+1}"
@@ -469,15 +469,15 @@ async def handle_reseller_live_race(call: CallbackQuery):
             r_code = r.get("reseller_code", "RS")
             r_sales = r.get("reseller_monthly_sales", 0)
             if r.get("won_rank"):
-                tag = f" — `{r_sales}` 🏆 <b>(Winner #{r['won_rank']})</b>" if lang in ["en", "hi"] else f" — `{r_sales} টি` 🏆 <b>(বিজয়ী #{r['won_rank']})</b>"
+                tag = f" — `{r_sales}` 🏆 <b>(Winner #{r['won_rank']})</b>" if lang in ["en", "hi", "ur"] else f" — `{r_sales} টি` 🏆 <b>(বিজয়ী #{r['won_rank']})</b>"
             else:
                 left = max(0, target - r_sales)
-                tag = f" — `{r_sales}` _({left} remaining)_" if lang in ["en", "hi"] else f" — `{r_sales} টি` _(আর {left}টি বাকি)_"
+                tag = f" — `{r_sales}` _({left} remaining)_" if lang in ["en", "hi", "ur"] else f" — `{r_sales} টি` _(আর {left}টি বাকি)_"
             racer_rows.append(f"{badge} **[{r_code}] {r_name}**{tag}")
 
     racers_text = "\n".join(racer_rows)
 
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         text = (
             "🏁 <b>Live Sales Race & Challenge Tracker</b> 🏁\n\n"
             f"🏆 <b>Challenge:</b> {ch['title']}\n"
@@ -526,10 +526,10 @@ async def handle_reseller_live_race(call: CallbackQuery):
             f"⚡ সবার আগে টার্গেট স্পর্শকারী প্রথম {ch['max_slots']} জন স্বয়ংক্রিয়ভাবে ভিআইপি রিওয়ার্ড পাস আনলক করবেন!"
         )
 
-    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi"] else "🔙 রিসেলার হাব (Back)"
+    back_txt = "🔙 Back to Reseller Hub" if lang in ["en", "hi", "ur"] else "🔙 রিসেলার হাব (Back)"
     race_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [make_custom_button(text="🔄 Refresh Race" if lang in ["en", "hi"] else "🔄 Refresh Race (লাইভ আপডেট)", callback_data="reseller_live_race", emoji_key="refresh")],
-        [make_custom_button(text="🛒 Buy Wholesale" if lang in ["en", "hi"] else "🛒 Buy Wholesale / পাইকারি অর্ডার", callback_data="back_cats", emoji_key="cart")],
+        [make_custom_button(text="🔄 Refresh Race" if lang in ["en", "hi", "ur"] else "🔄 Refresh Race (লাইভ আপডেট)", callback_data="reseller_live_race", emoji_key="refresh")],
+        [make_custom_button(text="🛒 Buy Wholesale" if lang in ["en", "hi", "ur"] else "🛒 Buy Wholesale / পাইকারি অর্ডার", callback_data="back_cats", emoji_key="cart")],
         [
             make_custom_button(text=back_txt, callback_data="back_reseller_hub", emoji_key="back"),
             make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
@@ -556,7 +556,7 @@ async def handle_start_apply(call: CallbackQuery, state: FSMContext):
     std_rem = max(0, std_dep - fee)
     elite_rem = max(0, elite_dep - fee)
 
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         pkg_text = (
             "🤝 <b>Choose Your Reseller Partnership Package</b>\n\n"
             "Select the partnership tier that matches your business model:\n\n"
@@ -621,16 +621,16 @@ async def handle_start_apply_tier(call: CallbackQuery, state: FSMContext):
     min_dep = elite_dep if tier >= 2 else std_dep
     tier_title_bn = "👑 Elite VIP পার্টনার (ফুল এক্সেস)" if tier >= 2 else "🥉 Standard পার্টনার (চ্যানেল এক্সেস)"
     tier_title_en = "👑 Elite VIP Partner (Full Access)" if tier >= 2 else "🥉 Standard Partner (Channel Access)"
-    tier_title = tier_title_en if lang in ["en", "hi"] else tier_title_bn
+    tier_title = tier_title_en if lang in ["en", "hi", "ur"] else tier_title_bn
     
     # Balance Gate Check for this specific tier
     if curr_bal < min_dep:
-        alert_popup = f"⚠️ Minimum ৳{min_dep:,} BDT balance required for {tier_title}!" if lang in ["en", "hi"] else f"⚠️ {tier_title} আবেদনের জন্য ওয়ালেটে ন্যূনতম ৳{min_dep:,} ব্যালেন্স প্রয়োজন!"
+        alert_popup = f"⚠️ Minimum ৳{min_dep:,} BDT balance required for {tier_title}!" if lang in ["en", "hi", "ur"] else f"⚠️ {tier_title} আবেদনের জন্য ওয়ালেটে ন্যূনতম ৳{min_dep:,} ব্যালেন্স প্রয়োজন!"
         await call.answer(alert_popup, show_alert=True)
         need_amount = int(min_dep - curr_bal)
         usable_after = max(0, int(min_dep - fee))
         
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             alert_text = (
                 f"⚠️ <b>Minimum balance of ৳{min_dep:,} BDT required for {tier_title}!</b>\n\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
@@ -684,7 +684,7 @@ async def handle_start_apply_tier(call: CallbackQuery, state: FSMContext):
     await state.update_data(requested_tier=tier)
     
     usable_after = max(0.0, curr_bal - fee)
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         prompt = (
             f"📝 <b>{tier_title} Application Form (Verified Balance: ৳{curr_bal:.2f} ✅)</b>\n\n"
             f"💡 <b>Note:</b> Upon approval, a one-time verification fee of <code>৳{fee}</code> will be deducted, leaving <code>৳{usable_after:.2f}</code> as your active wholesale shopping balance.\n\n"
@@ -723,9 +723,9 @@ async def handle_process_apply(message: Message, state: FSMContext, bot: Bot):
     
     tier_title_bn = "👑 Elite VIP পার্টনার" if requested_tier >= 2 else "🥉 Standard পার্টনার"
     tier_title_en = "👑 Elite VIP Partner" if requested_tier >= 2 else "🥉 Standard Partner"
-    tier_title = tier_title_en if lang in ["en", "hi"] else tier_title_bn
+    tier_title = tier_title_en if lang in ["en", "hi", "ur"] else tier_title_bn
 
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         confirm_text = (
             f"🎉 <b>Your {tier_title} Application has been submitted!</b>\n\n"
             f"🆔 Application ID: <code>#{app_id}</code>\n"
@@ -852,7 +852,7 @@ async def handle_reject_reseller_app(call: CallbackQuery, bot: Bot):
 async def handle_reseller_upgrade_info(call: CallbackQuery):
     lang = db.get_user_language(call.from_user.id)
     await call.answer()
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         text = (
             "👑 <b>Elite VIP Reseller Partnership Benefits & Upgrade</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"

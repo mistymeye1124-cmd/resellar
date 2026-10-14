@@ -74,12 +74,12 @@ async def handle_select_method(call: CallbackQuery, state: FSMContext):
     await call.answer()
     
     lang = db.get_user_language(call.from_user.id)
-    unit = ("BDT" if cfg["currency"] == "BDT" else "USDT ($)") if lang in ["en", "hi"] else ("টাকা" if cfg["currency"] == "BDT" else "USDT ($)")
-    type_badge = ("🏪 <b>Agent Cash Out Number:</b>" if method_key in ["bkash", "nagad"] else "📌 <b>Account Number / Pay ID:</b>") if lang in ["en", "hi"] else ("🏪 <b>এজেন্ট ক্যাশ আউট নম্বর:</b>" if method_key in ["bkash", "nagad"] else "📌 <b>অ্যাকাউন্ট নম্বর / Pay ID:</b>")
-    action_verb = ("Cash Out" if method_key in ["bkash", "nagad"] else "Send Money / Transfer") if lang in ["en", "hi"] else ("ক্যাশ আউট" if method_key in ["bkash", "nagad"] else "সেন্ড মানি / ট্রান্সফার")
+    unit = ("BDT" if cfg["currency"] == "BDT" else "USDT ($)") if lang in ["en", "hi", "ur"] else ("টাকা" if cfg["currency"] == "BDT" else "USDT ($)")
+    type_badge = ("🏪 <b>Agent Cash Out Number:</b>" if method_key in ["bkash", "nagad"] else "📌 <b>Account Number / Pay ID:</b>") if lang in ["en", "hi", "ur"] else ("🏪 <b>এজেন্ট ক্যাশ আউট নম্বর:</b>" if method_key in ["bkash", "nagad"] else "📌 <b>অ্যাকাউন্ট নম্বর / Pay ID:</b>")
+    action_verb = ("Cash Out" if method_key in ["bkash", "nagad"] else "Send Money / Transfer") if lang in ["en", "hi", "ur"] else ("ক্যাশ আউট" if method_key in ["bkash", "nagad"] else "সেন্ড মানি / ট্রান্সফার")
     gateway_emoji = em_tag(method_key, "💳")
     
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         text = (
             f"{gateway_emoji} <b>Payment Gateway: {html.escape(cfg['name'])}</b> {gateway_emoji}\n\n"
             f"{type_badge}\n"
@@ -113,7 +113,7 @@ async def process_amount(message: Message, state: FSMContext):
     try:
         amount = float(text)
     except ValueError:
-        err_msg = "❌ Invalid input! Please enter numbers only (e.g., 500 or 10):" if lang in ["en", "hi"] else "❌ ভুল ইনপুট! অনুগ্রহ করে শুধুমাত্র সংখ্যা লিখুন (যেমন: 500 বা 10):"
+        err_msg = "❌ Invalid input! Please enter numbers only (e.g., 500 or 10):" if lang in ["en", "hi", "ur"] else "❌ ভুল ইনপুট! অনুগ্রহ করে শুধুমাত্র সংখ্যা লিখুন (যেমন: 500 বা 10):"
         await message.answer(err_msg, reply_markup=get_cancel_fsm_kb(lang=lang))
         return
         
@@ -122,7 +122,7 @@ async def process_amount(message: Message, state: FSMContext):
     currency = data.get("currency", "BDT")
     
     if amount < min_dep:
-        min_msg = f"❌ Minimum deposit is <code>{min_dep} {currency}</code>. Please enter a valid amount:" if lang in ["en", "hi"] else f"❌ সর্বনিম্ন ডিপোজিট <code>{min_dep} {currency}</code>। সঠিক অ্যামাউন্ট লিখুন:"
+        min_msg = f"❌ Minimum deposit is <code>{min_dep} {currency}</code>. Please enter a valid amount:" if lang in ["en", "hi", "ur"] else f"❌ সর্বনিম্ন ডিপোজিট <code>{min_dep} {currency}</code>। সঠিক অ্যামাউন্ট লিখুন:"
         await message.answer(min_msg, reply_markup=get_cancel_fsm_kb(lang=lang), parse_mode="HTML")
         return
         
@@ -142,7 +142,7 @@ async def process_trx_id(message: Message, state: FSMContext):
     lang = db.get_user_language(user_id)
     trx_id = message.text.strip() if message.text else ""
     if len(trx_id) < 4:
-        err_msg = "❌ Please enter a valid Transaction ID (TrxID):" if lang in ["en", "hi"] else "❌ সঠিক ও স্পষ্ট Transaction ID (TrxID) লিখুন:"
+        err_msg = "❌ Please enter a valid Transaction ID (TrxID):" if lang in ["en", "hi", "ur"] else "❌ সঠিক ও স্পষ্ট Transaction ID (TrxID) লিখুন:"
         await message.answer(err_msg, reply_markup=get_cancel_fsm_kb(lang=lang))
         return
         
@@ -174,7 +174,7 @@ async def process_screenshot_input(message: Message, state: FSMContext, bot: Bot
             is_doc = True
 
     if not file_id:
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             err_msg = (
                 "❌ <b>Valid screenshot not found!</b>\n\n"
                 "⚠️ To verify deposit, please send a clear <b>photo or screenshot image (.png/.jpg)</b>.\n"

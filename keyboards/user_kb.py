@@ -252,7 +252,7 @@ def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admi
             make_custom_button(text=order_label, callback_data="back_cats", emoji_key="cart")
         ])
         if tier == 1:
-            upgrade_label = "👑 Elite VIP আপগ্রেড সুবিধা" if lang not in ["en", "hi"] else "👑 Elite VIP Upgrade Info"
+            upgrade_label = "👑 Elite VIP আপগ্রেড সুবিধা" if lang not in ["en", "hi", "ur"] else "👑 Elite VIP Upgrade Info"
             buttons.append([
                 make_custom_button(text=upgrade_label, callback_data="reseller_upgrade_info", emoji_key="diamond")
             ])
@@ -284,7 +284,7 @@ def get_reseller_app_approval_kb(app_id: int) -> InlineKeyboardMarkup:
 
 def get_reseller_package_selection_kb(lang: str = "bn", std_dep: int = 1000, elite_dep: int = 2000) -> InlineKeyboardMarkup:
     """Buttons to select which reseller tier package to apply for."""
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         std_btn = f"🥉 Apply for Standard Partner (Min ৳{std_dep})"
         elite_btn = f"👑 Apply for Elite VIP Partner (Min ৳{elite_dep})"
     else:
@@ -348,7 +348,7 @@ def get_products_kb(products: List[Dict[str, Any]], category_id: int, subcategor
             usd_val = round(bdt_val / get_live_usd_rate(), 2)
             
         # Clean price tag formatted for mobile viewport
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             price_tag = f"৳{bdt_val} (${usd_val})"
             max_title_len = 18
         else:
@@ -422,7 +422,7 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
                     )
                 ])
             else:
-                locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
+                locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi", "ur"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
                 buttons.append([
                     make_custom_button(
                         text=locked_ch,
@@ -440,7 +440,7 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
                     )
                 ])
             else:
-                locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
+                locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi", "ur"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
                 buttons.append([
                     make_custom_button(
                         text=locked_acc,
@@ -454,7 +454,7 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
             if not usd_val:
                 from config import get_live_usd_rate
                 usd_val = round(bdt_val / get_live_usd_rate(), 2)
-            if lang in ["en", "hi"]:
+            if lang in ["en", "hi", "ur"]:
                 buy_text = f"🚀 Buy Now (৳{bdt_val} / ${usd_val})"
             else:
                 buy_text = f"🚀 এখনই কিনুন (৳{bdt_val} / ${usd_val})"
@@ -462,7 +462,7 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
 
             ptype = product.get("product_type", "channel_link")
             if ptype == "stock_account" and not can_acc:
-                locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
+                locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi", "ur"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
                 buttons.append([
                     make_custom_button(
                         text=locked_acc,
@@ -471,7 +471,7 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
                     )
                 ])
             elif ptype == "channel_link" and not can_ch:
-                locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
+                locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi", "ur"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
                 buttons.append([
                     make_custom_button(
                         text=locked_ch,
@@ -542,7 +542,7 @@ def get_access_tier_selection_kb(product_id: int, ch_bdt: float, ch_usd: float, 
             )
         ])
     else:
-        locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
+        locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi", "ur"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
         buttons.append([
             make_custom_button(
                 text=locked_ch,
@@ -560,7 +560,7 @@ def get_access_tier_selection_kb(product_id: int, ch_bdt: float, ch_usd: float, 
             )
         ])
     else:
-        locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
+        locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi", "ur"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
         buttons.append([
             make_custom_button(
                 text=locked_acc,
@@ -663,7 +663,7 @@ def get_referral_progress_kb(product_id: int, bot_username: str, user_id: int, l
 def get_buy_confirm_kb(product_id: int, price_bdt: float, price_usd: float, has_coupon: bool = False, tier: str = "default", refs_needed: int = 0, user_pts: int = 0, lang: str = "bn") -> InlineKeyboardMarkup:
     """Confirm purchase with BDT or USD balance, or referral points, plus coupon application."""
     cb_suffix = f":{tier}" if tier != "default" else ""
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         pay_bdt = f"Pay ৳{int(price_bdt)} (BDT)"
         pay_usd = f"Pay ${price_usd} (USD)"
     else:
@@ -677,7 +677,7 @@ def get_buy_confirm_kb(product_id: int, price_bdt: float, price_usd: float, has_
         ]
     ]
     if refs_needed > 0:
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             pts_label = f"🎁 Pay {refs_needed} Pts (You have {user_pts} Pts ✅)" if user_pts >= refs_needed else f"🎁 Pay with Referrals ({refs_needed} Pts)"
         else:
             pts_label = f"🎁 {refs_needed} পয়েন্ট দিয়ে নিন (আপনার আছে {user_pts} Pts ✅)" if user_pts >= refs_needed else f"🎁 রেফারেল দিয়ে নিন ({refs_needed} Pts)"
@@ -753,7 +753,7 @@ def get_free_claim_categories_kb(counts: Dict[str, int], lang: str = "bn") -> In
     drv_cnt = counts.get("tools_drive", 0)
     tot_cnt = counts.get("total", 0)
 
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         acc_txt = f"🔐 Accounts ({acc_cnt})"
         ck_txt = f"🍪 Cookies ({ck_cnt})"
         sub_txt = f"👑 Keys & Codes ({sub_cnt})"

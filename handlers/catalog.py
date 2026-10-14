@@ -60,7 +60,7 @@ async def handle_category_select(call: CallbackQuery):
     cat = db.get_category(cat_id)
     lang = db.get_user_language(call.from_user.id)
     if not cat:
-        err_msg = "Category not found!" if lang in ["en", "hi"] else "ক্যাটাগরি পাওয়া যায়নি!"
+        err_msg = "Category not found!" if lang in ["en", "hi", "ur"] else "ক্যাটাগরি পাওয়া যায়নি!"
         await call.answer(err_msg, show_alert=True)
         return
         
@@ -173,7 +173,7 @@ async def handle_product_detail(call: CallbackQuery):
     user_id = call.from_user.id
     lang = db.get_user_language(user_id)
     if not prod:
-        err_msg = "Product not found!" if lang in ["en", "hi"] else "প্রোডাক্ট পাওয়া যায়নি!"
+        err_msg = "Product not found!" if lang in ["en", "hi", "ur"] else "প্রোডাক্ট পাওয়া যায়নি!"
         await call.answer(err_msg, show_alert=True)
         return
         
@@ -204,7 +204,7 @@ async def handle_product_detail(call: CallbackQuery):
         in_stock = True
         stock_str = t("product_stock_instant", lang)
         
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         type_labels = {
             "channel_link": "🔒 Private VIP Telegram Channel (1-Time Invite Link)",
             "dual_access": "🔥 Dual Package (VIP Channel & Personal Account Access)",
@@ -260,7 +260,7 @@ async def handle_product_detail(call: CallbackQuery):
         acc_b = float(prod["price_account_bdt"])
         acc_u = float(prod.get("price_account_usd") or round(acc_b / live_rate, 2))
         
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             if is_reseller:
                 r_ch_b = float(prod.get("reseller_price_channel_bdt") or round(ch_b * 0.70, 2))
                 r_acc_b = float(prod.get("reseller_price_account_bdt") or round(acc_b * 0.70, 2))
@@ -301,7 +301,7 @@ async def handle_product_detail(call: CallbackQuery):
                 )
         active_prod = prod
     elif is_reseller:
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             price_section = (
                 f"💎 <b>Wholesale Reseller Rate:</b> <b>৳{res_bdt} BDT</b> | <b>${res_usd} USD</b>\n"
                 f"🏷️ <i>(Retail: ৳{reg_bdt} — You save ৳{reg_bdt - res_bdt}!)</i>\n"
@@ -319,7 +319,7 @@ async def handle_product_detail(call: CallbackQuery):
         active_prod["price_bdt"] = res_bdt
         active_prod["price_usd"] = res_usd
     else:
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             price_section = (
                 f"💰 <b>Price:</b> <b>৳{reg_bdt} BDT</b> or <b>${reg_usd} USD</b>\n"
                 f"🎁 <b>Or Unlock Free with Referrals:</b> <code>{refs_needed} referrals</code>\n"
@@ -384,7 +384,7 @@ async def handle_locked_account_tier(call: CallbackQuery):
         "🔒 Account Access is Restricted!\n\n"
         "This option is reserved exclusively for Elite VIP Resellers.\n\n"
         "👉 You can purchase the VIP Channel Access, or contact Admin to upgrade your tier."
-        if lang in ["en", "hi"] else
+        if lang in ["en", "hi", "ur"] else
         "🔒 অ্যাকাউন্ট অ্যাক্সেস সংরক্ষিত!\n\n"
         "এই অপশনটি শুধুমাত্র ভেরিফাইড Elite VIP রিসেলার পার্টনারদের জন্য।\n\n"
         "👉 আপনি ভিআইপি চ্যানেল অ্যাক্সেস নিতে পারেন, অথবা এলিট টায়ারে আপগ্রেডের জন্য অ্যাডমিনের সাথে যোগাযোগ করুন।"
@@ -396,7 +396,7 @@ async def handle_locked_channel_tier(call: CallbackQuery):
     lang = db.get_user_language(call.from_user.id)
     alert_text = (
         "🔒 Channel Access is currently disabled for your account."
-        if lang in ["en", "hi"] else
+        if lang in ["en", "hi", "ur"] else
         "🔒 আপনার অ্যাকাউন্টে চ্যানেল অ্যাক্সেস সাময়িকভাবে বন্ধ রয়েছে।"
     )
     await call.answer(alert_text, show_alert=True)
@@ -430,7 +430,7 @@ async def handle_claim_ref(call: CallbackQuery, bot: Bot):
     # If user has enough referral points OR balance, offer instant unlock!
     if user_pts >= refs_needed or user_bal >= charge_bdt:
         from utils.emojis import make_custom_button
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             pay_confirm_text = (
                 f"🎉 <b>Congratulations! You have sufficient resources!</b>\n\n"
                 f"📦 <b>Course:</b> {html.escape(clean_title)}\n"
@@ -450,7 +450,7 @@ async def handle_claim_ref(call: CallbackQuery, bot: Bot):
             )
         buttons = []
         if user_pts >= refs_needed:
-            btn_txt = f"🎁 Pay with Referrals ({refs_needed} Pts)" if lang in ["en", "hi"] else f"🎁 রেফারেল পয়েন্ট দিয়ে নিন ({refs_needed} Pts)"
+            btn_txt = f"🎁 Pay with Referrals ({refs_needed} Pts)" if lang in ["en", "hi", "ur"] else f"🎁 রেফারেল পয়েন্ট দিয়ে নিন ({refs_needed} Pts)"
             buttons.append([
                 make_custom_button(
                     text=btn_txt,
@@ -459,7 +459,7 @@ async def handle_claim_ref(call: CallbackQuery, bot: Bot):
                 )
             ])
         if user_bal >= charge_bdt:
-            bal_txt = f"💰 Pay with Balance (৳{int(charge_bdt)})" if lang in ["en", "hi"] else f"💰 ওয়ালেট দিয়ে নিন (৳{int(charge_bdt)})"
+            bal_txt = f"💰 Pay with Balance (৳{int(charge_bdt)})" if lang in ["en", "hi", "ur"] else f"💰 ওয়ালেট দিয়ে নিন (৳{int(charge_bdt)})"
             buttons.append([
                 make_custom_button(
                     text=bal_txt,
@@ -489,7 +489,7 @@ async def handle_claim_ref(call: CallbackQuery, bot: Bot):
 
     t2_pct = float(db.get_setting("referral_t2_percent", "50.0"))
     welcome_bonus = float(db.get_setting("referral_welcome_bonus", "5.0"))
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         gift_str = f"▫️ 🎉 New friends join & receive: **৳{welcome_bonus:.0f} BDT** welcome bonus\n" if welcome_bonus > 0 else ""
         progress_modal = (
             "🌟 **Unlock this Course Completely FREE with Referrals!**\n"
@@ -552,7 +552,7 @@ async def handle_gen_course_ref(call: CallbackQuery, bot: Bot):
     
     await call.answer()
     
-    if lang in ["en", "hi"]:
+    if lang in ["en", "hi", "ur"]:
         text = (
             "🔗 <b>Special Referral Link for this Course</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -591,7 +591,7 @@ async def handle_copy_course_ref(call: CallbackQuery, bot: Bot):
     bot_username = bot_info.username or "AllInOneProAccess_bot"
     course_link = f"https://t.me/{bot_username}?start=ref_{call.from_user.id}_c{prod_id}"
     lang = db.get_user_language(call.from_user.id)
-    alert_txt = f"📋 Referral Link:\n{course_link}" if lang in ["en", "hi"] else f"📋 রেফারেল লিংক:\n{course_link}"
+    alert_txt = f"📋 Referral Link:\n{course_link}" if lang in ["en", "hi", "ur"] else f"📋 রেফারেল লিংক:\n{course_link}"
     await call.answer(alert_txt, show_alert=True)
 
 @router.callback_query(F.data.startswith("buy_tier_select:"))
@@ -667,7 +667,7 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
                 "🔒 Account Access is Restricted!\n\n"
                 "This option is reserved exclusively for Elite VIP Resellers.\n\n"
                 "👉 You can purchase VIP Channel Access, or contact Admin to upgrade."
-                if lang in ["en", "hi"] else
+                if lang in ["en", "hi", "ur"] else
                 "🔒 অ্যাকাউন্ট অ্যাক্সেস সংরক্ষিত!\n\n"
                 "এই অপশনটি শুধুমাত্র ভেরিফাইড Elite VIP রিসেলার পার্টনারদের জন্য।\n\n"
                 "👉 আপনি ভিআইপি চ্যানেল অ্যাক্সেস নিতে পারেন, অথবা এলিট টায়ারে আপগ্রেডের জন্য অ্যাডমিনের সাথে যোগাযোগ করুন।"
@@ -677,7 +677,7 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
         if tier == "channel" and not perms["can_sell_channel"]:
             alert_text = (
                 "🔒 Channel Access is currently disabled for your account."
-                if lang in ["en", "hi"] else
+                if lang in ["en", "hi", "ur"] else
                 "🔒 আপনার অ্যাকাউন্টে চ্যানেল অ্যাক্সেস সাময়িকভাবে বন্ধ রয়েছে।"
             )
             await call.answer(alert_text, show_alert=True)
@@ -704,7 +704,7 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
     charge_usd = res_usd if is_reseller else reg_usd
     
     if is_reseller:
-        reseller_badge = "💎 <b>(Wholesale Reseller Discount Applied)</b>" if lang in ["en", "hi"] else "💎 <b>(রিসেলার পাইকারি ডিসকাউন্ট প্রযোজ্য)</b>"
+        reseller_badge = "💎 <b>(Wholesale Reseller Discount Applied)</b>" if lang in ["en", "hi", "ur"] else "💎 <b>(রিসেলার পাইকারি ডিসকাউন্ট প্রযোজ্য)</b>"
     else:
         reseller_badge = ""
 
@@ -713,7 +713,7 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
         extra_bdt = float(vip_pass.get("discount_bdt", 0.0))
         charge_bdt = max(0, charge_bdt - int(extra_bdt))
         charge_usd = round(charge_bdt / live_rate, 2)
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             reseller_badge = (
                 f"💎 <b>(Regular Wholesale: ৳{int(res_bdt)})</b>\n"
                 f"🏆 <b>[Top-Seller VIP Pass: -৳{int(extra_bdt)} Extra Off!]</b>\n"
@@ -732,7 +732,7 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
 
     await call.answer()
     
-    tier_label = f"🏷️ <b>Selected Package:</b> {tier_title}\n" if lang in ["en", "hi"] else f"🏷️ <b>নির্বাচিত প্যাকেজ:</b> {tier_title}\n"
+    tier_label = f"🏷️ <b>Selected Package:</b> {tier_title}\n" if lang in ["en", "hi", "ur"] else f"🏷️ <b>নির্বাচিত প্যাকেজ:</b> {tier_title}\n"
     text = t(
         "checkout_confirm_card",
         lang,
@@ -777,7 +777,7 @@ async def handle_buy_prompt(call: CallbackQuery):
     charge_usd = res_usd if is_reseller else reg_usd
     
     if is_reseller:
-        reseller_badge = "💎 <b>(Wholesale Reseller Discount Applied)</b>" if lang in ["en", "hi"] else "💎 <b>(রিসেলার ডিসকাউন্ট প্রযোজ্য)</b>"
+        reseller_badge = "💎 <b>(Wholesale Reseller Discount Applied)</b>" if lang in ["en", "hi", "ur"] else "💎 <b>(রিসেলার ডিসকাউন্ট প্রযোজ্য)</b>"
     else:
         reseller_badge = ""
 
@@ -787,7 +787,7 @@ async def handle_buy_prompt(call: CallbackQuery):
         extra_bdt = float(vip_pass.get("discount_bdt", 0.0))
         charge_bdt = max(0, charge_bdt - int(extra_bdt))
         charge_usd = round(charge_bdt / get_live_usd_rate(), 2)
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             reseller_badge = (
                 f"💎 <b>(Regular Wholesale: ৳{res_bdt})</b>\n"
                 f"🏆 <b>[Top-Seller VIP Pass: -৳{int(extra_bdt)} Extra Off!]</b>\n"
@@ -847,7 +847,7 @@ async def handle_apply_coupon_code(message: Message, state: FSMContext):
     lang = db.get_user_language(user_id)
     
     if not message.text:
-        err_msg = "❌ Please send the coupon code as text:" if lang in ["en", "hi"] else "❌ অনুগ্রহ করে কুপন কোডটি টেক্সট আকারে লিখে পাঠান:"
+        err_msg = "❌ Please send the coupon code as text:" if lang in ["en", "hi", "ur"] else "❌ অনুগ্রহ করে কুপন কোডটি টেক্সট আকারে লিখে পাঠান:"
         await message.answer(err_msg)
         return
         
@@ -857,7 +857,7 @@ async def handle_apply_coupon_code(message: Message, state: FSMContext):
     tier = data.get("coupon_tier", "default")
     if not prod_id:
         await state.clear()
-        expired_msg = "⚠️ Session expired. Please try again." if lang in ["en", "hi"] else "⚠️ সেশন মেয়াদোত্তীর্ণ। আবার চেষ্টা করুন।"
+        expired_msg = "⚠️ Session expired. Please try again." if lang in ["en", "hi", "ur"] else "⚠️ সেশন মেয়াদোত্তীর্ণ। আবার চেষ্টা করুন।"
         await message.answer(expired_msg)
         return
         
@@ -961,7 +961,7 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
         if (tier == "account" or (tier == "default" and prod.get("product_type") == "stock_account")) and not perms["can_sell_account"]:
             alert_msg = (
                 "🔒 Account Access is Restricted!\nThis option is reserved for Elite VIP Resellers."
-                if lang in ["en", "hi"] else
+                if lang in ["en", "hi", "ur"] else
                 "🔒 অ্যাকাউন্ট অ্যাক্সেস সংরক্ষিত!\nএই অপশনটি শুধুমাত্র ভেরিফাইড Elite VIP রিসেলারদের জন্য।"
             )
             await call.answer(alert_msg, show_alert=True)
@@ -969,7 +969,7 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
         if (tier == "channel" or (tier == "default" and prod.get("product_type") == "channel_link")) and not perms["can_sell_channel"]:
             alert_msg = (
                 "🔒 Channel Access is currently disabled for your account."
-                if lang in ["en", "hi"] else
+                if lang in ["en", "hi", "ur"] else
                 "🔒 আপনার অ্যাকাউন্টে চ্যানেল অ্যাক্সেস সাময়িকভাবে বন্ধ রয়েছে।"
             )
             await call.answer(alert_msg, show_alert=True)
@@ -1046,7 +1046,7 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
     # 1. Balance / Points Check
     if currency == "REF":
         if user_pts < price:
-            alert_msg = "❌ Insufficient points!" if lang in ["en", "hi"] else "❌ পর্যাপ্ত রেফারেল পয়েন্ট নেই!"
+            alert_msg = "❌ Insufficient points!" if lang in ["en", "hi", "ur"] else "❌ পর্যাপ্ত রেফারেল পয়েন্ট নেই!"
             await call.answer(alert_msg, show_alert=True)
             insufficient_text = t("insufficient_points", lang, price=price, user_pts=user_pts)
             await render_screen(
@@ -1059,7 +1059,7 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
     else:
         user_bal = user["balance_bdt"] if currency == "BDT" else user["balance_usd"]
         if user_bal < price:
-            alert_msg = "❌ Insufficient balance!" if lang in ["en", "hi"] else "❌ পর্যাপ্ত ব্যালেন্স নেই!"
+            alert_msg = "❌ Insufficient balance!" if lang in ["en", "hi", "ur"] else "❌ পর্যাপ্ত ব্যালেন্স নেই!"
             await call.answer(alert_msg, show_alert=True)
             unit = "৳" if currency == "BDT" else "$"
             insufficient_text = t("insufficient_balance", lang, unit=unit, price=price, user_bal=user_bal)
@@ -1075,13 +1075,13 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
     if currency == "REF":
         deducted = db.deduct_referral_points(user_id, price)
         if not deducted:
-            err_msg = "❌ Failed to deduct points!" if lang in ["en", "hi"] else "❌ পয়েন্ট কাটতে সমস্যা হয়েছে!"
+            err_msg = "❌ Failed to deduct points!" if lang in ["en", "hi", "ur"] else "❌ পয়েন্ট কাটতে সমস্যা হয়েছে!"
             await call.answer(err_msg, show_alert=True)
             return
     else:
         deducted = db.deduct_user_balance(user_id, price, currency)
         if not deducted:
-            err_msg = "❌ Failed to deduct balance!" if lang in ["en", "hi"] else "❌ ব্যালেন্স কাটতে সমস্যা হয়েছে!"
+            err_msg = "❌ Failed to deduct balance!" if lang in ["en", "hi", "ur"] else "❌ ব্যালেন্স কাটতে সমস্যা হয়েছে!"
             await call.answer(err_msg, show_alert=True)
             return
 
@@ -1096,13 +1096,13 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
             if not delivery_data:
                 is_manual_delivery = True
                 manual_delivery_reason = "চ্যানেলে বটের অ্যাডমিন ইনভাইট পারমিশন নেই বা চ্যানেল আইডি সঠিক নয়"
-                delivery_data = "Manual Processing: Admin will send your invite link shortly." if lang in ["en", "hi"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের ইনভাইট লিংক পাঠাবে।"
+                delivery_data = "Manual Processing: Admin will send your invite link shortly." if lang in ["en", "hi", "ur"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের ইনভাইট লিংক পাঠাবে।"
         elif prod.get("drive_link"):
             delivery_data = prod["drive_link"]
         else:
             is_manual_delivery = True
             manual_delivery_reason = "কোর্সে কোনো চ্যানেল বা ড্রাইভ লিংক যুক্ত নেই"
-            delivery_data = "Manual Processing: Admin will send your invite link shortly." if lang in ["en", "hi"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের ইনভাইট লিংক পাঠাবে।"
+            delivery_data = "Manual Processing: Admin will send your invite link shortly." if lang in ["en", "hi", "ur"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের ইনভাইট লিংক পাঠাবে।"
     elif tier == "account" or (tier == "default" and prod["product_type"] == "stock_account"):
         item = db.pop_stock_item(prod_id, user_id)
         if item:
@@ -1112,11 +1112,11 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
         else:
             is_manual_delivery = True
             manual_delivery_reason = "স্টকে কোনো অ্যাকাউন্ট/কি অবশিষ্ট নেই"
-            delivery_data = "Manual Processing: Admin will send your account credentials shortly." if lang in ["en", "hi"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অ্যাকাউন্টের অ্যাক্সেস তথ্য দ্রুত পাঠাবে।"
+            delivery_data = "Manual Processing: Admin will send your account credentials shortly." if lang in ["en", "hi", "ur"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অ্যাকাউন্টের অ্যাক্সেস তথ্য দ্রুত পাঠাবে।"
     elif prod["product_type"] == "drive_link":
         delivery_data = prod.get("drive_link") or "https://drive.google.com"
     else:
-        delivery_data = "Manual Processing: Admin will contact you regarding your order." if lang in ["en", "hi"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের জন্য যোগাযোগ করবে।"
+        delivery_data = "Manual Processing: Admin will contact you regarding your order." if lang in ["en", "hi", "ur"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের জন্য যোগাযোগ করবে।"
         
     # 4. Record Order
     order_id = db.record_order(
@@ -1173,11 +1173,11 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
                     except Exception:
                         pass
         
-    success_alert = "🎉 Order completed successfully!" if lang in ["en", "hi"] else "🎉 অর্ডার সফল হয়েছে!"
+    success_alert = "🎉 Order completed successfully!" if lang in ["en", "hi", "ur"] else "🎉 অর্ডার সফল হয়েছে!"
     await call.answer(success_alert, show_alert=True)
     
     if currency == "REF":
-        if lang in ["en", "hi"]:
+        if lang in ["en", "hi", "ur"]:
             success_text = (
                 "🎉 <b>Order Completed with Referral Points!</b>\n\n"
                 f"📦 <b>Course:</b> {html.escape(clean_title)}\n"
@@ -1213,10 +1213,10 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
         )
     if tier == "channel":
         pkg_label = "📢 VIP Channel Access"
-        success_text += f"\n🏷️ <b>Access Package:</b> {pkg_label}" if lang in ["en", "hi"] else f"\n🏷️ <b>অ্যাক্সেস প্যাকেজ:</b> {pkg_label}"
+        success_text += f"\n🏷️ <b>Access Package:</b> {pkg_label}" if lang in ["en", "hi", "ur"] else f"\n🏷️ <b>অ্যাক্সেস প্যাকেজ:</b> {pkg_label}"
     elif tier == "account":
         pkg_label = "🔐 Personal Account Access"
-        success_text += f"\n🏷️ <b>Access Package:</b> {pkg_label}" if lang in ["en", "hi"] else f"\n🏷️ <b>অ্যাক্সেস প্যাকেজ:</b> {pkg_label}"
+        success_text += f"\n🏷️ <b>Access Package:</b> {pkg_label}" if lang in ["en", "hi", "ur"] else f"\n🏷️ <b>অ্যাক্সেস প্যাকেজ:</b> {pkg_label}"
         
     from keyboards.user_kb import make_custom_button
     order_done_kb = InlineKeyboardMarkup(inline_keyboard=[

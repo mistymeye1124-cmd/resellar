@@ -89,7 +89,7 @@ async def handle_course_request_received(message: Message, state: FSMContext, bo
     user_id = message.from_user.id
     lang = db.get_user_language(user_id)
     if not message.text or not message.text.strip():
-        err_msg = "❌ Please send the course name or website URL in text:" if lang in ["en", "hi"] else "❌ অনুগ্রহ করে কোর্স বা সফটওয়্যারের নাম বা লিংক টেক্সট আকারে লিখে পাঠান:"
+        err_msg = "❌ Please send the course name or website URL in text:" if lang in ["en", "hi", "ur"] else "❌ অনুগ্রহ করে কোর্স বা সফটওয়্যারের নাম বা লিংক টেক্সট আকারে লিখে পাঠান:"
         await message.answer(err_msg)
         return
 
@@ -104,8 +104,8 @@ async def handle_course_request_received(message: Message, state: FSMContext, bo
 
     # User confirmation
     confirm_text = t("course_req_user_confirm", lang, item=html.escape(req_query), req_id=req_id)
-    btn_browse = "🎓 Browse Catalog" if lang in ["en", "hi"] else "🎓 ক্যাটালগ ব্রাউজ করুন"
-    btn_admin = "💬 Live Admin" if lang in ["en", "hi"] else "💬 সরাসরি অ্যাডমিন"
+    btn_browse = "🎓 Browse Catalog" if lang in ["en", "hi", "ur"] else "🎓 ক্যাটালগ ব্রাউজ করুন"
+    btn_admin = "💬 Live Admin" if lang in ["en", "hi", "ur"] else "💬 সরাসরি অ্যাডমিন"
     buttons = [
         [
             make_custom_button(text=btn_browse, callback_data="back_cats", emoji_key="courses"),
@@ -148,7 +148,7 @@ async def handle_quick_req_submit(call: CallbackQuery, bot: Bot):
     query = last_search_query.get(user_id)
     if not query:
         await call.answer()
-        err_prompt = "✏️ Please type the name or link of the course you want:" if lang in ["en", "hi"] else "✏️ অনুগ্রহ করে যে কোর্সটি চান তার নাম বা লিংক লিখে পাঠান:"
+        err_prompt = "✏️ Please type the name or link of the course you want:" if lang in ["en", "hi", "ur"] else "✏️ অনুগ্রহ করে যে কোর্সটি চান তার নাম বা লিংক লিখে পাঠান:"
         await call.message.answer(err_prompt)
         return
 
@@ -157,11 +157,11 @@ async def handle_quick_req_submit(call: CallbackQuery, bot: Bot):
     uname = f"@{user.username}" if user.username else "N/A"
 
     req_id = db.record_course_request(user_id, user.full_name or "Customer", query)
-    submit_alert = "✅ Your request has been submitted!" if lang in ["en", "hi"] else "✅ আপনার রিকোয়েস্ট সফলভাবে জমা হয়েছে!"
+    submit_alert = "✅ Your request has been submitted!" if lang in ["en", "hi", "ur"] else "✅ আপনার রিকোয়েস্ট সফলভাবে জমা হয়েছে!"
     await call.answer(submit_alert, show_alert=True)
 
     text = t("course_req_user_confirm", lang, item=html.escape(query), req_id=req_id)
-    btn_browse = "🎓 Browse Catalog" if lang in ["en", "hi"] else "🎓 ক্যাটালগ ব্রাউজ করুন"
+    btn_browse = "🎓 Browse Catalog" if lang in ["en", "hi", "ur"] else "🎓 ক্যাটালগ ব্রাউজ করুন"
     buttons = [
         [
             make_custom_button(text=btn_browse, callback_data="back_cats", emoji_key="courses"),
