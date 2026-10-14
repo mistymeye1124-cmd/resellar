@@ -2206,7 +2206,7 @@ async def handle_admin_settings_category(call: CallbackQuery):
         text = (
             "💳 **পেমেন্ট গেটওয়ে ও নম্বর সেটিংস**\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "লাইভ গেটওয়ে স্ট্যাটাস ও একাউন্ট নম্বরসমূহ:\n\n"
+            "লাইভ গেটওয়ে স্ট্যাটাস ও অ্যাকাউন্ট নম্বরসমূহ:\n\n"
             f"• 🔴 **bKash (Agent - Cash Out):** `{bkash_num}` ({'🟢 চালু' if gateways['bkash'] else '🔴 সাময়িক বন্ধ'})\n"
             f"• 🟠 **Nagad (Agent - Cash Out):** `{nagad_num}` ({'🟢 চালু' if gateways['nagad'] else '🔴 সাময়িক বন্ধ'})\n"
             f"• 🟣 **Rocket:** `{rocket_num}` ({'🟢 চালু' if gateways['rocket'] else '🔴 সাময়িক বন্ধ'})\n"
@@ -2482,7 +2482,7 @@ async def handle_toggle_gateway(call: CallbackQuery):
     text = (
         "💳 **পেমেন্ট গেটওয়ে ও নম্বর সেটিংস**\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "লাইভ গেটওয়ে স্ট্যাটাস ও একাউন্ট নম্বরসমূহ:\n\n"
+        "লাইভ গেটওয়ে স্ট্যাটাস ও অ্যাকাউন্ট নম্বরসমূহ:\n\n"
         f"• 🔴 **bKash (Agent - Cash Out):** `{bkash_num}` ({'🟢 চালু' if gateways['bkash'] else '🔴 সাময়িক বন্ধ'})\n"
         f"• 🟠 **Nagad (Agent - Cash Out):** `{nagad_num}` ({'🟢 চালু' if gateways['nagad'] else '🔴 সাময়িক বন্ধ'})\n"
         f"• 🟣 **Rocket:** `{rocket_num}` ({'🟢 চালু' if gateways['rocket'] else '🔴 সাময়িক বন্ধ'})\n"
@@ -3824,7 +3824,7 @@ async def handle_admin_list_prods(call: CallbackQuery):
         "• <code>📢 Ch</code> = শুধু টেলিগ্রাম ভিআইপি চ্যানেল সংযুক্ত\n"
         "• <code>🔐 Acc</code> = শুধু অ্যাকাউন্ট ক্রেডেনশিয়াল / ড্রাইভ লিংক সংযুক্ত\n"
         "• <code>⚠️ NoLink</code> = কোনো ডেলিভারি লিংক সংযুক্ত নেই!\n\n"
-        "👇 এডিট, চ্যানেল টেস্ট বা এক্সেস দেখতে কোর্স সিলেক্ট করুন:\n"
+        "👇 এডিট, চ্যানেল টেস্ট বা অ্যাক্সেস দেখতে কোর্স সিলেক্ট করুন:\n"
         "<i>(শর্টকাট: সরাসরি খুঁজতে <code>/findprod &lt;নাম&gt;</code> লিখুন)</i>",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
         parse_mode="HTML"
@@ -4471,7 +4471,7 @@ async def handle_edit_p_channel_save(message: Message, state: FSMContext, bot: B
             [InlineKeyboardButton(text="🔙 Back to Product", callback_data=f"edit_p_select:{prod_id}")]
         ])
         await message.answer(
-            f"⚠️ <b>চ্যানেল সেভ হয়েছে, কিন্তু বটের অ্যাডমিন এক্সেস সক্রিয় হয়নি!</b>\n\n"
+            f"⚠️ <b>চ্যানেল সেভ হয়েছে, কিন্তু বটের অ্যাডমিন অ্যাক্সেস সক্রিয় হয়নি!</b>\n\n"
             f"🏷️ কোর্স: <b>{p['title']}</b>\n"
             f"🆔 টার্গেট: <code>{raw_input}</code>\n"
             f"📌 সমস্যা: {res['message']}\n\n"
@@ -5014,7 +5014,7 @@ async def handle_admin_free_drops_menu(call: CallbackQuery, state: FSMContext):
     
     cat_names = {
         "all": "🔥 সকল ক্যাটাগরি",
-        "accounts": "🔐 প্রিমিয়াম একাউন্টস",
+        "accounts": "🔐 প্রিমিয়াম অ্যাকাউন্টস",
         "cookies": "🍪 ব্রাউজার কুকিজ",
         "subscription": "👑 সাবস্ক্রিপশন ও কি",
         "channel": "📢 ভিআইপি চ্যানেল",
@@ -5049,10 +5049,10 @@ async def handle_admin_drop_create_start(call: CallbackQuery, state: FSMContext)
     text = (
         "🎁 **নতুন গিভঅ্যাওয়ে ড্রপ তৈরি করুন** 🎁\n\n"
         "প্রথমে নির্ধারণ করুন এটি কোন ক্যাটাগরির গিভঅ্যাওয়ে হবে:\n\n"
-        "🔐 **1. প্রিমিয়াম একাউন্টস:** Netflix, Prime, Canva, VPN ইত্যাদি সরাসরি একাউন্ট।\n"
+        "🔐 **1. প্রিমিয়াম অ্যাকাউন্টস:** Netflix, Prime, Canva, VPN ইত্যাদি সরাসরি অ্যাকাউন্ট।\n"
         "🍪 **2. ব্রাউজার কুকিজ:** OTT ও AI সাইটগুলোর কুকিজ ফাইল (Cookie-Editor এর জন্য)।\n"
         "👑 **3. সাবস্ক্রিপশন ও কি:** লাইসেন্স কি, রিডিম কোড, ভাউচার।\n"
-        "📢 **4. ভিআইপি চ্যানেল এক্সেস:** ১-জন ব্যবহারের প্রাইভেট চ্যানেল ইনভাইট লিংক।\n"
+        "📢 **4. ভিআইপি চ্যানেল অ্যাক্সেস:** ১-জন ব্যবহারের প্রাইভেট চ্যানেল ইনভাইট লিংক।\n"
         "💾 **5. টুলস ও ড্রাইভ ভল্ট:** প্রিমিয়াম রিসোর্স বা ক্লাউড ফোল্ডার লিংক।\n\n"
         "👇 নিচের বাটন থেকে কাঙ্ক্ষিত ক্যাটাগরি বেছে নিন:"
     )
@@ -5076,10 +5076,10 @@ async def handle_drop_cat_select(call: CallbackQuery, state: FSMContext):
     ex_text = examples.get(category, "• `Premium Giveaway Drop`")
     
     cat_names = {
-        "accounts": "🔐 প্রিমিয়াম একাউন্টস",
+        "accounts": "🔐 প্রিমিয়াম অ্যাকাউন্টস",
         "cookies": "🍪 ব্রাউজার কুকিজ",
         "subscription": "👑 সাবস্ক্রিপশন ও কি",
-        "channel": "📢 ভিআইপি চ্যানেল এক্সেস",
+        "channel": "📢 ভিআইপি চ্যানেল অ্যাক্সেস",
         "tools_drive": "💾 টুলস ও ক্লাউড ড্রাইভ"
     }
     
@@ -5190,13 +5190,13 @@ async def handle_drop_type_select(call: CallbackQuery, state: FSMContext):
             )
         else:
             text = (
-                "📦 **বাল্ক একাউন্ট কম্বো (মেইল:পাসওয়ার্ড) পেস্ট করুন:**\n\n"
-                "প্রতি লাইনে একটি করে একাউন্ট/কি দিন:\n"
+                "📦 **বাল্ক অ্যাকাউন্ট কম্বো (মেইল:পাসওয়ার্ড) পেস্ট করুন:**\n\n"
+                "প্রতি লাইনে একটি করে অ্যাকাউন্ট/কি দিন:\n"
                 "```\n"
                 "user1@gmail.com:pass123\n"
                 "user2@gmail.com:pass456\n"
                 "```\n\n"
-                "💡 বট স্বয়ংক্রিয়ভাবে প্রতি ক্লেইমকারীকে ১টি করে পৃথক কম্বো একাউন্ট লাইভ ডেলিভারি দেবে।"
+                "💡 বট স্বয়ংক্রিয়ভাবে প্রতি ক্লেইমকারীকে ১টি করে পৃথক কম্বো অ্যাকাউন্ট লাইভ ডেলিভারি দেবে।"
             )
     else: # direct_link
         if category == "cookies":
@@ -5353,7 +5353,7 @@ async def handle_drop_instructions_and_finish(message: Message, state: FSMContex
     )
     
     cat_names = {
-        "accounts": "🔐 প্রিমিয়াম একাউন্টস",
+        "accounts": "🔐 প্রিমিয়াম অ্যাকাউন্টস",
         "cookies": "🍪 ব্রাউজার কুকিজ",
         "subscription": "👑 সাবস্ক্রিপশন ও কি",
         "channel": "📢 ভিআইপি চ্যানেল",
@@ -5400,7 +5400,7 @@ async def handle_admin_drop_detail(call: CallbackQuery):
     remaining = max(0, drop["max_claims"] - drop["claimed_count"])
     
     cat_names = {
-        "accounts": "🔐 প্রিমিয়াম একাউন্টস",
+        "accounts": "🔐 প্রিমিয়াম অ্যাকাউন্টস",
         "cookies": "🍪 ব্রাউজার কুকিজ",
         "subscription": "👑 সাবস্ক্রিপশন ও কি",
         "channel": "📢 ভিআইপি চ্যানেল",
@@ -5548,7 +5548,7 @@ async def handle_admin_drop_broadcast(call: CallbackQuery, bot: Bot):
     remaining = max(0, drop["max_claims"] - drop["claimed_count"])
     
     cat_names = {
-        "accounts": "🔐 প্রিমিয়াম একাউন্টস",
+        "accounts": "🔐 প্রিমিয়াম অ্যাকাউন্টস",
         "cookies": "🍪 ব্রাউজার কুকিজ",
         "subscription": "👑 সাবস্ক্রিপশন ও কি",
         "channel": "📢 ভিআইপি চ্যানেল",

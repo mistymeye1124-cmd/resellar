@@ -589,7 +589,7 @@ def get_free_claim_categories_kb(counts: Dict[str, int], lang: str = "bn") -> In
         drv_txt = f"💾 Cloud Drive & Tools ({drv_cnt})"
         tot_txt = f"🔥 All Active Drops ({tot_cnt})"
     else:
-        acc_txt = f"🔐 একাউন্টস ({acc_cnt})"
+        acc_txt = f"🔐 অ্যাকাউন্টস ({acc_cnt})"
         ck_txt = f"🍪 কুকিজ ({ck_cnt})"
         sub_txt = f"👑 কি ও কোড ({sub_cnt})"
         ch_txt = f"📢 চ্যানেল ({ch_cnt})"

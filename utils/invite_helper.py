@@ -21,10 +21,10 @@ async def generate_single_use_invite_link(bot: Bot, channel_id: str, course_titl
         return invite_link.invite_link
     except Exception as e:
         logger.error(f"Failed to generate single-use invite link for {channel_id}: {e}")
-        # If bot is not admin in the channel yet or invalid ID, return raw channel or fallback
-        if channel_id.startswith("http") or channel_id.startswith("https://t.me/"):
-            return channel_id
-        elif channel_id.startswith("@"):
-            return f"https://t.me/{channel_id[1:]}"
-        else:
-            return f"https://t.me/{channel_id}"
+        # If channel_id is already a valid full invite link
+        if str(channel_id).startswith("http://") or str(channel_id).startswith("https://"):
+            return str(channel_id)
+        elif str(channel_id).startswith("@"):
+            return f"https://t.me/{str(channel_id)[1:]}"
+        # If numeric channel ID failed (e.g. -100...), bot lacks invite permission or invalid ID
+        return ""

@@ -49,7 +49,7 @@ course_cat_id = cursor.lastrowid
 
 cursor.execute(
     "INSERT INTO categories (name, icon, type, order_num) VALUES (?, ?, ?, ?)",
-    ("⚡ Digital Tools & Accounts (ডিজিটাল একাউন্ট)", "⚡", "digital", 2)
+    ("⚡ Digital Tools & Accounts (ডিজিটাল অ্যাকাউন্ট)", "⚡", "digital", 2)
 )
 digital_cat_id = cursor.lastrowid
 

@@ -91,9 +91,19 @@ async def notify_admin_order(bot: Bot, order: dict, user: dict):
     ptype = escape(order.get("product_type", "course"))
     is_reseller = order.get("is_reseller_order", False)
     rem_bal = order.get("remaining_balance", 0.0)
+    is_manual = order.get("manual_delivery", False)
+    manual_reason = escape(order.get("manual_reason", "ম্যানুয়াল প্রসেসিং প্রয়োজন"))
 
     role_badge = "💎 <b>রিসেলার পাইকারি ক্রয়</b>" if is_reseller else "👤 <b>খুচরা সাধারণ ক্রয়</b>"
     
+    manual_block = ""
+    if is_manual:
+        manual_block = (
+            f"\n\n🚨🚨 <b>[জরুরি: ক্রেতাকে অ্যাক্সেস লিংক দিতে হবে!]</b>\n"
+            f"⚠️ <b>কারণ:</b> <i>{manual_reason}</i>\n"
+            f"⚡ অনুগ্রহ করে অবিলম্বে নিচের বাটনে চাপ দিয়ে ক্রেতাকে ইনভাইট লিংক দিন।"
+        )
+
     text = (
         f"🛍️ <b>[নতুন অর্ডার সম্পন্ন / NEW ORDER SALE]</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -106,15 +116,16 @@ async def notify_admin_order(bot: Bot, order: dict, user: dict):
         f"🆔 <b>ক্রেতার আইডি:</b> <code>{user_id}</code>\n"
         f"💳 <b>বর্তমান ওয়ালেট ব্যালেন্স:</b> <code>৳{rem_bal:.2f} BDT</code>\n"
         f"━━━━━━━━━━━━━━━━━━━━"
+        f"{manual_block}"
     )
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="👤 ক্রেতার প্রোফাইল", callback_data=f"usr_ctl_view:{user_id}"),
-            InlineKeyboardButton(text="📜 অর্ডার হিস্ট্রি", callback_data=f"usr_ctl_orders:{user_id}")
+            InlineKeyboardButton(text="💬 ক্রেতাকে মেসেজ পাঠান (DM)", callback_data=f"usr_ctl_dm:{user_id}"),
+            InlineKeyboardButton(text="👤 ক্রেতার প্রোফাইল", callback_data=f"usr_ctl_view:{user_id}")
         ],
         [
-            InlineKeyboardButton(text="💬 ক্রেতাকে মেসেজ পাঠান", callback_data=f"usr_ctl_dm:{user_id}")
+            InlineKeyboardButton(text="📜 ইউজারের সব অর্ডার", callback_data=f"usr_ctl_orders:{user_id}")
         ]
     ])
 

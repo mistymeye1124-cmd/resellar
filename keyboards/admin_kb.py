@@ -206,38 +206,38 @@ def get_subadmin_detail_kb(sub: Dict[str, Any]) -> InlineKeyboardMarkup:
 
 def get_user_control_kb(target_id: int, is_reseller: bool = False, is_banned: bool = False, is_perm_deact: bool = False) -> InlineKeyboardMarkup:
     """Action control buttons attached directly to a searched user's dossier."""
-    res_btn_text = "Promote to Reseller"
+    res_btn_text = "💎 রিসেলারে আপগ্রেড"
     res_cb = f"usr_ctl_reseller:{target_id}"
     res_em = "diamond"
     if is_perm_deact:
-        res_btn_text = "Reactivate Quota (Forgive)"
+        res_btn_text = "🔄 কোটা মওকুফ (Reactivate)"
         res_cb = f"usr_ctl_reactivate:{target_id}"
         res_em = "check"
     elif is_reseller:
-        res_btn_text = "Demote from Reseller"
+        res_btn_text = "❌ সাধারণ ক্রেতা করুন"
         res_cb = f"usr_ctl_demote:{target_id}"
         res_em = "cross"
 
-    ban_btn_text = "Unban User" if is_banned else "Ban User"
+    ban_btn_text = "✅ আনব্যান করুন" if is_banned else "🚫 ব্যান করুন"
     ban_cb = f"usr_ctl_ban:{target_id}"
     ban_em = "check" if is_banned else "cross"
 
     buttons = [
         [
-            make_custom_button(text="Add Balance", callback_data=f"usr_ctl_addbal:{target_id}", emoji_key="deposit"),
-            make_custom_button(text="Cut Balance", callback_data=f"usr_ctl_cutbal:{target_id}", emoji_key="cash")
+            make_custom_button(text="➕ ব্যালেন্স যোগ", callback_data=f"usr_ctl_addbal:{target_id}", emoji_key="deposit"),
+            make_custom_button(text="➖ ব্যালেন্স কর্তন", callback_data=f"usr_ctl_cutbal:{target_id}", emoji_key="cash")
         ],
         [
             make_custom_button(text=res_btn_text, callback_data=res_cb, emoji_key=res_em),
             make_custom_button(text=ban_btn_text, callback_data=ban_cb, emoji_key=ban_em)
         ],
         [
-            make_custom_button(text="User Orders", callback_data=f"usr_ctl_orders:{target_id}", emoji_key="orders"),
-            make_custom_button(text="Send Direct DM", callback_data=f"usr_ctl_dm:{target_id}", emoji_key="support")
+            make_custom_button(text="📜 ইউজারের সব অর্ডার", callback_data=f"usr_ctl_orders:{target_id}", emoji_key="orders"),
+            make_custom_button(text="💬 সরাসরি মেসেজ (DM)", callback_data=f"usr_ctl_dm:{target_id}", emoji_key="support")
         ],
         [
-            make_custom_button(text="Back to User Directory", callback_data="admin_users_dir:1:all", emoji_key="back"),
-            make_custom_button(text="Back to Admin", callback_data="admin_main_dashboard", emoji_key="home")
+            make_custom_button(text="🔙 ইউজার ডিরেক্টরি", callback_data="admin_users_dir:1:all", emoji_key="back"),
+            make_custom_button(text="🏠 অ্যাডমিন প্যানেল", callback_data="admin_main_dashboard", emoji_key="home")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -834,12 +834,12 @@ def get_admin_giveaway_category_select_kb() -> InlineKeyboardMarkup:
     """Choose which giveaway section / category to drop."""
     buttons = [
         [
-            make_custom_button(text="🔐 প্রিমিয়াম একাউন্টস (Accounts)", callback_data="drop_cat_sel:accounts", emoji_key="diamond"),
+            make_custom_button(text="🔐 প্রিমিয়াম অ্যাকাউন্টস (Accounts)", callback_data="drop_cat_sel:accounts", emoji_key="diamond"),
             make_custom_button(text="🍪 ব্রাউজার কুকিজ (Cookies)", callback_data="drop_cat_sel:cookies", emoji_key="sparkle")
         ],
         [
             make_custom_button(text="👑 সাবস্ক্রিপশন ও কি (Subscription/Keys)", callback_data="drop_cat_sel:subscription", emoji_key="crown"),
-            make_custom_button(text="📢 ভিআইপি চ্যানেল এক্সেস (Channel)", callback_data="drop_cat_sel:channel", emoji_key="channel")
+            make_custom_button(text="📢 ভিআইপি চ্যানেল অ্যাক্সেস (Channel)", callback_data="drop_cat_sel:channel", emoji_key="channel")
         ],
         [
             make_custom_button(text="💾 টুলস ও ক্লাউড ড্রাইভ (Tools/Drive)", callback_data="drop_cat_sel:tools_drive", emoji_key="box")
@@ -904,12 +904,12 @@ def get_admin_drop_type_kb(category: str = "accounts") -> InlineKeyboardMarkup:
     elif category == "tools_drive":
         buttons = [
             [make_custom_button(text="💾 গুগল ড্রাইভ / মেগা ক্লাউড লিংক", callback_data="drop_type:direct_link", emoji_key="download")],
-            [make_custom_button(text="📦 বাল্ক এক্সেস কি / টোকেন লিস্ট", callback_data="drop_type:bulk_combo", emoji_key="box")],
+            [make_custom_button(text="📦 বাল্ক অ্যাক্সেস কি / টোকেন লিস্ট", callback_data="drop_type:bulk_combo", emoji_key="box")],
             [make_custom_button(text="❌ Cancel", callback_data="admin_free_drops_menu", emoji_key="cross")]
         ]
     else: # accounts default
         buttons = [
-            [make_custom_button(text="📦 বাল্ক একাউন্ট কম্বো (মেইল:পাসওয়ার্ড)", callback_data="drop_type:bulk_combo", emoji_key="box")],
+            [make_custom_button(text="📦 বাল্ক অ্যাকাউন্ট কম্বো (মেইল:পাসওয়ার্ড)", callback_data="drop_type:bulk_combo", emoji_key="box")],
             [make_custom_button(text="🔗 কমন লগইন লিঙ্ক / পোর্টাল", callback_data="drop_type:direct_link", emoji_key="download")],
             [make_custom_button(text="❌ Cancel", callback_data="admin_free_drops_menu", emoji_key="cross")]
         ]

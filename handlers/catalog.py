@@ -211,7 +211,7 @@ async def handle_product_detail(call: CallbackQuery):
     else:
         type_labels = {
             "channel_link": "🔒 প্রাইভেট ভিআইপি টেলিগ্রাম চ্যানেল (1-টাইম ইনভাইট লিংক)",
-            "dual_access": "🔥 ডুয়েল প্যাকেজ (ভিআইপি চ্যানেল ও পার্সোনাল একাউন্ট এক্সেস)",
+            "dual_access": "🔥 ডুয়েল প্যাকেজ (ভিআইপি চ্যানেল ও পার্সোনাল অ্যাকাউন্ট অ্যাক্সেস)",
             "stock_account": "🔑 রেডিমেড অ্যাকাউন্ট / লাইসেন্স কি (ইনস্ট্যান্ট ডেলিভারি)",
             "drive_link": "☁️ গুগল ড্রাইভ / ক্লাউড ভল্ট",
             "manual": "🛠️ কাস্টম সেটআপ / আপনার মেইলে অ্যাক্টিভেশন"
@@ -1009,13 +1009,21 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
 
     # 3. Check Stock or Access Delivery according to Tier
     delivery_data = ""
+    is_manual_delivery = False
+    manual_delivery_reason = ""
     if tier == "channel" or (tier == "default" and prod["product_type"] == "channel_link"):
         channel_id = prod.get("channel_id") or ""
         if channel_id:
             delivery_data = await generate_single_use_invite_link(bot, channel_id, prod["title"])
+            if not delivery_data:
+                is_manual_delivery = True
+                manual_delivery_reason = "চ্যানেলে বটের অ্যাডমিন ইনভাইট পারমিশন নেই বা চ্যানেল আইডি সঠিক নয়"
+                delivery_data = "Manual Processing: Admin will send your invite link shortly." if lang in ["en", "hi"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের ইনভাইট লিংক পাঠাবে।"
         elif prod.get("drive_link"):
             delivery_data = prod["drive_link"]
         else:
+            is_manual_delivery = True
+            manual_delivery_reason = "কোর্সে কোনো চ্যানেল বা ড্রাইভ লিংক যুক্ত নেই"
             delivery_data = "Manual Processing: Admin will send your invite link shortly." if lang in ["en", "hi"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের ইনভাইট লিংক পাঠাবে।"
     elif tier == "account" or (tier == "default" and prod["product_type"] == "stock_account"):
         item = db.pop_stock_item(prod_id, user_id)
@@ -1024,6 +1032,8 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
         elif prod.get("drive_link"):
             delivery_data = prod["drive_link"]
         else:
+            is_manual_delivery = True
+            manual_delivery_reason = "স্টকে কোনো অ্যাকাউন্ট/কি অবশিষ্ট নেই"
             delivery_data = "Manual Processing: Admin will send your account credentials shortly." if lang in ["en", "hi"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অ্যাকাউন্টের অ্যাক্সেস তথ্য দ্রুত পাঠাবে।"
     elif prod["product_type"] == "drive_link":
         delivery_data = prod.get("drive_link") or "https://drive.google.com"
@@ -1108,7 +1118,7 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
                 f"💎 <b>পরিশোধিত পয়েন্ট:</b> <code>{price} Pts</code> (মূল্য: ৳{int(reg_bdt)} BDT)\n"
                 f"🆔 <b>অর্ডার আইডি:</b> <code>#{order_id}</code>\n"
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                "🔑 <b>আপনার ডেলিভারি তথ্য / এক্সেস ডাটা:</b>\n"
+                "🔑 <b>আপনার ডেলিভারি তথ্য / অ্যাক্সেস ডাটা:</b>\n"
                 f"<pre>{html.escape(delivery_data)}</pre>\n"
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 "💡 <i>আপনার অর্ডারটি প্রোফাইলের 'My Purchases' এ স্থায়ীভাবে সংরক্ষিত থাকবে।</i>"
@@ -1165,7 +1175,10 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
         "amount_paid": price,
         "currency": currency,
         "is_reseller_order": bool(is_reseller),
-        "remaining_balance": buyer.get("balance_bdt", 0.0)
+        "remaining_balance": buyer.get("balance_bdt", 0.0),
+        "manual_delivery": is_manual_delivery,
+        "manual_reason": manual_delivery_reason,
+        "access_tier": tier
     }
     user_payload = {
         "id": user_id,
