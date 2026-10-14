@@ -221,11 +221,14 @@ def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admi
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_reseller_app_approval_kb(app_id: int) -> InlineKeyboardMarkup:
-    """Admin approval buttons for reseller application."""
+    """Admin approval buttons for reseller application with granular tier choice."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            make_custom_button(text="Approve as Reseller (অনুমোদন)", callback_data=f"approve_reseller_app:{app_id}", emoji_key="check"),
-            make_custom_button(text="Reject (বাতিল)", callback_data=f"reject_reseller_app:{app_id}", emoji_key="cross")
+            make_custom_button(text="🥉 Standard (চ্যানেল পার্টনার)", callback_data=f"approve_reseller_app:{app_id}:1", emoji_key="check"),
+            make_custom_button(text="👑 Elite VIP (ফুল এক্সেস)", callback_data=f"approve_reseller_app:{app_id}:2", emoji_key="diamond")
+        ],
+        [
+            make_custom_button(text="❌ আবেদন বাতিল (Reject)", callback_data=f"reject_reseller_app:{app_id}", emoji_key="cross")
         ]
     ])
 
@@ -287,8 +290,8 @@ def get_products_kb(products: List[Dict[str, Any]], category_id: int, subcategor
     ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "bn") -> InlineKeyboardMarkup:
-    """Action buttons for product view."""
+def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "bn", user_id: Optional[int] = None) -> InlineKeyboardMarkup:
+    """Action buttons for product view with live reseller permission gating."""
     buttons = []
     
     sales_page = product.get("sales_page_url")
@@ -302,6 +305,18 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
         ])
         
     if in_stock:
+        can_acc = True
+        can_ch = True
+        if user_id:
+            try:
+                from database.db import db
+                perms = db.get_user_permissions(user_id)
+                if perms["is_reseller"] >= 1:
+                    can_acc = perms["can_sell_account"]
+                    can_ch = perms["can_sell_channel"]
+            except Exception:
+                pass
+
         has_dual = (float(product.get("price_channel_bdt") or 0) > 0 and float(product.get("price_account_bdt") or 0) > 0)
         if has_dual:
             from config import get_live_usd_rate
@@ -314,20 +329,41 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
             ch_label = f"📢 VIP Channel Access (৳{ch_bdt} / ${ch_usd})"
             acc_label = f"🔐 Account / Drive Access (৳{acc_bdt} / ${acc_usd})"
             
-            buttons.append([
-                make_custom_button(
-                    text=ch_label,
-                    callback_data=f"buy_tier:{product['id']}:channel",
-                    emoji_key="channel"
-                )
-            ])
-            buttons.append([
-                make_custom_button(
-                    text=acc_label,
-                    callback_data=f"buy_tier:{product['id']}:account",
-                    emoji_key="box"
-                )
-            ])
+            if can_ch:
+                buttons.append([
+                    make_custom_button(
+                        text=ch_label,
+                        callback_data=f"buy_tier:{product['id']}:channel",
+                        emoji_key="channel"
+                    )
+                ])
+            else:
+                locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
+                buttons.append([
+                    make_custom_button(
+                        text=locked_ch,
+                        callback_data=f"locked_channel_tier:{product['id']}",
+                        emoji_key="cross"
+                    )
+                ])
+
+            if can_acc:
+                buttons.append([
+                    make_custom_button(
+                        text=acc_label,
+                        callback_data=f"buy_tier:{product['id']}:account",
+                        emoji_key="box"
+                    )
+                ])
+            else:
+                locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
+                buttons.append([
+                    make_custom_button(
+                        text=locked_acc,
+                        callback_data=f"locked_account_tier:{product['id']}",
+                        emoji_key="cross"
+                    )
+                ])
         else:
             bdt_val = int(product.get('price_bdt') or 0)
             usd_val = product.get('price_usd')
@@ -339,13 +375,34 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
             else:
                 buy_text = f"🚀 এখনই কিনুন (৳{bdt_val} / ${usd_val})"
             buy_cb = f"buy:{product['id']}"
-            buttons.append([
-                make_custom_button(
-                    text=buy_text,
-                    callback_data=buy_cb,
-                    emoji_key="cart"
-                )
-            ])
+
+            ptype = product.get("product_type", "channel_link")
+            if ptype == "stock_account" and not can_acc:
+                locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
+                buttons.append([
+                    make_custom_button(
+                        text=locked_acc,
+                        callback_data=f"locked_account_tier:{product['id']}",
+                        emoji_key="cross"
+                    )
+                ])
+            elif ptype == "channel_link" and not can_ch:
+                locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
+                buttons.append([
+                    make_custom_button(
+                        text=locked_ch,
+                        callback_data=f"locked_channel_tier:{product['id']}",
+                        emoji_key="cross"
+                    )
+                ])
+            else:
+                buttons.append([
+                    make_custom_button(
+                        text=buy_text,
+                        callback_data=buy_cb,
+                        emoji_key="cart"
+                    )
+                ])
         buttons.append([
             make_custom_button(
                 text=t("btn_claim_ref", lang),

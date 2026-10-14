@@ -363,10 +363,34 @@ async def handle_product_detail(call: CallbackQuery):
     await safe_switch_screen(
         call,
         detail_text,
-        reply_markup=get_product_detail_kb(active_prod, in_stock, lang),
+        reply_markup=get_product_detail_kb(active_prod, in_stock, lang, user_id=user_id),
         photo_url=photo_id,
         parse_mode="HTML"
     )
+
+@router.callback_query(F.data.startswith("locked_account_tier:"))
+async def handle_locked_account_tier(call: CallbackQuery):
+    lang = db.get_user_language(call.from_user.id)
+    alert_text = (
+        "🔒 Account Access is Restricted!\n\n"
+        "This option is reserved exclusively for Elite VIP Resellers.\n\n"
+        "👉 You can purchase the VIP Channel Access, or contact Admin to upgrade your tier."
+        if lang in ["en", "hi"] else
+        "🔒 অ্যাকাউন্ট অ্যাক্সেস সংরক্ষিত!\n\n"
+        "এই অপশনটি শুধুমাত্র ভেরিফাইড Elite VIP রিসেলার পার্টনারদের জন্য।\n\n"
+        "👉 আপনি ভিআইপি চ্যানেল অ্যাক্সেস নিতে পারেন, অথবা এলিট টায়ারে আপগ্রেডের জন্য অ্যাডমিনের সাথে যোগাযোগ করুন।"
+    )
+    await call.answer(alert_text, show_alert=True)
+
+@router.callback_query(F.data.startswith("locked_channel_tier:"))
+async def handle_locked_channel_tier(call: CallbackQuery):
+    lang = db.get_user_language(call.from_user.id)
+    alert_text = (
+        "🔒 Channel Access is currently disabled for your account."
+        if lang in ["en", "hi"] else
+        "🔒 আপনার অ্যাকাউন্টে চ্যানেল অ্যাক্সেস সাময়িকভাবে বন্ধ রয়েছে।"
+    )
+    await call.answer(alert_text, show_alert=True)
 
 @router.callback_query(F.data.startswith("claim_ref:"))
 async def handle_claim_ref(call: CallbackQuery, bot: Bot):
@@ -625,6 +649,31 @@ async def handle_buy_tier_chosen(call: CallbackQuery):
     if not user:
         user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
     is_reseller = user.get("is_reseller", 0) >= 1
+
+    # Security Guard: Reseller Sell Permissions check
+    if is_reseller:
+        perms = db.get_user_permissions(user_id)
+        if tier == "account" and not perms["can_sell_account"]:
+            alert_text = (
+                "🔒 Account Access is Restricted!\n\n"
+                "This option is reserved exclusively for Elite VIP Resellers.\n\n"
+                "👉 You can purchase VIP Channel Access, or contact Admin to upgrade."
+                if lang in ["en", "hi"] else
+                "🔒 অ্যাকাউন্ট অ্যাক্সেস সংরক্ষিত!\n\n"
+                "এই অপশনটি শুধুমাত্র ভেরিফাইড Elite VIP রিসেলার পার্টনারদের জন্য।\n\n"
+                "👉 আপনি ভিআইপি চ্যানেল অ্যাক্সেস নিতে পারেন, অথবা এলিট টায়ারে আপগ্রেডের জন্য অ্যাডমিনের সাথে যোগাযোগ করুন।"
+            )
+            await call.answer(alert_text, show_alert=True)
+            return
+        if tier == "channel" and not perms["can_sell_channel"]:
+            alert_text = (
+                "🔒 Channel Access is currently disabled for your account."
+                if lang in ["en", "hi"] else
+                "🔒 আপনার অ্যাকাউন্টে চ্যানেল অ্যাক্সেস সাময়িকভাবে বন্ধ রয়েছে।"
+            )
+            await call.answer(alert_text, show_alert=True)
+            return
+
     lang = db.get_user_language(user_id)
     clean_title = localize_item_name(prod['title'], lang)
 
@@ -896,6 +945,26 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
     if not user:
         user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
     is_reseller = user.get("is_reseller", 0) >= 1
+
+    # Security Guard: Reseller Sell Permissions check before deducting any money or points
+    if is_reseller:
+        perms = db.get_user_permissions(user_id)
+        if (tier == "account" or (tier == "default" and prod.get("product_type") == "stock_account")) and not perms["can_sell_account"]:
+            alert_msg = (
+                "🔒 Account Access is Restricted!\nThis option is reserved for Elite VIP Resellers."
+                if lang in ["en", "hi"] else
+                "🔒 অ্যাকাউন্ট অ্যাক্সেস সংরক্ষিত!\nএই অপশনটি শুধুমাত্র ভেরিফাইড Elite VIP রিসেলারদের জন্য।"
+            )
+            await call.answer(alert_msg, show_alert=True)
+            return
+        if (tier == "channel" or (tier == "default" and prod.get("product_type") == "channel_link")) and not perms["can_sell_channel"]:
+            alert_msg = (
+                "🔒 Channel Access is currently disabled for your account."
+                if lang in ["en", "hi"] else
+                "🔒 আপনার অ্যাকাউন্টে চ্যানেল অ্যাক্সেস সাময়িকভাবে বন্ধ রয়েছে।"
+            )
+            await call.answer(alert_msg, show_alert=True)
+            return
 
     # Price Calculation based on access tier
     live_rate = get_live_usd_rate()

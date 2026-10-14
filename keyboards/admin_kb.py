@@ -204,8 +204,16 @@ def get_subadmin_detail_kb(sub: Dict[str, Any]) -> InlineKeyboardMarkup:
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_user_control_kb(target_id: int, is_reseller: bool = False, is_banned: bool = False, is_perm_deact: bool = False) -> InlineKeyboardMarkup:
-    """Action control buttons attached directly to a searched user's dossier."""
+def get_user_control_kb(
+    target_id: int,
+    is_reseller: bool = False,
+    is_banned: bool = False,
+    is_perm_deact: bool = False,
+    reseller_tier: int = 1,
+    can_sell_channel: bool = True,
+    can_sell_account: bool = False
+) -> InlineKeyboardMarkup:
+    """Action control buttons attached directly to a searched user's dossier with live permission switches."""
     res_btn_text = "💎 রিসেলারে আপগ্রেড"
     res_cb = f"usr_ctl_reseller:{target_id}"
     res_em = "diamond"
@@ -230,7 +238,23 @@ def get_user_control_kb(target_id: int, is_reseller: bool = False, is_banned: bo
         [
             make_custom_button(text=res_btn_text, callback_data=res_cb, emoji_key=res_em),
             make_custom_button(text=ban_btn_text, callback_data=ban_cb, emoji_key=ban_em)
-        ],
+        ]
+    ]
+
+    # If user is a reseller, provide interactive granular permission toggles
+    if is_reseller:
+        ch_txt = f"📢 চ্যানেল সেল: {'🟢 ON' if can_sell_channel else '🔴 OFF'}"
+        acc_txt = f"🔐 একাউন্ট সেল: {'🟢 ON' if can_sell_account else '🔴 OFF'}"
+        tier_txt = f"👑 টায়ার: {'👑 Elite VIP' if reseller_tier >= 2 else '🥉 Standard'}"
+        buttons.append([
+            make_custom_button(text=ch_txt, callback_data=f"usr_ctl_tog_ch:{target_id}", emoji_key="channel"),
+            make_custom_button(text=acc_txt, callback_data=f"usr_ctl_tog_acc:{target_id}", emoji_key="box")
+        ])
+        buttons.append([
+            make_custom_button(text=tier_txt, callback_data=f"usr_ctl_tog_tier:{target_id}", emoji_key="diamond")
+        ])
+
+    buttons.extend([
         [
             make_custom_button(text="📜 ইউজারের সব অর্ডার", callback_data=f"usr_ctl_orders:{target_id}", emoji_key="orders"),
             make_custom_button(text="💬 সরাসরি মেসেজ (DM)", callback_data=f"usr_ctl_dm:{target_id}", emoji_key="support")
@@ -239,7 +263,7 @@ def get_user_control_kb(target_id: int, is_reseller: bool = False, is_banned: bo
             make_custom_button(text="🔙 ইউজার ডিরেক্টরি", callback_data="admin_users_dir:1:all", emoji_key="back"),
             make_custom_button(text="🏠 অ্যাডমিন প্যানেল", callback_data="admin_main_dashboard", emoji_key="home")
         ]
-    ]
+    ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_users_directory_kb(users: List[Dict[str, Any]], current_page: int, total_pages: int, filter_type: str = "all") -> InlineKeyboardMarkup:

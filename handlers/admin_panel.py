@@ -361,6 +361,18 @@ def format_user_dossier_text(user: dict) -> str:
     elif is_perm:
         quota_line = "⚠️ <b>কোটা স্ট্যাটাস:</b> ৩০ দিনে কোটা পূরণ না করায় অ্যাকাউন্ট বাতিল করা হয়েছিল।\n"
 
+    res_perm_section = ""
+    if is_res:
+        r_tier = profile.get("reseller_tier", 1) or 1
+        tier_title = "👑 Elite VIP (Full Access)" if r_tier >= 2 else "🥉 Standard (Channel Only)"
+        can_ch = "🟢 চালু (Active)" if profile.get("can_sell_channel", 1) else "🔴 বন্ধ (Disabled)"
+        can_acc = "🟢 চালু (Active)" if profile.get("can_sell_account", 0) else "🔴 বন্ধ (Locked)"
+        res_perm_section = (
+            f"• রিসেলার টায়ার: <b>{tier_title}</b>\n"
+            f"• চ্যানেল সেল পারমিশন: <b>{can_ch}</b>\n"
+            f"• অ্যাকাউন্ট সেল পারমিশন: <b>{can_acc}</b>\n"
+        )
+
     return (
         f"📊 <b>ইউজার ইন্টেলিজেন্স ও কমপ্লিট ডসিয়ার</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -369,6 +381,7 @@ def format_user_dossier_text(user: dict) -> str:
         f"• আইডি: <code>{user_id}</code> | যোগদানের তারিখ: <code>{join_date}</code>\n"
         f"• অ্যাকাউন্ট স্ট্যাটাস: <b>{ban_status}</b> | <b>{res_status}</b>\n"
         f"• রিসেলার কোড: <code>{profile.get('reseller_code') or 'N/A'}</code>\n"
+        f"{res_perm_section}"
         f"• ভাষা: <code>{str(profile.get('language', 'bn')).upper()}</code>\n"
         f"{quota_line}"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -1107,9 +1120,18 @@ async def handle_usr_ctl_view(call: CallbackQuery):
     is_res = target_user.get("is_reseller", 0) == 1
     is_perm = target_user.get("reseller_deactivated_permanent", 0) == 1 or target_user.get("is_reseller", 0) == -1
     is_banned = target_user.get("is_banned", 0) == 1
+    perms = db.get_user_permissions(target_id)
     await call.message.answer(
         format_user_dossier_text(target_user),
-        reply_markup=get_user_control_kb(target_user['user_id'], is_reseller=is_res, is_banned=is_banned, is_perm_deact=is_perm),
+        reply_markup=get_user_control_kb(
+            target_user['user_id'],
+            is_reseller=is_res,
+            is_banned=is_banned,
+            is_perm_deact=is_perm,
+            reseller_tier=perms["reseller_tier"],
+            can_sell_channel=perms["can_sell_channel"],
+            can_sell_account=perms["can_sell_account"]
+        ),
         parse_mode="HTML"
     )
 
@@ -1140,9 +1162,17 @@ async def handle_usr_ctl_reseller(call: CallbackQuery, bot: Bot):
     except Exception:
         pass
     user = db.get_user(target_id)
+    perms = db.get_user_permissions(target_id)
     await call.message.edit_text(
         format_user_dossier_text(user),
-        reply_markup=get_user_control_kb(target_id, is_reseller=True, is_banned=user.get("is_banned", 0)==1),
+        reply_markup=get_user_control_kb(
+            target_id,
+            is_reseller=True,
+            is_banned=user.get("is_banned", 0)==1,
+            reseller_tier=perms["reseller_tier"],
+            can_sell_channel=perms["can_sell_channel"],
+            can_sell_account=perms["can_sell_account"]
+        ),
         parse_mode="HTML"
     )
 
@@ -1156,9 +1186,100 @@ async def handle_usr_ctl_demote(call: CallbackQuery, bot: Bot):
     except Exception:
         pass
     user = db.get_user(target_id)
+    perms = db.get_user_permissions(target_id)
     await call.message.edit_text(
         format_user_dossier_text(user),
-        reply_markup=get_user_control_kb(target_id, is_reseller=False, is_banned=user.get("is_banned", 0)==1),
+        reply_markup=get_user_control_kb(
+            target_id,
+            is_reseller=False,
+            is_banned=user.get("is_banned", 0)==1,
+            reseller_tier=perms["reseller_tier"],
+            can_sell_channel=perms["can_sell_channel"],
+            can_sell_account=perms["can_sell_account"]
+        ),
+        parse_mode="HTML"
+    )
+
+@router.callback_query(F.data.startswith("usr_ctl_tog_ch:"))
+async def handle_usr_ctl_tog_ch(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    target_id = int(call.data.split(":")[1])
+    db.toggle_user_permission(target_id, "can_sell_channel")
+    user = db.get_user(target_id)
+    perms = db.get_user_permissions(target_id)
+    ch_state = "চালু 🟢" if perms["can_sell_channel"] else "বন্ধ 🔴"
+    await call.answer(f"📢 চ্যানেল সেল পারমিশন: {ch_state}", show_alert=False)
+    is_res = user.get("is_reseller", 0) == 1
+    is_perm = user.get("reseller_deactivated_permanent", 0) == 1 or user.get("is_reseller", 0) == -1
+    is_banned = user.get("is_banned", 0) == 1
+    await call.message.edit_text(
+        format_user_dossier_text(user),
+        reply_markup=get_user_control_kb(
+            target_id,
+            is_reseller=is_res,
+            is_banned=is_banned,
+            is_perm_deact=is_perm,
+            reseller_tier=perms["reseller_tier"],
+            can_sell_channel=perms["can_sell_channel"],
+            can_sell_account=perms["can_sell_account"]
+        ),
+        parse_mode="HTML"
+    )
+
+@router.callback_query(F.data.startswith("usr_ctl_tog_acc:"))
+async def handle_usr_ctl_tog_acc(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    target_id = int(call.data.split(":")[1])
+    db.toggle_user_permission(target_id, "can_sell_account")
+    user = db.get_user(target_id)
+    perms = db.get_user_permissions(target_id)
+    acc_state = "চালু 🟢" if perms["can_sell_account"] else "বন্ধ 🔴"
+    await call.answer(f"🔐 অ্যাকাউন্ট সেল পারমিশন: {acc_state}", show_alert=False)
+    is_res = user.get("is_reseller", 0) == 1
+    is_perm = user.get("reseller_deactivated_permanent", 0) == 1 or user.get("is_reseller", 0) == -1
+    is_banned = user.get("is_banned", 0) == 1
+    await call.message.edit_text(
+        format_user_dossier_text(user),
+        reply_markup=get_user_control_kb(
+            target_id,
+            is_reseller=is_res,
+            is_banned=is_banned,
+            is_perm_deact=is_perm,
+            reseller_tier=perms["reseller_tier"],
+            can_sell_channel=perms["can_sell_channel"],
+            can_sell_account=perms["can_sell_account"]
+        ),
+        parse_mode="HTML"
+    )
+
+@router.callback_query(F.data.startswith("usr_ctl_tog_tier:"))
+async def handle_usr_ctl_tog_tier(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    target_id = int(call.data.split(":")[1])
+    perms = db.get_user_permissions(target_id)
+    new_tier = 1 if perms["reseller_tier"] >= 2 else 2
+    db.set_reseller_tier(target_id, new_tier)
+    user = db.get_user(target_id)
+    updated_perms = db.get_user_permissions(target_id)
+    tier_label = "👑 Elite VIP" if new_tier >= 2 else "🥉 Standard"
+    await call.answer(f"👑 রিসেলার টায়ার: {tier_label} এ পরিবর্তিত!", show_alert=True)
+    is_res = user.get("is_reseller", 0) == 1
+    is_perm = user.get("reseller_deactivated_permanent", 0) == 1 or user.get("is_reseller", 0) == -1
+    is_banned = user.get("is_banned", 0) == 1
+    await call.message.edit_text(
+        format_user_dossier_text(user),
+        reply_markup=get_user_control_kb(
+            target_id,
+            is_reseller=is_res,
+            is_banned=is_banned,
+            is_perm_deact=is_perm,
+            reseller_tier=updated_perms["reseller_tier"],
+            can_sell_channel=updated_perms["can_sell_channel"],
+            can_sell_account=updated_perms["can_sell_account"]
+        ),
         parse_mode="HTML"
     )
 

@@ -39,7 +39,12 @@ TOP_LEVEL_NAV_PREFIXES = (
     "cat:",
     "claim_cat:",
     "set_lang:",
-    "dep_method:"
+    "dep_method:",
+    "locked_account_tier:",
+    "locked_channel_tier:",
+    "usr_ctl_tog_ch:",
+    "usr_ctl_tog_acc:",
+    "usr_ctl_tog_tier:"
 )
 
 class CallbackDeduplicationMiddleware(BaseMiddleware):

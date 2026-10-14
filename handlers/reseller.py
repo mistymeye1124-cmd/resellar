@@ -661,8 +661,10 @@ async def handle_process_apply(message: Message, state: FSMContext, bot: Bot):
 
 @router.callback_query(F.data.startswith("approve_reseller_app:"))
 async def handle_approve_reseller_app(call: CallbackQuery, bot: Bot):
-    app_id = int(call.data.split(":")[1])
-    res_data = db.approve_reseller_application(app_id)
+    parts = call.data.split(":")
+    app_id = int(parts[1])
+    tier = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 1
+    res_data = db.approve_reseller_application(app_id, tier=tier)
     
     if not res_data:
         await call.answer("⚠️ এই আবেদনটি ইতিমধ্যে প্রসেস করা হয়েছে বা ইউজার পাওয়া যায়নি!", show_alert=True)
@@ -674,11 +676,12 @@ async def handle_approve_reseller_app(call: CallbackQuery, bot: Bot):
     fee = res_data["fee_deducted"]
     remaining_bal = res_data["remaining_balance"]
 
-    await call.answer("💎 রিসেলার অনুমোদিত ও ফি কর্তন সম্পন্ন!", show_alert=True)
+    tier_stamp = "👑 ELITE VIP RESELLER (ALL ACCESS)" if tier >= 2 else "🥉 STANDARD RESELLER (CHANNEL PARTNER)"
+    await call.answer(f"💎 রিসেলার অনুমোদন সম্পন্ন! ({'Elite' if tier >= 2 else 'Standard'})", show_alert=True)
     base_text = call.message.text or call.message.caption or ""
     approved_stamp = (
         "\n\n━━━━━━━━━━━━━━━━━━━━\n"
-        "✅ <b>APPROVED AS VIP RESELLER!</b>\n"
+        f"✅ <b>APPROVED AS {tier_stamp}!</b>\n"
         f"🆔 <b>রিসেলার কোড:</b> <code>{code}</code>\n"
         f"💸 <b>অ্যাক্টিভেশন ফি কর্তন:</b> <code>৳{fee:.2f} BDT</code>\n"
         f"💳 <b>ইউজারের অবশিষ্ট ব্যালেন্স:</b> <code>৳{remaining_bal:.2f} BDT</code>"
@@ -687,8 +690,9 @@ async def handle_approve_reseller_app(call: CallbackQuery, bot: Bot):
     
     # Notify User
     quota = db.get_setting("reseller_monthly_quota", "5")
+    tier_desc = "👑 Elite VIP পার্টনার (চ্যানেল + পার্সোনাল অ্যাকাউন্ট ফুল অ্যাক্সেস)" if tier >= 2 else "🥉 স্ট্যান্ডার্ড পার্টনার (চ্যানেল অ্যাক্সেস)"
     congrats = (
-        "🎉 <b>অভিনন্দন! আপনার ভিআইপি রিসেলার আবেদন অনুমোদিত হয়েছে!</b>\n\n"
+        f"🎉 <b>অভিনন্দন! আপনার {tier_desc} আবেদন অনুমোদিত হয়েছে!</b>\n\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"🆔 <b>আপনার অফিসিয়াল রিসেলার কোড:</b> <code>{code}</code>\n"
         f"💸 <b>ভেরিফাইড পার্টনার ফি কর্তন:</b> <code>৳{fee:.2f} BDT</code>\n"

@@ -167,12 +167,12 @@ async def notify_admin_reseller_app(bot: Bot, app_id: int, user: dict, info: str
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="💎 Approve as Reseller", callback_data=f"approve_reseller_app:{app_id}"),
-            InlineKeyboardButton(text="❌ Reject", callback_data=f"reject_reseller_app:{app_id}")
+            InlineKeyboardButton(text="🥉 Standard (চ্যানেল)", callback_data=f"approve_reseller_app:{app_id}:1"),
+            InlineKeyboardButton(text="👑 Elite VIP (ফুল)", callback_data=f"approve_reseller_app:{app_id}:2")
         ],
         [
-            InlineKeyboardButton(text="👤 ইউজারের প্রোফাইল", callback_data=f"usr_ctl_view:{user_id}"),
-            InlineKeyboardButton(text="💬 মেসেজ পাঠান", callback_data=f"usr_ctl_dm:{user_id}")
+            InlineKeyboardButton(text="❌ Reject (বাতিল)", callback_data=f"reject_reseller_app:{app_id}"),
+            InlineKeyboardButton(text="👤 প্রোফাইল", callback_data=f"usr_ctl_view:{user_id}")
         ]
     ])
 

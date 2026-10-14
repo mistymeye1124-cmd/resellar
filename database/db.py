@@ -316,6 +316,12 @@ class Database:
                 cursor.execute("UPDATE users SET referral_points = referral_count_t1 WHERE referral_points = 0 AND referral_count_t1 > 0")
             if "show_bottom_menu" not in user_cols:
                 cursor.execute("ALTER TABLE users ADD COLUMN show_bottom_menu INTEGER DEFAULT 1")
+            if "reseller_tier" not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN reseller_tier INTEGER DEFAULT 1")
+            if "can_sell_channel" not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN can_sell_channel INTEGER DEFAULT 1")
+            if "can_sell_account" not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN can_sell_account INTEGER DEFAULT 0")
 
             cursor.execute("PRAGMA table_info(products)")
             prod_cols = [row["name"] for row in cursor.fetchall()]
@@ -1056,14 +1062,59 @@ class Database:
             return [dict(row) for row in cursor.fetchall()]
 
     # --- RESELLER SYSTEM METHODS ---
-    def set_reseller_status(self, user_id: int, is_reseller: int = 1, code: Optional[str] = None) -> bool:
+    def set_reseller_status(self, user_id: int, is_reseller: int = 1, code: Optional[str] = None, tier: int = 1) -> bool:
         if not code and is_reseller:
             code = f"RS-{user_id % 10000:04d}"
+        can_acc = 1 if (is_reseller >= 1 and tier >= 2) else 0
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("UPDATE users SET is_reseller = ?, reseller_code = ? WHERE user_id = ?", (is_reseller, code, user_id))
+            cursor.execute(
+                "UPDATE users SET is_reseller = ?, reseller_code = ?, reseller_tier = ?, can_sell_channel = 1, can_sell_account = ? WHERE user_id = ?",
+                (is_reseller, code, tier, can_acc, user_id)
+            )
             conn.commit()
             return cursor.rowcount > 0
+
+    def get_user_permissions(self, user_id: int) -> Dict[str, Any]:
+        user = self.get_user(user_id) or {}
+        return {
+            "is_reseller": int(user.get("is_reseller", 0) or 0),
+            "reseller_tier": int(user.get("reseller_tier", 1) or 1),
+            "can_sell_channel": bool(user.get("can_sell_channel", 1) if user.get("can_sell_channel") is not None else 1),
+            "can_sell_account": bool(user.get("can_sell_account", 0) if user.get("can_sell_account") is not None else 0),
+        }
+
+    def set_user_permission(self, user_id: int, perm_key: str, value: int) -> bool:
+        if perm_key not in ["can_sell_channel", "can_sell_account", "reseller_tier", "is_reseller"]:
+            return False
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"UPDATE users SET {perm_key} = ? WHERE user_id = ?", (value, user_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def toggle_user_permission(self, user_id: int, perm_key: str) -> bool:
+        if perm_key not in ["can_sell_channel", "can_sell_account"]:
+            return False
+        user = self.get_user(user_id) or {}
+        current = int(user.get(perm_key, 1 if perm_key == "can_sell_channel" else 0) or 0)
+        new_val = 0 if current else 1
+        return self.set_user_permission(user_id, perm_key, new_val)
+
+    def set_reseller_tier(self, user_id: int, tier: int) -> bool:
+        can_acc = 1 if tier >= 2 else 0
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET reseller_tier = ?, can_sell_account = ? WHERE user_id = ?", (tier, can_acc, user_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def is_elite_reseller(self, user_id: int) -> bool:
+        user = self.get_user(user_id) or {}
+        is_res = user.get("is_reseller", 0) >= 1
+        tier = user.get("reseller_tier", 1) or 1
+        can_acc = user.get("can_sell_account", 0) or 0
+        return bool(is_res and tier >= 2 and can_acc == 1)
 
     def get_all_resellers(self) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
@@ -1368,7 +1419,7 @@ class Database:
             conn.commit()
             return cursor.lastrowid
 
-    def approve_reseller_application(self, app_id: int) -> Optional[Dict[str, Any]]:
+    def approve_reseller_application(self, app_id: int, tier: int = 1) -> Optional[Dict[str, Any]]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT user_id FROM reseller_applications WHERE id = ?", (app_id,))
@@ -1386,14 +1437,16 @@ class Database:
             curr_bal = u["balance_bdt"] or 0.0
             new_bal = max(0.0, curr_bal - fee)
             code = f"RS-{user_id % 10000:04d}"
+            can_acc = 1 if tier >= 2 else 0
             
             cursor.execute("UPDATE reseller_applications SET status = 'approved' WHERE id = ?", (app_id,))
             cursor.execute("""
             UPDATE users 
-            SET is_reseller = 1, reseller_code = ?, reseller_quota_start = CURRENT_TIMESTAMP, 
+            SET is_reseller = 1, reseller_code = ?, reseller_tier = ?, can_sell_channel = 1, can_sell_account = ?,
+                reseller_quota_start = CURRENT_TIMESTAMP, 
                 reseller_monthly_sales = 0, reseller_deactivated_permanent = 0, balance_bdt = ?
             WHERE user_id = ?
-            """, (code, new_bal, user_id))
+            """, (code, tier, can_acc, new_bal, user_id))
             
             # Record fee deduction in orders ledger
             cursor.execute("""
@@ -1406,7 +1459,9 @@ class Database:
                 "user_id": user_id,
                 "reseller_code": code,
                 "fee_deducted": fee,
-                "remaining_balance": new_bal
+                "remaining_balance": new_bal,
+                "reseller_tier": tier,
+                "can_sell_account": bool(can_acc)
             }
 
     def reject_reseller_application(self, app_id: int) -> Optional[int]:
