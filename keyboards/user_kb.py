@@ -237,6 +237,28 @@ def get_reseller_app_approval_kb(app_id: int) -> InlineKeyboardMarkup:
         ]
     ])
 
+def get_reseller_package_selection_kb(lang: str = "bn", std_dep: int = 1000, elite_dep: int = 2000) -> InlineKeyboardMarkup:
+    """Buttons to select which reseller tier package to apply for."""
+    if lang in ["en", "hi"]:
+        std_btn = f"🥉 Apply for Standard Partner (Min ৳{std_dep})"
+        elite_btn = f"👑 Apply for Elite VIP Partner (Min ৳{elite_dep})"
+    else:
+        std_btn = f"🥉 Standard প্যাকেজ আবেদন (ন্যূনতম ৳{std_dep})"
+        elite_btn = f"👑 Elite VIP প্যাকেজ আবেদন (ন্যূনতম ৳{elite_dep})"
+
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            make_custom_button(text=std_btn, callback_data="apply_reseller_tier:1", emoji_key="check")
+        ],
+        [
+            make_custom_button(text=elite_btn, callback_data="apply_reseller_tier:2", emoji_key="diamond")
+        ],
+        [
+            make_custom_button(text=t("btn_back", lang), callback_data="back_reseller_hub", emoji_key="back"),
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
+        ]
+    ])
+
 def get_categories_kb(categories: List[Dict[str, Any]], cat_type: str = "course", lang: str = "bn") -> InlineKeyboardMarkup:
     """Inline keyboard for browsing categories with automatic item localization."""
     buttons = []

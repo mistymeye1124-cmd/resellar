@@ -369,6 +369,8 @@ class Database:
             app_cols = [row["name"] for row in cursor.fetchall()]
             if "balance_at_apply" not in app_cols:
                 cursor.execute("ALTER TABLE reseller_applications ADD COLUMN balance_at_apply REAL DEFAULT 0.0")
+            if "requested_tier" not in app_cols:
+                cursor.execute("ALTER TABLE reseller_applications ADD COLUMN requested_tier INTEGER DEFAULT 1")
 
             # 17. Sub-Admin Staff Roles & RBAC table
             cursor.execute("""
@@ -1409,13 +1411,13 @@ class Database:
             return cursor.rowcount > 0
 
     # --- ADVANCED RESELLER QUOTA & LEADERBOARD METHODS ---
-    def submit_reseller_application(self, user_id: int, info: str, balance: float = 0.0) -> int:
+    def submit_reseller_application(self, user_id: int, info: str, balance: float = 0.0, requested_tier: int = 1) -> int:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-            INSERT INTO reseller_applications (user_id, info, balance_at_apply, status)
-            VALUES (?, ?, ?, 'pending')
-            """, (user_id, info, balance))
+            INSERT INTO reseller_applications (user_id, info, balance_at_apply, requested_tier, status)
+            VALUES (?, ?, ?, ?, 'pending')
+            """, (user_id, info, balance, requested_tier))
             conn.commit()
             return cursor.lastrowid
 

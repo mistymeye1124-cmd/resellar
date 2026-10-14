@@ -6,7 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 import html
 import logging
 from database.db import db
-from keyboards.user_kb import get_reseller_hub_kb, get_cancel_fsm_kb
+from keyboards.user_kb import get_reseller_hub_kb, get_cancel_fsm_kb, get_reseller_package_selection_kb
 from config import ADMIN_USERNAME
 from utils.notifier import notify_admin_reseller_app
 from utils.emojis import em_tag, make_custom_button
@@ -29,6 +29,7 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
     is_perm_banned = user.get("reseller_deactivated_permanent", 0) == 1 or user.get("is_reseller", 0) == -1
     is_reseller = user.get("is_reseller", 0) >= 1
     min_dep = float(db.get_setting("reseller_min_deposit", "1000"))
+    elite_dep = float(db.get_setting("reseller_elite_min_deposit", "2000"))
     fee = float(db.get_setting("reseller_activation_fee", "500"))
     usable_bal = max(0, int(min_dep - fee))
     quota_info = db.get_reseller_quota_info(user_id)
@@ -168,24 +169,32 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
                 "আমাদের সমস্ত <b>কোর্স (৯০%)</b> এবং <b>ডিজিটাল টুলস (১০%)</b> পাইকারি রেটে কিনে "
                 "আপনার পেজ, গ্রুপ বা ক্লায়েন্টদের কাছে নিজের ইচ্ছামতো দামে সেল করতে পারেন!\n\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
+                "💎 <b>আমাদের ২টি পার্টনারশিপ প্যাকেজ:</b>\n"
+                f"• 🥉 <b>Standard পার্টনার:</b> চ্যানেল এক্সেস কোর্স পাইকারি সেল (ডিপোজিট ৳{int(min_dep)})\n"
+                f"• 👑 <b>Elite VIP পার্টনার:</b> ফুল এক্সেস — চ্যানেল + প্রাইভেট অ্যাকাউন্ট ও মেম্বারশিপ (ডিপোজিট ৳{int(elite_dep)})\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
                 "📈 <b>রিসেলার লাভের নমুনা:</b>\n"
                 "• Premiere Pro VIP: খুচরা ৳350 ➡️ <b>রিসেলার রেট ৳245</b> (লাভ ৳105!)\n"
                 "• MERN Web Dev: খুচরা ৳499 ➡️ <b>রিসেলার রেট ৳349</b> (লাভ ৳150!)\n"
                 "• AI Prompt Mastery: খুচরা ৳399 ➡️ <b>রিসেলার রেট ৳279</b> (লাভ ৳120!)\n"
                 "• Gemini 18M Link: খুচরা ৳75 ➡️ <b>রিসেলার রেট ৳52</b> (লাভ ৳23!)\n"
                 "━━━━━━━━━━━━━━━━━━━━\n\n"
-                "📌 <b>রিসেলার অ্যাক্টিভেশনের শর্তাবলী:</b>\n"
-                f"১. ওয়ালেটে ন্যূনতম <code>৳{int(min_dep)}</code> ব্যালেন্স থাকতে হবে।\n"
+                "📌 <b>পার্টনারশিপ অ্যাক্টিভেশনের শর্তাবলী:</b>\n"
+                f"১. ওয়ালেটে প্যাকেজ অনুযায়ী ন্যূনতম ডিপোজিট (Standard ৳{int(min_dep)} / Elite ৳{int(elite_dep)}) থাকতে হবে।\n"
                 f"২. অ্যাডমিন অনুমোদনের পর <code>৳{int(fee)}</code> এককালীন ভেরিফাইড অ্যাক্টিভেশন ফি কর্তন হবে।\n"
-                f"৩. অবশিষ্ট <code>৳{usable_bal}</code> আপনার ওয়ালেটে নিজস্ব ব্যবহারযোগ্য ব্যালেন্স হিসেবে থাকবে (যা দিয়ে পাইকারি রেটে কোর্স কিনবেন)।\n"
+                "৩. অবশিষ্ট ব্যালেন্স সম্পূর্ণ আপনার ওয়ালেটে থাকবে (যা দিয়ে সাথে সাথে পাইকারি রেটে কোর্স কিনবেন)।\n"
                 f"৪. প্রতি মাসে ন্যূনতম <code>{quota_info['target']}টি</code> সফল সেল সম্পন্ন করতে হবে।\n"
                 "৫. আপনার মার্কেটিং পেজ/গ্রুপ বা অডিয়েন্সের লিংক দিতে হবে।\n\n"
-                "👇 বিস্তারিত দেখতে বা আবেদন করতে নিচে ক্লিক করুন:"
+                "👇 বিস্তারিত প্যাকেজ দেখতে ও আবেদন করতে নিচে <b>📝 রিসেলার আবেদন</b> বাটনে ক্লিক করুন:"
             ),
             "en": (
                 "🤝 <b>VIP Reseller Program — Unlimited Earning Potential!</b>\n\n"
                 "Buy all our <b>Courses (90%)</b> and <b>Digital Tools (10%)</b> at wholesale rates "
                 "and sell them to your audience at your own desired price!\n\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                "💎 <b>2 Partnership Packages Available:</b>\n"
+                f"• 🥉 <b>Standard Partner:</b> Wholesale Channel Access courses (Min Deposit ৳{int(min_dep)})\n"
+                f"• 👑 <b>Elite VIP Partner:</b> Full Access — Channel + Private Accounts & Logins (Min Deposit ৳{int(elite_dep)})\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
                 "📈 <b>Profit Examples:</b>\n"
                 "• Premiere Pro VIP: Retail ৳350 ➡️ <b>Reseller ৳245</b> (Profit ৳105!)\n"
@@ -194,25 +203,29 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
                 "• Gemini 18M Link: Retail ৳75 ➡️ <b>Reseller ৳52</b> (Profit ৳23!)\n"
                 "━━━━━━━━━━━━━━━━━━━━\n\n"
                 "📌 <b>Activation Requirements:</b>\n"
-                f"1. Minimum <code>৳{int(min_dep)} BDT</code> wallet balance.\n"
+                f"1. Minimum wallet balance per package (Standard ৳{int(min_dep)} / Elite ৳{int(elite_dep)} BDT).\n"
                 f"2. Non-refundable Verified Partner Activation Fee: <code>৳{int(fee)} BDT</code> (deducted upon admin approval).\n"
-                f"3. Usable wholesale shopping balance remaining: <code>৳{usable_bal} BDT</code> (used to purchase courses at wholesale rates).\n"
+                "3. Usable wholesale shopping balance remains in your wallet for purchasing courses.\n"
                 f"4. Complete at least <code>{quota_info['target']}</code> sales per month.\n"
                 "5. Provide marketing channel/community proof.\n\n"
-                "👇 Click below to view wholesale prices or apply:"
+                "👇 Click below to choose a package and apply:"
             ),
             "hi": (
                 "🤝 <b>वीआईपी रीसेलर प्रोग्राम — घर बैठे असीमित कमाई!</b>\n\n"
                 "हमारे सभी <b>कोर्सेस (90%)</b> और <b>डिजिटल टूल्स (10%)</b> थोक भाव पर खरीदें "
                 "और अपनी पसंद के दाम पर बेचें!\n\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
+                "💎 <b>2 पार्टनरशिप पैकेज उपलब्ध हैं:</b>\n"
+                f"• 🥉 <b>Standard Partner:</b> चैनल एक्सेस कोर्स थोक बिक्री (न्यूनतम ৳{int(min_dep)})\n"
+                f"• 👑 <b>Elite VIP Partner:</b> पूर्ण एक्सेस — चैनल + निजी खाते और लॉगिन (न्यूनतम ৳{int(elite_dep)})\n"
+                "━━━━━━━━━━━━━━━━━━━━\n\n"
                 "📌 <b>सक्रियण शर्तें:</b>\n"
-                f"1. वॉलेट में न्यूनतम <code>৳{int(min_dep)}</code> बैलेंस होना चाहिए।\n"
+                f"1. वॉलेट में पैकेज अनुसार न्यूनतम बैलेंस (Standard ৳{int(min_dep)} / Elite ৳{int(elite_dep)}) होना चाहिए।\n"
                 f"2. व्यवस्थापक अनुमोदन पर <code>৳{int(fee)}</code> गैर-वापसी योग्य सत्यापन शुल्क काटा जाएगा।\n"
-                f"3. शेष <code>৳{usable_bal}</code> आपकी खरीद शेष राशि के रूप में उपलब्ध रहेगा।\n"
+                "3. शेष राशि आपकी थोक खरीदारी के लिए वॉलेट में उपलब्ध रहेगी।\n"
                 f"4. प्रति माह न्यूनतम <code>{quota_info['target']}</code> बिक्री करनी होगी।\n"
                 "5. मार्केटिंग पेज/ग्रुप का प्रमाण देना होगा।\n\n"
-                "👇 आवेदन करने या थोक मूल्य देखने के लिए नीचे क्लिक करें:"
+                "👇 आवेदन करने या पैकेज चुनने के लिए नीचे क्लिक करें:"
             )
         }
         return pitch_texts.get(lang, pitch_texts["en"]), get_reseller_hub_kb(is_reseller=False, lang=lang)
@@ -527,39 +540,114 @@ async def handle_reseller_live_race(call: CallbackQuery):
 
 @router.callback_query(F.data == "apply_reseller")
 async def handle_start_apply(call: CallbackQuery, state: FSMContext):
+    if state:
+        await state.clear()
+    await call.answer()
     user_id = call.from_user.id
     lang = db.get_user_language(user_id)
     user = db.get_user(user_id)
     if not user:
         user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
         
-    min_dep = float(db.get_setting("reseller_min_deposit", "1000"))
-    fee = float(db.get_setting("reseller_activation_fee", "500"))
+    std_dep = int(float(db.get_setting("reseller_min_deposit", "1000")))
+    elite_dep = int(float(db.get_setting("reseller_elite_min_deposit", "2000")))
+    fee = int(float(db.get_setting("reseller_activation_fee", "500")))
+    curr_bal = float(user.get("balance_bdt") or 0.0)
+    std_rem = max(0, std_dep - fee)
+    elite_rem = max(0, elite_dep - fee)
+
+    if lang in ["en", "hi"]:
+        pkg_text = (
+            "🤝 <b>Choose Your Reseller Partnership Package</b>\n\n"
+            "Select the partnership tier that matches your business model:\n\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🥉 <b>Package 1: Standard Partner (Channel Access)</b>\n"
+            "• <b>Scope:</b> Wholesale access to all Channel Access courses\n"
+            "• <b>Permissions:</b> Channel links only (Account logins restricted)\n"
+            f"• <b>Required Balance:</b> <code>৳{std_dep:,} BDT</code>\n"
+            f"• <b>One-Time Fee:</b> <code>৳{fee:,} BDT</code> (deducted upon approval)\n"
+            f"• <b>Shopping Balance:</b> <code>৳{std_rem:,} BDT</code> remains in wallet\n\n"
+            "👑 <b>Package 2: Elite VIP Partner (Full Access)</b>\n"
+            "• <b>Scope:</b> Full wholesale access to both Channels & Personal Accounts\n"
+            "• <b>Permissions:</b> Channels + Premium Accounts/Credentials Unlocked\n"
+            f"• <b>Required Balance:</b> <code>৳{elite_dep:,} BDT</code>\n"
+            f"• <b>One-Time Fee:</b> <code>৳{fee:,} BDT</code> (deducted upon approval)\n"
+            f"• <b>Shopping Balance:</b> <code>৳{elite_rem:,} BDT</code> remains in wallet\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"💳 <b>Your Current Balance:</b> <code>৳{curr_bal:,.2f} BDT</code>\n\n"
+            "👇 <i>Select a package below to submit your application:</i>"
+        )
+    else:
+        pkg_text = (
+            "🤝 <b>রিসেলার পার্টনারশিপ প্যাকেজ নির্বাচন করুন</b>\n\n"
+            "আমাদের সাথে পার্টনার হিসেবে কাজ করার জন্য ২টি বিশেষ প্যাকেজ রয়েছে। আপনার প্রয়োজনীয়তা অনুযায়ী পছন্দের প্যাকেজ বেছে নিন:\n\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🥉 <b>প্যাকেজ ১: Standard পার্টনার (চ্যানেল এক্সেস)</b>\n"
+            "• <b>কাজের পরিধি:</b> সমস্ত চ্যানেল এক্সেস কোর্স পাইকারি রেটে কেনার সুযোগ\n"
+            "• <b>অনুমতি:</b> শুধুমাত্র চ্যানেল লিংক এক্সেস (অ্যাকাউন্ট ক্রেডেনশিয়াল লক থাকবে)\n"
+            f"• <b>ন্যূনতম ব্যালেন্স:</b> <code>৳{std_dep:,} BDT</code>\n"
+            f"• <b>অ্যাক্টিভেশন ফি:</b> <code>৳{fee:,} BDT</code> (অনুমোদনের পর কর্তন হবে)\n"
+            f"• <b>শপিং ব্যালেন্স:</b> <code>৳{std_rem:,} BDT</code> (ওয়ালেটে ব্যবহারের জন্য থাকবে)\n\n"
+            "👑 <b>প্যাকেজ ২: Elite VIP পার্টনার (ফুল এক্সেস)</b>\n"
+            "• <b>কাজের পরিধি:</b> সমস্ত কোর্স + প্রিমিয়াম পার্সোনাল অ্যাকাউন্ট / লগইন ক্রেডেনশিয়াল\n"
+            "• <b>অনুমতি:</b> উভয় চ্যানেল এবং ফুল অ্যাকাউন্ট এক্সেস সম্পূর্ণ আনলক\n"
+            f"• <b>ন্যূনতম ব্যালেন্স:</b> <code>৳{elite_dep:,} BDT</code>\n"
+            f"• <b>অ্যাক্টিভেশন ফি:</b> <code>৳{fee:,} BDT</code> (অনুমোদনের পর কর্তন হবে)\n"
+            f"• <b>শপিং ব্যালেন্স:</b> <code>৳{elite_rem:,} BDT</code> (ওয়ালেটে ব্যবহারের জন্য থাকবে)\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"💳 <b>আপনার বর্তমান ব্যালেন্স:</b> <code>৳{curr_bal:,.2f} BDT</code>\n\n"
+            "👇 <i>যে প্যাকেজে আবেদন করতে চান, নিচে সেই বাটনে ক্লিক করুন:</i>"
+        )
+    
+    kb = get_reseller_package_selection_kb(lang=lang, std_dep=std_dep, elite_dep=elite_dep)
+    await render_screen(call, pkg_text, reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("apply_reseller_tier:"))
+async def handle_start_apply_tier(call: CallbackQuery, state: FSMContext):
+    user_id = call.from_user.id
+    lang = db.get_user_language(user_id)
+    user = db.get_user(user_id)
+    if not user:
+        user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
+        
+    parts = call.data.split(":")
+    tier = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 1
+    
+    std_dep = int(float(db.get_setting("reseller_min_deposit", "1000")))
+    elite_dep = int(float(db.get_setting("reseller_elite_min_deposit", "2000")))
+    fee = int(float(db.get_setting("reseller_activation_fee", "500")))
     curr_bal = float(user.get("balance_bdt") or 0.0)
     
-    # 1000 BDT MANDATORY CHECK
+    min_dep = elite_dep if tier >= 2 else std_dep
+    tier_title_bn = "👑 Elite VIP পার্টনার (ফুল এক্সেস)" if tier >= 2 else "🥉 Standard পার্টনার (চ্যানেল এক্সেস)"
+    tier_title_en = "👑 Elite VIP Partner (Full Access)" if tier >= 2 else "🥉 Standard Partner (Channel Access)"
+    tier_title = tier_title_en if lang in ["en", "hi"] else tier_title_bn
+    
+    # Balance Gate Check for this specific tier
     if curr_bal < min_dep:
-        alert_popup = "⚠️ Minimum 1,000 BDT balance required!" if lang in ["en", "hi"] else "⚠️ ন্যূনতম ১,০০০ টাকা ব্যালেন্স প্রয়োজন!"
+        alert_popup = f"⚠️ Minimum ৳{min_dep:,} BDT balance required for {tier_title}!" if lang in ["en", "hi"] else f"⚠️ {tier_title} আবেদনের জন্য ওয়ালেটে ন্যূনতম ৳{min_dep:,} ব্যালেন্স প্রয়োজন!"
         await call.answer(alert_popup, show_alert=True)
         need_amount = int(min_dep - curr_bal)
-        usable_after = int(min_dep - fee)
+        usable_after = max(0, int(min_dep - fee))
         
         if lang in ["en", "hi"]:
             alert_text = (
-                "⚠️ <b>A minimum wallet balance of ৳1,000 BDT is required to apply for Reseller!</b>\n\n"
+                f"⚠️ <b>Minimum balance of ৳{min_dep:,} BDT required for {tier_title}!</b>\n\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
-                f"💳 <b>Your Current Balance:</b> <code>৳{curr_bal:.2f} BDT</code>\n"
-                f"💰 <b>Required Minimum Balance:</b> <code>৳{int(min_dep)} BDT</code>\n"
-                f"📌 <b>Balance Shortage:</b> <code>৳{need_amount} BDT</code>\n"
+                f"🎯 <b>Selected Package:</b> {tier_title}\n"
+                f"💳 <b>Your Current Balance:</b> <code>৳{curr_bal:,.2f} BDT</code>\n"
+                f"💰 <b>Required Minimum Balance:</b> <code>৳{min_dep:,} BDT</code>\n"
+                f"📌 <b>Balance Shortage:</b> <code>৳{need_amount:,} BDT</code>\n"
                 "━━━━━━━━━━━━━━━━━━━━\n\n"
-                "📊 <b>Balance & Fee Breakdown:</b>\n"
-                f"• <b>Verified Partner Activation Fee:</b> <code>৳{int(fee)} BDT</code> (Non-refundable — deducted upon admin approval)\n"
-                f"• <b>Usable Wholesale Shopping Balance:</b> <code>৳{usable_after} BDT</code> (Remains in wallet for purchasing courses/tools at wholesale prices)\n\n"
+                "📊 <b>Fee & Shopping Balance Breakdown:</b>\n"
+                f"• <b>One-Time Activation Fee:</b> <code>৳{fee:,} BDT</code> (Deducted upon admin approval)\n"
+                f"• <b>Usable Wholesale Shopping Balance:</b> <code>৳{usable_after:,} BDT</code> (Remains in wallet for shopping)\n\n"
                 "🛡️ <i>This security policy filters non-serious applicants and protects genuine resellers.</i>\n\n"
                 "👇 Please add funds to your wallet using the button below and re-apply:"
             )
             gate_kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="💳 Add Balance", callback_data="add_balance_shortcut")],
+                [InlineKeyboardButton(text="🔄 Change Package", callback_data="apply_reseller")],
                 [
                     InlineKeyboardButton(text="🔙 Back to Reseller Hub", callback_data="back_reseller_hub"),
                     InlineKeyboardButton(text="🏠 Main Menu", callback_data="main_menu")
@@ -567,20 +655,22 @@ async def handle_start_apply(call: CallbackQuery, state: FSMContext):
             ])
         else:
             alert_text = (
-                "⚠️ <b>রিসেলার আবেদন করতে ওয়ালেটে ন্যূনতম ৳১,০০০ ব্যালেন্স থাকা বাধ্যতামূলক!</b>\n\n"
+                f"⚠️ <b>{tier_title} আবেদনের জন্য ওয়ালেটে ন্যূনতম ৳{min_dep:,} ব্যালেন্স প্রয়োজন!</b>\n\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
-                f"💳 <b>আপনার বর্তমান ব্যালেন্স:</b> <code>৳{curr_bal:.2f} BDT</code>\n"
-                f"💰 <b>প্রয়োজনীয় ন্যূনতম ব্যালেন্স:</b> <code>৳{int(min_dep)} BDT</code>\n"
-                f"📌 <b>ঘাটতি ব্যালেন্স:</b> <code>৳{need_amount} BDT</code>\n"
+                f"🎯 <b>নির্বাচিত প্যাকেজ:</b> {tier_title}\n"
+                f"💳 <b>আপনার বর্তমান ব্যালেন্স:</b> <code>৳{curr_bal:,.2f} BDT</code>\n"
+                f"💰 <b>প্রয়োজনীয় ন্যূনতম ব্যালেন্স:</b> <code>৳{min_dep:,} BDT</code>\n"
+                f"📌 <b>ঘাটতি ব্যালেন্স:</b> <code>৳{need_amount:,} BDT</code>\n"
                 "━━━━━━━━━━━━━━━━━━━━\n\n"
                 "📊 <b>ব্যালেন্স ও ফি বন্টন নিয়মাবলী:</b>\n"
-                f"• <b>ভেরিফাইড পার্টনার অ্যাক্টিভেশন ফি:</b> <code>৳{int(fee)} BDT</code> (নন-রিফান্ডেবল — অ্যাডমিন অনুমোদনের পর স্বয়ংক্রিয়ভাবে কর্তন হবে)\n"
-                f"• <b>ব্যবহারযোগ্য পাইকারি শপিং ব্যালেন্স:</b> <code>৳{usable_after} BDT</code> (আপনার ওয়ালেটে থাকবে, যা দিয়ে পাইকারি রেটে কোর্স/টুলস কিনতে পারবেন)\n\n"
+                f"• <b>ভেরিফাইড পার্টনার অ্যাক্টিভেশন ফি:</b> <code>৳{fee:,} BDT</code> (নন-রিফান্ডেবল — অনুমোদনের পর স্বয়ংক্রিয়ভাবে কর্তন হবে)\n"
+                f"• <b>ব্যবহারযোগ্য পাইকারি শপিং ব্যালেন্স:</b> <code>৳{usable_after:,} BDT</code> (আপনার ওয়ালেটে থাকবে, যা দিয়ে পাইকারি রেটে কোর্স কিনতে পারবেন)\n\n"
                 "🛡️ <i>ভুয়া আবেদনকারী ও নন-সিরিয়াস ইউজার ফিল্টার করতে এই সিকিউরিটি পলিসি কার্যকর করা হয়েছে।</i>\n\n"
                 "👇 অনুগ্রহ করে নিচের বাটনে চাপ দিয়ে ওয়ালেটে ব্যালেন্স লোড করে পুনরায় আবেদন করুন:"
             )
             gate_kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="💳 Add Balance (ব্যালেন্স লোড করুন)", callback_data="add_balance_shortcut")],
+                [InlineKeyboardButton(text="🔄 প্যাকেজ পরিবর্তন (Change Package)", callback_data="apply_reseller")],
                 [
                     InlineKeyboardButton(text="🔙 রিসেলার হাব (Back)", callback_data="back_reseller_hub"),
                     InlineKeyboardButton(text="🏠 মূল মেনু (Home)", callback_data="main_menu")
@@ -588,15 +678,16 @@ async def handle_start_apply(call: CallbackQuery, state: FSMContext):
             ])
         await render_screen(call, alert_text, reply_markup=gate_kb, parse_mode="HTML")
         return
-        
+
     await call.answer()
     await state.set_state(ResellerApplyState.waiting_for_info)
+    await state.update_data(requested_tier=tier)
     
     usable_after = max(0.0, curr_bal - fee)
     if lang in ["en", "hi"]:
         prompt = (
-            f"📝 <b>VIP Reseller Application Form (Verified Balance: ৳{curr_bal:.2f} ✅)</b>\n\n"
-            f"💡 <b>Note:</b> Upon approval, a one-time verification fee of <code>৳{int(fee)}</code> will be deducted, leaving <code>৳{usable_after:.2f}</code> as your active wholesale shopping balance.\n\n"
+            f"📝 <b>{tier_title} Application Form (Verified Balance: ৳{curr_bal:.2f} ✅)</b>\n\n"
+            f"💡 <b>Note:</b> Upon approval, a one-time verification fee of <code>৳{fee}</code> will be deducted, leaving <code>৳{usable_after:.2f}</code> as your active wholesale shopping balance.\n\n"
             "Please send the following details in a single message:\n"
             "1. Link to your Facebook page/group or Telegram/WhatsApp channel\n"
             "2. How do you plan to market and sell courses, and your experience?\n\n"
@@ -604,8 +695,8 @@ async def handle_start_apply(call: CallbackQuery, state: FSMContext):
         )
     else:
         prompt = (
-            f"📝 <b>ভিআইপি রিসেলার আবেদন ফর্ম (ভেরিফাইড ব্যালেন্স: ৳{curr_bal:.2f} ✅)</b>\n\n"
-            "💡 <b>মনে রাখবেন:</b> অ্যাডমিন অনুমোদন দিলে আপনার ওয়ালেট থেকে এককালীন <code>৳500</code> ভেরিফিকেশন ফি কর্তন হবে এবং অবশিষ্ট <code>৳" f"{usable_after:.2f}</code> শপিং ব্যালেন্স হিসেবে থাকবে।\n\n"
+            f"📝 <b>{tier_title} আবেদন ফর্ম (ভেরিফাইড ব্যালেন্স: ৳{curr_bal:.2f} ✅)</b>\n\n"
+            f"💡 <b>মনে রাখবেন:</b> অ্যাডমিন অনুমোদন দিলে আপনার ওয়ালেট থেকে এককালীন <code>৳{fee}</code> ভেরিফিকেশন ফি কর্তন হবে এবং অবশিষ্ট <code>৳{usable_after:.2f}</code> শপিং ব্যালেন্স হিসেবে থাকবে।\n\n"
             "অনুগ্রহ করে নিচের তথ্যগুলো এক মেসেজে লিখে পাঠান:\n"
             "১. আপনার ফেসবুক পেজ, গ্রুপ বা টেলিগ্রাম/হোয়াটসঅ্যাপ চ্যানেলের লিংক\n"
             "২. আপনি কীভাবে কোর্স মার্কেটিং ও সেল করবেন এবং আপনার অভিজ্ঞতা?\n\n"
@@ -620,17 +711,25 @@ async def handle_process_apply(message: Message, state: FSMContext, bot: Bot):
     db_user = db.get_user(user.id)
     lang = db.get_user_language(user.id)
     curr_bal = float(db_user.get("balance_bdt") or 0.0) if db_user else 0.0
+    
+    state_data = await state.get_data()
+    requested_tier = int(state_data.get("requested_tier", 1))
     await state.clear()
     
-    # Save application with balance snapshot
-    app_id = db.submit_reseller_application(user.id, info, curr_bal)
+    # Save application with balance snapshot and requested tier
+    app_id = db.submit_reseller_application(user.id, info, curr_bal, requested_tier=requested_tier)
     fee = float(db.get_setting("reseller_activation_fee", "500"))
     usable_after = max(0.0, curr_bal - fee)
     
+    tier_title_bn = "👑 Elite VIP পার্টনার" if requested_tier >= 2 else "🥉 Standard পার্টনার"
+    tier_title_en = "👑 Elite VIP Partner" if requested_tier >= 2 else "🥉 Standard Partner"
+    tier_title = tier_title_en if lang in ["en", "hi"] else tier_title_bn
+
     if lang in ["en", "hi"]:
         confirm_text = (
-            "🎉 <b>Your Reseller Application has been submitted!</b>\n\n"
+            f"🎉 <b>Your {tier_title} Application has been submitted!</b>\n\n"
             f"🆔 Application ID: <code>#{app_id}</code>\n"
+            f"🎯 Requested Package: <b>{tier_title}</b>\n"
             f"💰 Verified Balance: <code>৳{curr_bal:.2f} BDT</code>\n"
             f"🛡️ Fee Upon Approval: <code>৳{fee:.2f} BDT</code>\n"
             f"💳 Balance Remaining: <code>৳{usable_after:.2f} BDT</code>\n\n"
@@ -644,8 +743,9 @@ async def handle_process_apply(message: Message, state: FSMContext, bot: Bot):
         ])
     else:
         confirm_text = (
-            "🎉 <b>আপনার রিসেলার আবেদন সফলভাবে সাবমিট হয়েছে!</b>\n\n"
+            f"🎉 <b>আপনার {tier_title} আবেদন সফলভাবে সাবমিট হয়েছে!</b>\n\n"
             f"🆔 আবেদন নং: <code>#{app_id}</code>\n"
+            f"🎯 আবেদনকৃত প্যাকেজ: <b>{tier_title}</b>\n"
             f"💰 বর্তমান ভেরিফাইড ব্যালেন্স: <code>৳{curr_bal:.2f} BDT</code>\n"
             f"🛡️ অনুমোদনে কর্তনযোগ্য ফি: <code>৳{fee:.2f} BDT</code>\n"
             f"💳 অনুমোদনের পর অবশিষ্ট থাকবে: <code>৳{usable_after:.2f} BDT</code>\n\n"
@@ -659,13 +759,13 @@ async def handle_process_apply(message: Message, state: FSMContext, bot: Bot):
         ])
     await message.answer(confirm_text, reply_markup=confirm_kb, parse_mode="HTML")
     
-    # Notify Admin Instantly with interactive action buttons
+    # Notify Admin Instantly with interactive action buttons and requested tier
     user_payload = {
         "id": user.id,
         "full_name": user.full_name,
         "username": user.username
     }
-    await notify_admin_reseller_app(bot, app_id, user_payload, info, curr_bal)
+    await notify_admin_reseller_app(bot, app_id, user_payload, info, curr_bal, requested_tier=requested_tier)
 
 @router.callback_query(F.data.startswith("approve_reseller_app:"))
 async def handle_approve_reseller_app(call: CallbackQuery, bot: Bot):

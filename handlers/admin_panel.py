@@ -1565,10 +1565,13 @@ async def handle_admin_pending_apps_cb(call: CallbackQuery):
         
     from keyboards.user_kb import get_reseller_app_approval_kb
     for app in apps:
+        req_tier = app.get("requested_tier", 1) or 1
+        tier_title = "👑 Elite VIP (ফুল এক্সেস)" if req_tier >= 2 else "🥉 Standard (চ্যানেল পার্টনার)"
         app_text = (
             f"📝 **রিসেলার আবেদন নং: #{app['id']}**\n"
             f"👤 আবেদনকারী: {app['first_name']} (@{app['username'] or 'N/A'})\n"
             f"🆔 আইডি: `{app['user_id']}`\n"
+            f"🎯 আবেদনকৃত প্যাকেজ: **{tier_title}**\n"
             f"💳 কারেন্ট ব্যালেন্স: `৳{app['balance_bdt']:.2f}`\n"
             f"📄 বিবরণ: _{app['info']}_\n"
             f"📅 তারিখ: `{app['created_at']}`"

@@ -145,7 +145,7 @@ async def notify_admin_order(bot: Bot, order: dict, user: dict):
             logger.error(f"Could not send order alert to admin {aid}: {e}")
 
 
-async def notify_admin_reseller_app(bot: Bot, app_id: int, user: dict, info: str, balance: float):
+async def notify_admin_reseller_app(bot: Bot, app_id: int, user: dict, info: str, balance: float, requested_tier: int = 1):
     """
     Sends prominent instant alert to admins when a user submits a reseller application.
     """
@@ -156,13 +156,15 @@ async def notify_admin_reseller_app(bot: Bot, app_id: int, user: dict, info: str
 
     fee = 500.0
     remaining = max(0.0, balance - fee)
+    tier_label = "👑 Elite VIP পার্টনার (ফুল এক্সেস)" if requested_tier >= 2 else "🥉 Standard পার্টনার (চ্যানেল এক্সেস)"
     text = (
         f"💎 <b>[নতুন রিসেলার আবেদন / RESELLER APPLICATION]</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"🆔 <b>আবেদন নং:</b> <code>#{app_id}</code>\n"
         f"👤 <b>আবেদনকারী:</b> {user_name} ({username})\n"
         f"🆔 <b>ইউজার আইডি:</b> <code>{user_id}</code>\n"
-        f"💰 <b>ওয়ালেট ব্যালেন্স:</b> <code>৳{balance:.2f} BDT</code> (>= ৳1,000 শর্ত পূরণ ✅)\n"
+        f"🎯 <b>আবেদনকৃত প্যাকেজ:</b> <code>{tier_label}</code>\n"
+        f"💰 <b>ওয়ালেট ব্যালেন্স:</b> <code>৳{balance:.2f} BDT</code> ✅\n"
         f"🛡️ <b>অনুমোদনে ফি কর্তন হবে:</b> <code>৳{fee:.2f} BDT</code> (অটো-চার্জ)\n"
         f"💳 <b>অনুমোদনের পর ইউজারের থাকবে:</b> <code>৳{remaining:.2f} BDT</code> (শপিং ব্যালেন্স)\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"

@@ -33,7 +33,8 @@ TOP_LEVEL_NAV_CALLBACKS = {
     "admin_pending_deps",
     "cancel_fsm",
     "toggle_bottom_menu",
-    "reseller_upgrade_info"
+    "reseller_upgrade_info",
+    "apply_reseller"
 }
 
 TOP_LEVEL_NAV_PREFIXES = (
@@ -45,7 +46,8 @@ TOP_LEVEL_NAV_PREFIXES = (
     "locked_channel_tier:",
     "usr_ctl_tog_ch:",
     "usr_ctl_tog_acc:",
-    "usr_ctl_tog_tier:"
+    "usr_ctl_tog_tier:",
+    "apply_reseller_tier:"
 )
 
 class CallbackDeduplicationMiddleware(BaseMiddleware):
