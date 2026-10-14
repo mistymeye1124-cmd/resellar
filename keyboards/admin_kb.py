@@ -14,11 +14,11 @@ def get_admin_main_kb(stats: Dict[str, Any] = None, is_super: bool = True, permi
     if is_super:
         buttons = [
             [
-                make_custom_button(text="⚡ Stock Manager (স্টক অন/অফ)", callback_data="admin_stock_hub", emoji_key="zap"),
-                make_custom_button(text="👑 Sub-Admins (টিম ও রোল)", callback_data="admin_subadmins_menu", emoji_key="crown")
+                make_custom_button(text="⚡ Stock Manager", callback_data="admin_stock_hub", emoji_key="zap"),
+                make_custom_button(text="👑 Sub-Admins", callback_data="admin_subadmins_menu", emoji_key="crown")
             ],
             [
-                make_custom_button(text="🤖 Auto Add Course (Groq AI ⚡)", callback_data="admin_groq_auto_add", emoji_key="zap"),
+                make_custom_button(text="🤖 Auto Add (AI)", callback_data="admin_groq_auto_add", emoji_key="zap"),
                 make_custom_button(text="Add Course / Item", callback_data="admin_add_prod", emoji_key="courses")
             ],
             [
@@ -26,11 +26,11 @@ def get_admin_main_kb(stats: Dict[str, Any] = None, is_super: bool = True, permi
                 make_custom_button(text="Manage Courses", callback_data="admin_list_prods", emoji_key="catalog")
             ],
             [
-                make_custom_button(text="👥 Users Directory (সকল ইউজার)", callback_data="admin_users_dir:1:all", emoji_key="diamond"),
+                make_custom_button(text="👥 Users Directory", callback_data="admin_users_dir:1:all", emoji_key="diamond"),
                 make_custom_button(text=res_label, callback_data="admin_resellers_menu", emoji_key="crown")
             ],
             [
-                make_custom_button(text="🔍 Smart User Search", callback_data="admin_search_user_prompt", emoji_key="search"),
+                make_custom_button(text="🔍 Smart Search", callback_data="admin_search_user_prompt", emoji_key="search"),
                 make_custom_button(text=dep_label, callback_data="admin_pending_deps", emoji_key="deposit")
             ],
             [
@@ -38,15 +38,15 @@ def get_admin_main_kb(stats: Dict[str, Any] = None, is_super: bool = True, permi
                 make_custom_button(text="Broadcast Studio", callback_data="admin_broadcast_hub", emoji_key="broadcast")
             ],
             [
-                make_custom_button(text="User Balance Manager", callback_data="admin_manage_balance", emoji_key="wallet"),
+                make_custom_button(text="Balance Manager", callback_data="admin_manage_balance", emoji_key="wallet"),
                 make_custom_button(text="Coupons & Vouchers", callback_data="admin_coupons_menu", emoji_key="coupon")
             ],
             [
-                make_custom_button(text="Free Claim Drops (লুট/গিভঅ্যাওয়ে)", callback_data="admin_free_drops_menu", emoji_key="free_claim"),
+                make_custom_button(text="🎁 Free Claim Drops", callback_data="admin_free_drops_menu", emoji_key="free_claim"),
                 make_custom_button(text="Settings & Gateways", callback_data="admin_settings_menu", emoji_key="settings")
             ],
             [
-                make_custom_button(text="💾 Instant DB Backup (ব্যাকআপ নিন)", callback_data="admin_instant_db_backup", emoji_key="box"),
+                make_custom_button(text="💾 DB Backup", callback_data="admin_instant_db_backup", emoji_key="box"),
                 make_custom_button(text="Refresh Dashboard", callback_data="admin_main_dashboard", emoji_key="refresh")
             ],
             [

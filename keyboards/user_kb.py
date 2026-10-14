@@ -65,7 +65,9 @@ def get_reseller_verification_kb(username: Optional[str] = None, lang: str = "bn
             text="🔍 অন্য রিসেলার যাচাই" if lang == "bn" else ("🔍 Verify Another Reseller" if lang == "en" else "🔍 अन्य रीसेलर सत्यापन"),
             callback_data="verify_reseller_prompt",
             emoji_key="search"
-        ),
+        )
+    ])
+    buttons.append([
         make_custom_button(
             text=t("btn_home", lang),
             callback_data="main_menu",
@@ -664,15 +666,17 @@ def get_buy_confirm_kb(product_id: int, price_bdt: float, price_usd: float, has_
     """Confirm purchase with BDT or USD balance, or referral points, plus coupon application."""
     cb_suffix = f":{tier}" if tier != "default" else ""
     if lang in ["en", "hi", "ur"]:
-        pay_bdt = f"Pay ৳{int(price_bdt)} (BDT)"
-        pay_usd = f"Pay ${price_usd} (USD)"
+        pay_bdt = f"💳 Pay ৳{int(price_bdt)} (BDT)"
+        pay_usd = f"💵 Pay ${price_usd} (USD)"
     else:
-        pay_bdt = f"৳{int(price_bdt)} পে করুন (BDT)"
-        pay_usd = f"${price_usd} পে করুন (USD)"
+        pay_bdt = f"💳 ৳{int(price_bdt)} পে করুন (BDT)"
+        pay_usd = f"💵 ${price_usd} পে করুন (USD)"
     cancel_cb = f"buy_tier_select:{product_id}" if tier != "default" else f"prod:{product_id}"
     buttons = [
         [
-            make_custom_button(text=pay_bdt, callback_data=f"confirm_buy:{product_id}:BDT{cb_suffix}", emoji_key="check"),
+            make_custom_button(text=pay_bdt, callback_data=f"confirm_buy:{product_id}:BDT{cb_suffix}", emoji_key="check")
+        ],
+        [
             make_custom_button(text=pay_usd, callback_data=f"confirm_buy:{product_id}:USD{cb_suffix}", emoji_key="check")
         ]
     ]
