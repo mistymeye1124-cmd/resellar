@@ -89,6 +89,13 @@ async def notify_admin_order(bot: Bot, order: dict, user: dict):
     amount = order.get("amount_paid", 0)
     currency = order.get("currency", "BDT")
     ptype = escape(order.get("product_type", "course"))
+    access_tier = order.get("access_tier", "default")
+    tier_badge = ""
+    if access_tier == "channel":
+        tier_badge = " [📢 VIP Channel]"
+    elif access_tier == "account":
+        tier_badge = " [🔐 Personal Account]"
+
     is_reseller = order.get("is_reseller_order", False)
     rem_bal = order.get("remaining_balance", 0.0)
     is_manual = order.get("manual_delivery", False)
@@ -109,7 +116,7 @@ async def notify_admin_order(bot: Bot, order: dict, user: dict):
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"🆔 <b>অর্ডার নং:</b> <code>#{order_id}</code>\n"
         f"📦 <b>প্রোডাক্ট/কোর্স:</b> <b>{title}</b>\n"
-        f"🏷️ <b>ধরন:</b> <code>{ptype}</code> | {role_badge}\n"
+        f"🏷️ <b>ধরন:</b> <code>{ptype}{tier_badge}</code> | {role_badge}\n"
         f"💰 <b>পেইড অ্যামাউন্ট:</b> <code>৳{amount} {currency}</code>\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"👤 <b>ক্রেতা:</b> {user_name} ({username})\n"

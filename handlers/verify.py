@@ -83,11 +83,23 @@ def generate_verification_certificate(target_user: dict, query: str, lang: str =
 
     if is_res:
         joined_date = target_user.get("reseller_quota_start") or target_user.get("joined_at") or "2026-01-01"
+        tier = target_user.get("reseller_tier", 1)
+        perms = db.get_user_permissions(target_user.get("user_id", 0))
+        is_elite = tier >= 2 or perms.get("can_sell_account", False)
+
         if lang == "en":
+            tier_line = (
+                "👑 <b>Partnership Tier:</b> <code>👑 Elite VIP Partner</code>\n"
+                "🏷️ <b>Authorized Scope:</b> <b>VIP Channels + Personal Accounts</b>\n"
+                if is_elite else
+                "🥉 <b>Partnership Tier:</b> <code>🥉 Standard Partner</code>\n"
+                "🏷️ <b>Authorized Scope:</b> <b>Official VIP Telegram Channels</b>\n"
+            )
             return (
                 "🛡️ <b>Official Verified Reseller Partner</b> 🛡️\n\n"
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 "🎖️ <b>Recognition:</b> ✅ Authorized Official Reseller\n"
+                f"{tier_line}"
                 f"👤 <b>Reseller Name:</b> {fname}\n"
                 f"🆔 <b>Verification Code:</b> <code>{target_user.get('reseller_code', 'RS-N/A')}</code>\n"
                 f"📱 <b>Telegram Profile:</b> {uname_str}\n"
@@ -100,10 +112,19 @@ def generate_verification_certificate(target_user: dict, query: str, lang: str =
                 "You may safely purchase courses and digital subscriptions through them.\n\n"
                 "VIP access and instant delivery for all orders placed through this partner are backed by our bot."
             )
+
+        tier_line_bn = (
+            "👑 <b>পার্টনারশিপ লেভেল:</b> <code>👑 Elite VIP পার্টনার</code>\n"
+            "🏷️ <b>অনুমোদিত বিক্রয়:</b> <b>ভিআইপি চ্যানেল + পার্সোনাল একাউন্ট</b>\n"
+            if is_elite else
+            "🥉 <b>পার্টনারশিপ লেভেল:</b> <code>🥉 Standard পার্টনার</code>\n"
+            "🏷️ <b>অনুমোদিত বিক্রয়:</b> <b>অফিশিয়াল ভিআইপি চ্যানেল অ্যাক্সেস</b>\n"
+        )
         return (
             "🛡️ <b>অফিশিয়াল ভেরিফাইড রিসেলার পার্টনার (Verified Partner)</b> 🛡️\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "🎖️ <b>স্বীকৃতি:</b> ✅ অনুমোদিত অফিশিয়াল পার্টনার\n"
+            f"{tier_line_bn}"
             f"👤 <b>রিসেলার নাম:</b> {fname}\n"
             f"🆔 <b>ভেরিফিকেশন কোড:</b> <code>{target_user.get('reseller_code', 'RS-N/A')}</code>\n"
             f"📱 <b>টেলিগ্রাম প্রোফাইল:</b> {uname_str}\n"

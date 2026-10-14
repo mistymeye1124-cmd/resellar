@@ -288,14 +288,14 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
                 await message.answer_photo(
                     photo=prod["photo_file_id"],
                     caption=detail_text,
-                    reply_markup=get_product_detail_kb(prod, in_stock, lang),
+                    reply_markup=get_product_detail_kb(prod, in_stock, lang, user_id=message.from_user.id),
                     parse_mode="HTML"
                 )
                 return
             except Exception:
                 pass
 
-        await message.answer(detail_text, reply_markup=get_product_detail_kb(prod, in_stock, lang), parse_mode="HTML")
+        await message.answer(detail_text, reply_markup=get_product_detail_kb(prod, in_stock, lang, user_id=message.from_user.id), parse_mode="HTML")
         return
 
     # 2. Multiple matches found -> Deliver interactive selection list!

@@ -157,7 +157,7 @@ def get_language_kb(lang: str = "bn") -> InlineKeyboardMarkup:
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admin_username: str = ADMIN_USERNAME, lang: str = "bn") -> InlineKeyboardMarkup:
+def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admin_username: str = ADMIN_USERNAME, lang: str = "bn", tier: int = 1) -> InlineKeyboardMarkup:
     """Keyboards for Reseller Hub."""
     if is_banned:
         return InlineKeyboardMarkup(inline_keyboard=[
@@ -206,6 +206,11 @@ def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admi
         buttons.append([
             make_custom_button(text=order_label, callback_data="back_cats", emoji_key="cart")
         ])
+        if tier == 1:
+            upgrade_label = "👑 Elite VIP আপগ্রেড সুবিধা" if lang not in ["en", "hi"] else "👑 Elite VIP Upgrade Info"
+            buttons.append([
+                make_custom_button(text=upgrade_label, callback_data="reseller_upgrade_info", emoji_key="diamond")
+            ])
     else:
         buttons.append([
             make_custom_button(text=lb_label, callback_data="reseller_leaderboard", emoji_key="trophy")
@@ -434,30 +439,61 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
     ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_access_tier_selection_kb(product_id: int, ch_bdt: float, ch_usd: float, acc_bdt: float, acc_usd: float, lang: str = "bn") -> InlineKeyboardMarkup:
-    """Choose between VIP Channel Access and Personal Account Access."""
+def get_access_tier_selection_kb(product_id: int, ch_bdt: float, ch_usd: float, acc_bdt: float, acc_usd: float, lang: str = "bn", user_id: Optional[int] = None) -> InlineKeyboardMarkup:
+    """Choose between VIP Channel Access and Personal Account Access with reseller permission gating."""
+    from database.db import db
+    can_ch = True
+    can_acc = True
+    if user_id:
+        perms = db.get_user_permissions(user_id)
+        if perms.get("is_reseller"):
+            can_ch = perms.get("can_sell_channel", True)
+            can_acc = perms.get("can_sell_account", False)
+
     ch_text = f"📢 VIP Channel Access — ৳{int(ch_bdt)} (${ch_usd})"
     acc_text = f"🔐 Personal Account / Drive — ৳{int(acc_bdt)} (${acc_usd})"
-    buttons = [
-        [
+    
+    buttons = []
+    if can_ch:
+        buttons.append([
             make_custom_button(
                 text=ch_text,
                 callback_data=f"buy_tier:{product_id}:channel",
                 emoji_key="channel"
             )
-        ],
-        [
+        ])
+    else:
+        locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
+        buttons.append([
+            make_custom_button(
+                text=locked_ch,
+                callback_data=f"locked_channel_tier:{product_id}",
+                emoji_key="cross"
+            )
+        ])
+
+    if can_acc:
+        buttons.append([
             make_custom_button(
                 text=acc_text,
                 callback_data=f"buy_tier:{product_id}:account",
                 emoji_key="box"
             )
-        ],
-        [
-            make_custom_button(text=t("btn_back", lang), callback_data=f"prod:{product_id}", emoji_key="back"),
-            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
-        ]
-    ]
+        ])
+    else:
+        locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
+        buttons.append([
+            make_custom_button(
+                text=locked_acc,
+                callback_data=f"locked_account_tier:{product_id}",
+                emoji_key="cross"
+            )
+        ])
+
+    buttons.append([
+        make_custom_button(text=t("btn_back", lang), callback_data=f"prod:{product_id}", emoji_key="back"),
+        make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
+    ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_referral_hub_kb(bot_username: str, user_id: int, lang: str = "bn") -> InlineKeyboardMarkup:

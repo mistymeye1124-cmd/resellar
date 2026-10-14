@@ -32,7 +32,8 @@ TOP_LEVEL_NAV_CALLBACKS = {
     "admin_settings",
     "admin_pending_deps",
     "cancel_fsm",
-    "toggle_bottom_menu"
+    "toggle_bottom_menu",
+    "reseller_upgrade_info"
 }
 
 TOP_LEVEL_NAV_PREFIXES = (

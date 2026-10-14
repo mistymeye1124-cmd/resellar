@@ -627,7 +627,7 @@ async def handle_buy_tier_select(call: CallbackQuery):
         acc_usd=acc_usd
     )
     from keyboards.user_kb import get_access_tier_selection_kb
-    await render_screen(call, text, reply_markup=get_access_tier_selection_kb(prod_id, ch_bdt, ch_usd, acc_bdt, acc_usd, lang=lang), parse_mode="HTML")
+    await render_screen(call, text, reply_markup=get_access_tier_selection_kb(prod_id, ch_bdt, ch_usd, acc_bdt, acc_usd, lang=lang, user_id=user_id), parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("buy_tier:"))
 async def handle_buy_tier_chosen(call: CallbackQuery):
@@ -934,9 +934,9 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
         tier = parts[3]
         coupon_code = parts[4]
     
+    lang = db.get_user_language(call.from_user.id)
     prod = db.get_product(prod_id)
     if not prod:
-        lang = db.get_user_language(call.from_user.id)
         await call.answer(t("catalog_prod_not_found_alert", lang), show_alert=True)
         return
         

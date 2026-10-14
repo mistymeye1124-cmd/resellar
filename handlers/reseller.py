@@ -94,13 +94,21 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
             vip_text_en = "💡 <b>Top-Seller Reward:</b> Monthly Top 3 sellers receive exclusive extra discount VIP passes!\n━━━━━━━━━━━━━━━━━━━━\n"
             vip_text_hi = "💡 <b>टॉप-सेलर रिवॉर्ड:</b> हर महीने शीर्ष 3 सेलर्स को विशेष वीआईपी डिस्काउंट पास मिलता है!\n━━━━━━━━━━━━━━━━━━━━\n"
 
+        tier = user.get("reseller_tier", 1) or 1
+        perms = db.get_user_permissions(user_id)
+        is_elite = tier >= 2 or perms.get("can_sell_account", False)
+        
+        tier_str_bn = "👑 Elite VIP পার্টনার (চ্যানেল + একাউন্ট)" if is_elite else "🥉 Standard পার্টনার (ভিআইপি চ্যানেল)"
+        tier_str_en = "👑 Elite VIP Partner (Channel + Account)" if is_elite else "🥉 Standard Partner (VIP Channel Only)"
+        tier_str_hi = "👑 Elite VIP पार्टनर (चैनल + अकाउंट)" if is_elite else "🥉 Standard पार्टनर (वीआईपी चैनल)"
+
         hub_texts = {
             "bn": (
                 "💎 <b>ভেরিফাইড রিসেলার ড্যাশবোর্ড (Reseller Hub)</b>\n\n"
                 "স্বাগতম পার্টনার! আপনি আমাদের অনুমোদিত পাইকারি রিসেলার।\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
                 f"🆔 <b>আপনার রিসেলার কোড:</b> <code>{reseller_code}</code>\n"
-                "🎖️ <b>স্ট্যাটাস:</b> ✅ সক্রিয় ভিআইপি রিসেলার\n"
+                f"🎖️ <b>স্ট্যাটাস:</b> ✅ সক্রিয় রিসেলার | <code>{tier_str_bn}</code>\n"
                 f"🎯 <b>চলতি মাসের সেলস:</b> <code>{quota_info['sales']} / {quota_info['target']} টি</code>\n"
                 f"⏰ <b>কোটা সাইকেল বাকি:</b> <code>{quota_info['days_left']} দিন</code>\n"
                 f"💰 <b>মোট সেভিংস/লাভ:</b> <code>৳{stats['total_savings_bdt']:.2f} BDT</code>\n"
@@ -112,14 +120,14 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
                 "<i>(গ্রাহকদের ট্রাস্ট বাড়াতে এই লিংক দিন। লিংকে ঢুকলেই বট আপনার অফিসিয়াল অনুমোদন প্রমাণ করবে!)</i>\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
                 f"⚠️ <b>মাসিক কোটা সতর্কতা:</b> সাইকেল শেষ হওয়ার আগে ন্যূনতম <code>{quota_info['target']}টি</code> সেল সম্পন্ন করতে হবে।\n\n"
-                "👇 নিচে থেকে আপনার কাঙ্ক্ষিত অপশন সিলেক্ট করুন:"
+                "👇 নিচে থেকে আপনার কাঙ্شتہ অপশন সিলেক্ট করুন:"
             ),
             "en": (
                 "💎 <b>Verified VIP Reseller Dashboard</b>\n\n"
                 "Welcome partner! You are an authorized wholesale reseller.\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
                 f"🆔 <b>Reseller Code:</b> <code>{reseller_code}</code>\n"
-                "🎖️ <b>Status:</b> ✅ Active VIP Reseller\n"
+                f"🎖️ <b>Status:</b> ✅ Active Reseller | <code>{tier_str_en}</code>\n"
                 f"🎯 <b>Monthly Sales:</b> <code>{quota_info['sales']} / {quota_info['target']}</code>\n"
                 f"⏰ <b>Cycle Days Left:</b> <code>{quota_info['days_left']} days</code>\n"
                 f"💰 <b>Total Profit/Savings:</b> <code>৳{stats['total_savings_bdt']:.2f} BDT</code>\n"
@@ -138,7 +146,7 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
                 "स्वागत है पार्टनर! आप हमारे अधिकृत थोक रीसेलर हैं।\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
                 f"🆔 <b>रीसेलर कोड:</b> <code>{reseller_code}</code>\n"
-                "🎖️ <b>स्थिति:</b> ✅ सक्रिय वीआईपी रीसेलर\n"
+                f"🎖️ <b>स्थिति:</b> ✅ सक्रिय रीसेलर | <code>{tier_str_hi}</code>\n"
                 f"🎯 <b>इस महीने की बिक्री:</b> <code>{quota_info['sales']} / {quota_info['target']}</code>\n"
                 f"⏰ <b>चक्र के शेष दिन:</b> <code>{quota_info['days_left']} दिन</code>\n"
                 f"💰 <b>कुल बचत/लाभ:</b> <code>৳{stats['total_savings_bdt']:.2f} BDT</code>\n"
@@ -151,7 +159,7 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
                 "👇 नीचे दिए गए विकल्पों में से चुनें:"
             )
         }
-        return hub_texts.get(lang, hub_texts["en"]), get_reseller_hub_kb(is_reseller=True, lang=lang)
+        return hub_texts.get(lang, hub_texts["en"]), get_reseller_hub_kb(is_reseller=True, lang=lang, tier=tier)
     else:
         # Not a reseller yet
         pitch_texts = {
@@ -739,4 +747,49 @@ async def handle_reject_reseller_app(call: CallbackQuery, bot: Bot):
         await bot.send_message(chat_id=user_id, text=reject_msg, parse_mode="HTML")
     except Exception as e:
         logger.error(f"Could not notify rejected applicant {user_id}: {e}")
+
+@router.callback_query(F.data == "reseller_upgrade_info")
+async def handle_reseller_upgrade_info(call: CallbackQuery):
+    lang = db.get_user_language(call.from_user.id)
+    await call.answer()
+    if lang in ["en", "hi"]:
+        text = (
+            "👑 <b>Elite VIP Reseller Partnership Benefits & Upgrade</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "Upgrade from Standard to Elite VIP to unlock full selling power:\n\n"
+            "✨ <b>Exclusive Advantages:</b>\n"
+            "• 🔐 <b>Personal Account & Drive Access:</b> Permission to sell individual personal accounts and Google Drive direct links.\n"
+            "• 💎 <b>Maximum Wholesale Profit Margin:</b> Earn highest profits on premium software, AI accounts & courses.\n"
+            "• 🛡️ <b>Official Elite VIP Badge:</b> Displayed publicly on your verification certificate to establish complete buyer trust.\n"
+            "• ⚡ <b>Priority Admin Dispatch:</b> Instant stock fulfillment for your VIP orders.\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📋 <b>How to Upgrade:</b>\n"
+            "Contact Admin directly to request an Elite VIP tier upgrade:"
+        )
+    else:
+        text = (
+            "👑 <b>Elite VIP রিসেলার পার্টনারশিপ সুবিধা ও আপগ্রেড</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "স্ট্যান্ডার্ড পার্টনার থেকে Elite VIP-তে আপগ্রেড করে আপনার ব্যবসার পরিধি বড় করুন:\n\n"
+            "✨ <b>Elite VIP এর এক্সক্লুসিভ সুবিধাসমূহ:</b>\n"
+            "• 🔐 <b>পার্সোনাল অ্যাকাউন্ট ও ড্রাইভ সেল:</b> একক ক্লায়েন্টদের জন্য ব্যক্তিগত অ্যাকাউন্ট ও ড্রাইভ অ্যাক্সেস বিক্রির পূর্ণ অধিকার।\n"
+            "• 💎 <b>সর্বোচ্চ পাইকারি লাভ:</b> এআই টুলস ও প্রিমিয়াম সফটওয়্যারে সর্বোচ্চ মার্জিন ইনকাম।\n"
+            "• 🛡️ <b>অফিশিয়াল Elite VIP সিল:</b> পাবলিক ভেরিফিকেশন সার্টিফিকেটে 'Elite VIP Partner' ব্যাজ, যা কাস্টমারের মনে ১০০% ট্রাস্ট তৈরি করে।\n"
+            "• ⚡ <b>ফাস্ট-ট্র্যাক সার্ভিস:</b> অর্ডারের স্টক ও ডেলিভারিতে সর্বোচ্চ প্রায়োরিটি।\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "📋 <b>আপগ্রেড করার নিয়ম:</b>\n"
+            "এলিট টায়ারে আপগ্রেডের জন্য সরাসরি অ্যাডমিনের সাথে যোগাযোগ করুন:"
+        )
+    from keyboards.user_kb import make_custom_button
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            make_custom_button(text="⚡ অ্যাডমিনের সাথে যোগাযোগ (DM)", url=f"https://t.me/{ADMIN_USERNAME}", emoji_key="zap")
+        ],
+        [
+            make_custom_button(text=t("btn_back", lang), callback_data="reseller_hub", emoji_key="back"),
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
+        ]
+    ])
+    await render_screen(call, text, reply_markup=kb, parse_mode="HTML")
+
 
