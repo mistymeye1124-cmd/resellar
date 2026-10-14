@@ -79,7 +79,8 @@ async def handle_category_select(call: CallbackQuery):
             f"{box_border}\n"
             f"<b>{html.escape(cat_header)}</b>\n"
             f"{box_border}\n\n"
-            f"{sub_prompt}"
+            f"{sub_prompt}\n"
+            f"{box_border}"
         )
         await render_screen(call, text, reply_markup=get_subcategories_kb(subcats, cat_id, lang), parse_mode="HTML")
         return
@@ -92,12 +93,15 @@ async def handle_category_select(call: CallbackQuery):
             f"{box_border}\n"
             f"<b>{html.escape(cat_header)}</b>\n"
             f"{box_border}\n\n"
-            f"{no_prod_text}"
+            f"{no_prod_text}\n"
+            f"{box_border}"
         )
         from utils.emojis import make_custom_button
         back_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [make_custom_button(text=t("btn_back_cats", lang), callback_data="back_cats", emoji_key="back")],
-            [make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")]
+            [
+                make_custom_button(text=t("btn_back_cats", lang), callback_data="back_cats", emoji_key="back"),
+                make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
+            ]
         ])
         await render_screen(call, text, reply_markup=back_kb, parse_mode="HTML")
         return
@@ -107,7 +111,8 @@ async def handle_category_select(call: CallbackQuery):
         f"{box_border}\n"
         f"<b>{html.escape(cat_header)}</b>\n"
         f"{box_border}\n\n"
-        f"{count_prompt}"
+        f"{count_prompt}\n"
+        f"{box_border}"
     )
     await render_screen(call, text, reply_markup=get_products_kb(products, cat_id, lang=lang), parse_mode="HTML")
 
@@ -137,13 +142,16 @@ async def handle_subcategory_select(call: CallbackQuery):
             f"{box_border}\n"
             f"<b>{parent_name}{html.escape(subcat_clean)}</b>\n"
             f"{box_border}\n\n"
-            f"{empty_text}"
+            f"{empty_text}\n"
+            f"{box_border}"
         )
         parent_id = subcat.get('parent_id')
         back_cb = f"cat:{parent_id}" if parent_id else "back_cats"
         back_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [make_custom_button(text=t("btn_back_subcats", lang), callback_data=back_cb, emoji_key="back")],
-            [make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")]
+            [
+                make_custom_button(text=t("btn_back_subcats", lang), callback_data=back_cb, emoji_key="back"),
+                make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
+            ]
         ])
         await render_screen(call, text, reply_markup=back_kb, parse_mode="HTML")
         return
@@ -153,7 +161,8 @@ async def handle_subcategory_select(call: CallbackQuery):
         f"{box_border}\n"
         f"<b>{parent_name}{html.escape(subcat_clean)}</b>\n"
         f"{box_border}\n\n"
-        f"{count_prompt}"
+        f"{count_prompt}\n"
+        f"{box_border}"
     )
     await render_screen(call, text, reply_markup=get_products_kb(products, category_id=subcat.get("parent_id", subcat_id), subcategory_id=subcat_id, parent_id=subcat.get("parent_id"), lang=lang), parse_mode="HTML")
 

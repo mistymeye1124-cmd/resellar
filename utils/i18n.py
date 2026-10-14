@@ -10,21 +10,44 @@ LANGUAGES = {
 
 def localize_item_name(name: str, lang: str = "bn") -> str:
     """Intelligently localizes category and product titles if they contain dual language tags.
-    Example: 'All Premium Courses (কোর্স ভল্ট)' -> 'All Premium Courses' (en) or 'All Premium Courses (কোর্স ভল্ট)' (bn).
+    Example: 'All Premium Courses (কোর্স ভল্ট)' -> '🎓 প্রিমিয়াম কোর্স ভল্ট' (bn) or '🎓 All Premium Courses' (en).
     """
     if not name:
         return ""
-    if lang in ["en", "hi"]:
-        # Remove parenthetical Bengali text at end (e.g. '(কোর্স ভল্ট)')
+    
+    # Check for bilingual pattern: 'English Name (বাংলা নাম)'
+    m = re.search(r'\(([\u0980-\u09FF\s&/,\-–—]+)\)$', name.strip())
+    
+    if lang == "bn":
+        if m:
+            bn_part = m.group(1).strip()
+            if "কোর্স" in bn_part:
+                return "🎓 প্রিমিয়াম কোর্স ভল্ট"
+            elif "ডিজিটাল" in bn_part or "টুলস" in bn_part or "একাউন্ট" in bn_part:
+                return "⚡ ডিজিটাল টুলস ও একাউন্ট"
+            # If lead emoji exists in name, keep it
+            lead_emoji = ""
+            for char in name[:3]:
+                if ord(char) > 10000:
+                    lead_emoji = char + " "
+                    break
+            return f"{lead_emoji}{bn_part}".strip()
+            
+        if " / " in name:
+            parts = name.split(" / ")
+            bn_parts = [p.strip() for p in parts if any('\u0980' <= c <= '\u09FF' for c in p)]
+            if bn_parts:
+                return bn_parts[0]
+        return name
+    else:
+        # English, Hindi: strip parenthetical Bengali text
         clean = re.sub(r'\s*\([\u0980-\u09FF\s&/,\-–—]+\)$', '', name).strip()
-        # Handle slash separated: "English / বাংলা"
         if " / " in clean:
             parts = clean.split(" / ")
-            ascii_parts = [p for p in parts if any(c.isascii() and c.isalpha() for c in p)]
+            ascii_parts = [p.strip() for p in parts if any(c.isascii() and c.isalpha() for c in p)]
             if ascii_parts:
-                return ascii_parts[0].strip()
+                return ascii_parts[0]
         return clean if clean else name
-    return name
 
 TRANSLATIONS: Dict[str, Dict[str, str]] = {
     # Main Navigation Buttons
@@ -230,53 +253,80 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
     # Catalog & Shop Screens
     "shop_all_cats_text": {
         "bn": (
-            "🛍️ <b>প্রিমিয়াম শপ — সকল ক্যাটাগরি ও প্ল্যাটফর্ম</b> 🛍️\n\n"
-            "আমাদের ডিজিটাল স্টোরে প্রিমিয়াম একাডেমি কোর্স, টুলস ও অ্যাকাউন্ট সাজানো আছে।\n"
-            "👇 আপনার পছন্দের প্ল্যাটফর্ম বা ক্যাটাগরি বেছে নিন:"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🛍️ <b>প্রিমিয়াম ডিজিটাল স্টোর</b> 🛍️\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "আমাদের স্টোরে প্রিমিয়াম কোর্স, টুলস ও অ্যাকাউন্ট সাজানো আছে।\n\n"
+            "👇 <i>আপনার পছন্দের ক্যাটাগরি বেছে নিন:</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━"
         ),
         "en": (
-            "🛍️ <b>PREMIUM STORE — ALL CATEGORIES & PLATFORMS</b> 🛍️\n\n"
-            "Browse our curated catalog of masterclasses, AI subscriptions, and software access.\n"
-            "👇 Select your desired department or category:"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🛍️ <b>PREMIUM DIGITAL STORE</b> 🛍️\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "Browse curated masterclasses, AI subscriptions, and software access.\n\n"
+            "👇 <i>Select a category below:</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━"
         ),
         "hi": (
-            "🛍️ <b>प्रीमियम स्टोर — सभी श्रेणियां और प्लेटफॉर्म</b> 🛍️\n\n"
-            "प्रीमियम कोर्सेस, एआई टूल्स और सत्यापित डिजिटल अकाउंट्स।\n"
-            "👇 अपनी पसंदीदा श्रेणी चुनें:"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🛍️ <b>प्रीमियम डिजिटल स्टोर</b> 🛍️\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "प्रीमियम कोर्सेस, एआई टूल्स और सत्यापित डिजिटल अकाउंट्स।\n\n"
+            "👇 <i>अपनी पसंदीदा श्रेणी चुनें:</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━"
         )
     },
     "shop_courses_text": {
         "bn": (
-            "🎓 <b>প্রিমিয়াম কোর্স স্টোর — কারিকুলাম ও ক্যাটাগরি</b> 🎓\n\n"
-            "আমাদের ডিজিটাল শপে সেরা ইন্সট্রাক্টরদের শীর্ষ কোর্সগুলো সাজানো আছে।\n"
-            "👇 আপনার পছন্দের ক্যাটাগরি বেছে নিন:"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🎓 <b>প্রিমিয়াম কোর্স ভল্ট</b> 🎓\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "আমাদের স্টোরে শীর্ষ ইন্সট্রাক্টরদের ফুল কারিকুলাম কোর্স সাজানো আছে।\n\n"
+            "👇 <i>আপনার পছন্দের কোর্স ট্র্যাক বেছে নিন:</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━"
         ),
         "en": (
-            "🎓 <b>PREMIUM COURSES — CURRICULUM & TRACKS</b> 🎓\n\n"
-            "Full curriculum masterclasses with lifetime cloud drive & VIP channels.\n"
-            "👇 Select a course category below:"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🎓 <b>PREMIUM COURSES VAULT</b> 🎓\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "Full curriculum masterclasses with lifetime cloud drive access.\n\n"
+            "👇 <i>Select a course category below:</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━"
         ),
         "hi": (
-            "🎓 <b>प्रीमियम कोर्सेस — पाठ्यक्रम और श्रेणियां</b> 🎓\n\n"
-            "लाइफटाइम एक्सेस के साथ शीर्ष कोर्सेस।\n"
-            "👇 नीचे दी गई श्रेणी चुनें:"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🎓 <b>प्रीमियम कोर्सेस वॉल्ट</b> 🎓\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "लाइफटाइम एक्सेस के साथ शीर्ष कोर्सेस।\n\n"
+            "👇 <i>अपनी श्रेणी चुनें:</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━"
         )
     },
     "shop_digital_text": {
         "bn": (
-            "⚡ <b>ডিজিটাল অ্যাকাউন্টস ও এআই টুলস হাব</b> ⚡\n\n"
-            "ওটিটি প্ল্যাটফর্ম, ভিপিএন, এআই টুলস ও প্রিমিয়াম সফটওয়্যার লাইসেন্স।\n"
-            "👇 আপনার প্রয়োজনীয় ক্যাটাগরি নির্বাচন করুন:"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "⚡ <b>ডিজিটাল টুলস ও অ্যাকাউন্টস</b> ⚡\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "ওটিটি প্ল্যাটফর্ম, ভিপিএন, এআই টুলস ও প্রিমিয়াম লাইসেন্স।\n\n"
+            "👇 <i>আপনার প্রয়োজনীয় ক্যাটাগরি বেছে নিন:</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━"
         ),
         "en": (
-            "⚡ <b>DIGITAL ACCOUNTS & AI SUBSCRIPTION HUB</b> ⚡\n\n"
-            "OTT platforms, VPNs, AI tools, and verified software licenses.\n"
-            "👇 Select your category below:"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "⚡ <b>DIGITAL TOOLS & ACCOUNTS</b> ⚡\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "OTT subscriptions, VPNs, AI tools, and software licenses.\n\n"
+            "👇 <i>Select your category below:</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━"
         ),
         "hi": (
-            "⚡ <b>डिजिटल अकाउंट्स और एआई टूल्स</b> ⚡\n\n"
-            "ओटीटी, वीपीएन और एआई टूल्स।\n"
-            "👇 अपनी श्रेणी चुनें:"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "⚡ <b>डिजिटल टूल्स और अकाउंट्स</b> ⚡\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "ओटीटी, वीपीएन और एआई टूल्स।\n\n"
+            "👇 <i>अपनी श्रेणी चुनें:</i>\n"
+            "━━━━━━━━━━━━━━━━━━━━"
         )
     },
     "cat_no_products": {
@@ -296,7 +346,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "cat_products_count_prompt": {
         "bn": (
             "📦 মোট উপলব্ধ প্রোডাক্ট: <b>{count} টি</b>\n"
-            "👉 বিস্তারিত ও কিনতে নিচে ক্লিক করুন:"
+            "👇 বিস্তারিত দেখতে প্রোডাক্টে ট্যাপ করুন:"
         ),
         "en": (
             "📦 Available Products: <b>{count}</b>\n"

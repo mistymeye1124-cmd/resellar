@@ -260,13 +260,20 @@ def get_reseller_package_selection_kb(lang: str = "bn", std_dep: int = 1000, eli
     ])
 
 def get_categories_kb(categories: List[Dict[str, Any]], cat_type: str = "course", lang: str = "bn") -> InlineKeyboardMarkup:
-    """Inline keyboard for browsing categories with automatic item localization."""
+    """Inline keyboard for browsing categories with automatic item localization and phone-perfect shape."""
     buttons = []
     for cat in categories:
         btn_text = localize_item_name(cat['name'], lang)
-        buttons.append([make_custom_button(text=btn_text, callback_data=f"cat:{cat['id']}", emoji_key="category")])
+        # Select appropriate premium icon
+        c_lower = (cat.get("type") or "").lower() + " " + cat.get("name", "").lower()
+        em_k = "courses" if "course" in c_lower or "কোর্স" in c_lower else "digital"
+        buttons.append([make_custom_button(text=btn_text, callback_data=f"cat:{cat['id']}", emoji_key=em_k)])
     
-    buttons.append([make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")])
+    # Symmetrical 2-button navigation row matching other screens
+    buttons.append([
+        make_custom_button(text=t("btn_back", lang), callback_data="main_menu", emoji_key="back"),
+        make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
+    ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_subcategories_kb(subcategories: List[Dict[str, Any]], parent_cat_id: int, lang: str = "bn") -> InlineKeyboardMarkup:
@@ -285,31 +292,36 @@ def get_subcategories_kb(subcategories: List[Dict[str, Any]], parent_cat_id: int
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_products_kb(products: List[Dict[str, Any]], category_id: int, subcategory_id: Optional[int] = None, parent_id: Optional[int] = None, lang: str = "bn") -> InlineKeyboardMarkup:
-    """Inline keyboard for listing products under a category or subcategory with clean price formatting."""
+    """Inline keyboard for listing products under a category or subcategory with mobile-perfect width formatting."""
     buttons = []
     for prod in products:
-        clean_title = localize_item_name(prod['title'], lang)
+        clean_title = localize_item_name(prod.get('title') or prod.get('name', 'Course'), lang)
         bdt_val = int(prod.get('price_bdt') or 0)
         usd_val = prod.get('price_usd')
         if not usd_val:
             from config import get_live_usd_rate
             usd_val = round(bdt_val / get_live_usd_rate(), 2)
             
-        price_tag = f"৳{bdt_val} (${usd_val})"
-        # Max title len to prevent truncation on mobile screens
-        max_title_len = 24 if len(price_tag) <= 14 else 20
+        # Clean price tag formatted for mobile viewport
+        if lang in ["en", "hi"]:
+            price_tag = f"৳{bdt_val} (${usd_val})"
+            max_title_len = 18
+        else:
+            price_tag = f"৳{bdt_val}"
+            max_title_len = 20
+
         if len(clean_title) > max_title_len:
             short_title = clean_title[:max_title_len - 1].strip() + "…"
         else:
             short_title = clean_title
             
         btn_text = f"{short_title} • {price_tag}"
-        buttons.append([make_custom_button(text=btn_text, callback_data=f"prod:{prod['id']}")])
+        buttons.append([make_custom_button(text=btn_text, callback_data=f"prod:{prod['id']}", emoji_key="courses")])
     
     if subcategory_id and parent_id:
-        back_btn = make_custom_button(text=t("btn_back_subcats", lang), callback_data=f"cat:{parent_id}")
+        back_btn = make_custom_button(text=t("btn_back_subcats", lang), callback_data=f"cat:{parent_id}", emoji_key="back")
     else:
-        back_btn = make_custom_button(text=t("btn_back_cats", lang), callback_data="back_cats")
+        back_btn = make_custom_button(text=t("btn_back_cats", lang), callback_data="back_cats", emoji_key="back")
 
     buttons.append([
         back_btn,
