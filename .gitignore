@@ -18,6 +18,11 @@ database/*.db-shm
 database/*.db-wal
 database/*.bak
 
+# Local scratch and test scripts
+scratch/
+test_*.py
+scratch_*.py
+
 # Local backup archives
 backups/
 database/backups/
