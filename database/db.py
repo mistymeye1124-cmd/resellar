@@ -1669,6 +1669,21 @@ class Database:
             if not ref_row:
                 return None
 
+            # Anti-Fraud: Rapid bot registration rate limiting
+            cursor.execute("""
+                SELECT COUNT(*) FROM referral_logs 
+                WHERE referrer_id = ? AND created_at >= datetime('now', '-60 seconds')
+            """, (referrer_id,))
+            if cursor.fetchone()[0] >= 3:
+                return None
+
+            cursor.execute("""
+                SELECT COUNT(*) FROM referral_logs 
+                WHERE referrer_id = ? AND created_at >= datetime('now', '-1 hour')
+            """, (referrer_id,))
+            if cursor.fetchone()[0] >= 30:
+                return None
+
             # Settings
             t1_bonus = float(self.get_setting("referral_t1_bonus", "10.0"))
             t2_pct = float(self.get_setting("referral_t2_percent", "50.0"))
@@ -1721,16 +1736,15 @@ class Database:
             gold_bns = float(self.get_setting("ref_milestone_gold_bonus", "200.0"))
 
             if new_t1_count >= gold_tgt and curr_tier < 3:
-                # Gold Ambassador: Dynamic Bonus + Reseller status
+                # Gold Ambassador: Dynamic Bonus (Reseller requires manual admin approval)
                 cursor.execute("""
                 UPDATE users 
                 SET balance_bdt = balance_bdt + ?, 
                     referral_earnings_bdt = referral_earnings_bdt + ?,
-                    referral_milestone_tier = 3,
-                    is_reseller = CASE WHEN is_reseller < 1 THEN 1 ELSE is_reseller END
+                    referral_milestone_tier = 3
                 WHERE user_id = ?
                 """, (gold_bns, gold_bns, referrer_id))
-                milestone_info = {"tier": 3, "title": "🥇 Gold Ambassador", "bonus": gold_bns, "extra": "ফ্রি রিসেলার স্ট্যাটাস"}
+                milestone_info = {"tier": 3, "title": "🥇 Gold Ambassador", "bonus": gold_bns, "extra": "মেগা ক্যাশ বোনাস"}
             elif new_t1_count >= silver_tgt and curr_tier < 2:
                 # Silver VIP: Dynamic Bonus
                 cursor.execute("""
