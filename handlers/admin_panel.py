@@ -3803,6 +3803,19 @@ def format_product_broadcast_post(product: dict, lang: str = "bn") -> tuple:
         )
         buy_text = f"🛍️ अभी खरीदें • ৳{price_bdt}"
         cat_text = "📚 कैटलॉग देखें"
+    elif lang == "ur":
+        text = (
+            "🔥 <b>نیا پروڈکٹ الرٹ! / HOT DROP</b> ⚡\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"📦 <b>{html.escape(title)}</b>\n\n"
+            f"💰 <b>قیمت:</b> <b>৳{price_bdt}</b> <i>(${price_usd})</i>\n"
+            f"💎 <b>ری سیلر ریٹ:</b> <code>৳{res_bdt}</code> <i>(ہول سیل ڈسکاؤنٹ)</i>\n"
+            "⚡ <b>ڈلیوری:</b> 🟢 <code>فوری آٹو رسائی</code>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "👇 <i>ابھی اپنا آرڈر مکمل کریں:</i>"
+        )
+        buy_text = f"🛍️ ابھی خریدیں • ৳{price_bdt}"
+        cat_text = "📚 کیٹلاگ دیکھیں"
     else:  # bn default
         text = (
             "🔥 <b>হট ড্রপ অ্যালার্ট! / HOT DROP</b> ⚡\n"
@@ -3847,10 +3860,11 @@ async def broadcast_new_product_task(bot: Bot, admin_id: int, product_id: int):
     templates = {
         "bn": format_product_broadcast_post(prod, "bn"),
         "en": format_product_broadcast_post(prod, "en"),
-        "hi": format_product_broadcast_post(prod, "hi")
+        "hi": format_product_broadcast_post(prod, "hi"),
+        "ur": format_product_broadcast_post(prod, "ur")
     }
 
-    sent_counts = {"bn": 0, "en": 0, "hi": 0}
+    sent_counts = {"bn": 0, "en": 0, "hi": 0, "ur": 0}
     blocked_count = 0
     total_sent = 0
     photo_id = prod.get("photo_file_id")
@@ -3888,6 +3902,7 @@ async def broadcast_new_product_task(bot: Bot, admin_id: int, product_id: int):
         f"• 🇧🇩 বাংলা ভাষায়: <code>{sent_counts['bn']} জন</code>\n"
         f"• 🇬🇧 ইংরেজি ভাষায়: <code>{sent_counts['en']} জন</code>\n"
         f"• 🇮🇳 হিন্দি ভাষায়: <code>{sent_counts['hi']} জন</code>\n"
+        f"• 🇵🇰 উর্দু ভাষায়: <code>{sent_counts['ur']} জন</code>\n"
         f"🚫 <b>বট ব্লকড/নিষ্ক্রিয়:</b> <code>{blocked_count} জন</code>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "⚡ <i>ইউজাররা এখন নোটিফিকেশন পেয়ে ক্যাটালগ ভিজিট করছে!</i>"
