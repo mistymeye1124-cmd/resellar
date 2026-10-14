@@ -76,7 +76,6 @@ DEFAULT_CUSTOM_EMOJIS: Dict[str, str] = {
     "lang_bn": "5911365056594973179",      # 🇧🇩 Bengali
     "lang_en": "5780829794899858599",      # 🇬🇧 English
     "lang_hi": "6109380284644329775",      # 🇮🇳 Hindi
-    "lang_ur": "6109380284644329775",      # 🇵🇰 Urdu
     "lang_ru": "5449408995691341691",      # 🇷🇺 Russian
 }
 

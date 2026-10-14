@@ -181,12 +181,12 @@ def get_language_kb(lang: str = "bn") -> InlineKeyboardMarkup:
     """Inline keyboard for selecting user language with custom flag badges."""
     buttons = [
         [
-            make_custom_button(text="বাংলা (Bengali)", callback_data="set_lang:bn", emoji_key="lang_bn"),
-            make_custom_button(text="English", callback_data="set_lang:en", emoji_key="lang_en")
+            InlineKeyboardButton(text="🇧🇩 বাংলা (Bengali)", callback_data="set_lang:bn"),
+            InlineKeyboardButton(text="🇬🇧 English", callback_data="set_lang:en")
         ],
         [
-            make_custom_button(text="हिन्दी (Hindi)", callback_data="set_lang:hi", emoji_key="lang_hi"),
-            make_custom_button(text="اردو (Urdu)", callback_data="set_lang:ur", emoji_key="lang_ur")
+            InlineKeyboardButton(text="🇮🇳 हिन्दी (Hindi)", callback_data="set_lang:hi"),
+            InlineKeyboardButton(text="🇵🇰 اردو (Urdu)", callback_data="set_lang:ur")
         ],
         [
             make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
