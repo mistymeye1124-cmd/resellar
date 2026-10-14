@@ -51,7 +51,7 @@ TOP_LEVEL_NAV_PREFIXES = (
 )
 
 class CallbackDeduplicationMiddleware(BaseMiddleware):
-    def __init__(self, debounce_window: float = 0.8):
+    def __init__(self, debounce_window: float = 0.35):
         self.debounce_window = debounce_window
         # user_id -> (last_callback_data, last_timestamp)
         self._last_callbacks: Dict[int, tuple[str, float]] = {}

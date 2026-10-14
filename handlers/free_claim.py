@@ -13,7 +13,7 @@ from keyboards.user_kb import (
 )
 from utils.invite_helper import generate_single_use_invite_link
 from utils.i18n import t
-from utils.ui_nav import render_screen
+from utils.ui_nav import render_screen, get_cached_bot_info
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -289,8 +289,8 @@ async def handle_view_free_drop(call: CallbackQuery):
     if req_refs > 0 and not already_claimed and remaining > 0 and drop["is_active"]:
         if user_refs < req_refs:
             is_locked = True
-            bot_info = await call.bot.get_me()
-            bot_uname = bot_info.username or "AllInOneProAccess_bot"
+            bot_info = await get_cached_bot_info(call.bot)
+            bot_uname = bot_info.username if bot_info else "AllInOneProAccess_bot"
             ref_link = f"https://t.me/{bot_uname}?start=ref_{user_id}"
 
     if lang == "en":

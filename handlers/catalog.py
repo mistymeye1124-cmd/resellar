@@ -20,7 +20,7 @@ from utils.emojis import em_tag
 
 router = Router()
 
-from utils.ui_nav import render_screen, safe_switch_screen, render_safe_html_text
+from utils.ui_nav import render_screen, safe_switch_screen, render_safe_html_text, get_cached_bot_info
 
 class BuyCouponState(StatesGroup):
     waiting_for_code = State()
@@ -483,8 +483,8 @@ async def handle_claim_ref(call: CallbackQuery, bot: Bot):
     empty_bars = "▱" * (10 - bars)
     prog_bar = f"{filled_bars}{empty_bars} {bal_pct}%"
 
-    bot_info = await bot.get_me()
-    bot_username = bot_info.username or "AllInOneProAccess_bot"
+    bot_info = await get_cached_bot_info(bot)
+    bot_username = bot_info.username if bot_info else "AllInOneProAccess_bot"
     ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}_c{prod_id}"
 
     t2_pct = float(db.get_setting("referral_t2_percent", "50.0"))
@@ -544,8 +544,8 @@ async def handle_gen_course_ref(call: CallbackQuery, bot: Bot):
         return
         
     user_id = call.from_user.id
-    bot_info = await bot.get_me()
-    bot_username = bot_info.username or "AllInOneProAccess_bot"
+    bot_info = await get_cached_bot_info(bot)
+    bot_username = bot_info.username if bot_info else "AllInOneProAccess_bot"
     course_link = f"https://t.me/{bot_username}?start=ref_{user_id}_c{prod_id}"
     lang = db.get_user_language(user_id)
     clean_title = localize_item_name(prod['title'], lang)
@@ -587,8 +587,8 @@ async def handle_gen_course_ref(call: CallbackQuery, bot: Bot):
 async def handle_copy_course_ref(call: CallbackQuery, bot: Bot):
     prod_id = int(call.data.split(":")[1])
     prod = db.get_product(prod_id)
-    bot_info = await bot.get_me()
-    bot_username = bot_info.username or "AllInOneProAccess_bot"
+    bot_info = await get_cached_bot_info(bot)
+    bot_username = bot_info.username if bot_info else "AllInOneProAccess_bot"
     course_link = f"https://t.me/{bot_username}?start=ref_{call.from_user.id}_c{prod_id}"
     lang = db.get_user_language(call.from_user.id)
     alert_txt = f"📋 Referral Link:\n{course_link}" if lang in ["en", "hi", "ur"] else f"📋 রেফারেল লিংক:\n{course_link}"

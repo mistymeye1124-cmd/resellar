@@ -1,6 +1,8 @@
 # Start and Profile Handlers with Modern Single-Screen Interactive Dashboard
 import logging
 import html
+import time
+from typing import Dict, Tuple
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, InlineKeyboardMarkup
 from aiogram.filters import CommandStart, Command
@@ -25,13 +27,28 @@ logger = logging.getLogger("StartHandler")
 
 router = Router()
 
+# In-memory membership cache: (user_id, channel) -> expiry_timestamp (30 min TTL)
+_channel_sub_cache: Dict[Tuple[int, str], float] = {}
+
 async def check_channel_membership(bot, user_id: int, channel: str = OFFICIAL_CHANNEL) -> bool:
-    """Verifies whether a user is an active member or admin of the force channel."""
+    """Verifies whether a user is an active member or admin of the force channel with in-memory caching."""
     if not channel:
         return True
+
+    now = time.time()
+    cache_key = (user_id, channel)
+    cached_exp = _channel_sub_cache.get(cache_key)
+    if cached_exp and now < cached_exp:
+        return True
+
     try:
         member = await bot.get_chat_member(chat_id=channel, user_id=user_id)
-        return member.status in ["creator", "administrator", "member", "restricted"]
+        is_sub = member.status in ["creator", "administrator", "member", "restricted"]
+        if is_sub:
+            _channel_sub_cache[cache_key] = now + 1800  # Cache for 30 minutes
+        else:
+            _channel_sub_cache.pop(cache_key, None)
+        return is_sub
     except TelegramBadRequest as e:
         err_msg = str(e).lower()
         if "member list is inaccessible" in err_msg or "chat not found" in err_msg:
@@ -363,6 +380,7 @@ async def handle_verify_subscription(call: CallbackQuery):
     deep_param = parts[1].strip() if len(parts) > 1 and parts[1].strip() != "none" else None
 
     force_channel = db.get_setting("force_channel", OFFICIAL_CHANNEL)
+    _channel_sub_cache.pop((user.id, force_channel), None)
     is_sub = await check_channel_membership(bot, user.id, force_channel)
     if not is_sub:
         alert_msg = (

@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from database.db import db
 from keyboards.user_kb import get_referral_hub_kb
-from utils.ui_nav import render_screen
+from utils.ui_nav import render_screen, get_cached_bot_info
 from utils.i18n import t
 
 router = Router()
@@ -28,8 +28,8 @@ async def handle_referral_hub(event: Message | CallbackQuery, bot: Bot, state: F
         
     lang = db.get_user_language(user_id)
     stats = db.get_referral_stats(user_id)
-    bot_info = await bot.get_me()
-    bot_username = bot_info.username or "AllInOneProAccess_bot"
+    bot_info = await get_cached_bot_info(bot)
+    bot_username = bot_info.username if bot_info else "AllInOneProAccess_bot"
     ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}"
     
     t1_bonus = stats.get("t1_bonus", 10.0)
@@ -101,8 +101,8 @@ async def handle_referral_hub(event: Message | CallbackQuery, bot: Bot, state: F
 async def handle_copy_ref_callback(call: CallbackQuery, bot: Bot):
     user_id = int(call.data.split(":")[1])
     lang = db.get_user_language(call.from_user.id)
-    bot_info = await bot.get_me()
-    bot_username = bot_info.username or "AllInOneProAccess_bot"
+    bot_info = await get_cached_bot_info(bot)
+    bot_username = bot_info.username if bot_info else "AllInOneProAccess_bot"
     ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}"
     alert_txt = f"📋 Your referral link:\n{ref_link}" if lang == "en" else f"📋 আপনার রেফারেল লিংক:\n{ref_link}"
     await call.answer(alert_txt, show_alert=True)
@@ -169,8 +169,8 @@ async def handle_referral_leaderboard(call: CallbackQuery):
 @router.callback_query(F.data.startswith("copy_ref"))
 async def handle_copy_ref_callback(call: CallbackQuery, bot: Bot):
     lang = db.get_user_language(call.from_user.id)
-    bot_info = await bot.get_me()
-    bot_username = bot_info.username or "AllInOneProAccess_bot"
+    bot_info = await get_cached_bot_info(bot)
+    bot_username = bot_info.username if bot_info else "AllInOneProAccess_bot"
     ref_link = f"https://t.me/{bot_username}?start=ref_{call.from_user.id}"
     alert_txt = f"📋 Your referral link:\n{ref_link}" if lang == "en" else f"📋 পার্সোনাল রেফারেল লিংক:\n{ref_link}"
     await call.answer(alert_txt, show_alert=True)

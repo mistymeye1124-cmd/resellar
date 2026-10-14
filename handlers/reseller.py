@@ -11,7 +11,7 @@ from config import ADMIN_USERNAME
 from utils.notifier import notify_admin_reseller_app
 from utils.emojis import em_tag, make_custom_button
 from utils.i18n import t, localize_item_name
-from utils.ui_nav import render_screen
+from utils.ui_nav import render_screen, get_cached_bot_info
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +65,9 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
     if is_reseller:
         stats = db.get_reseller_stats(user_id)
         reseller_code = user.get("reseller_code") or f"RS-{user_id % 10000:04d}"
-        bot_info = await bot.get_me()
-        v_link = f"https://t.me/{bot_info.username}?start=verify_{reseller_code}"
+        bot_info = await get_cached_bot_info(bot)
+        bot_username = bot_info.username if bot_info else "AllInOneProAccess_bot"
+        v_link = f"https://t.me/{bot_username}?start=verify_{reseller_code}"
         vip_pass = db.get_active_reseller_vip_pass(user_id)
         if vip_pass:
             vip_text_bn = (

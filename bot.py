@@ -187,9 +187,17 @@ async def main():
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
 
+    # Prefetch bot identity for instant zero-latency caching
+    try:
+        bot.cached_bot_info = await bot.get_me()
+        logger.info(f"Bot identity cached: @{bot.cached_bot_info.username}")
+    except Exception as e:
+        logger.warning(f"Failed to prefetch bot info: {e}")
+        bot.cached_bot_info = None
+
     # Register Anti-Duplicate, Debounce & Concurrency Guard Middleware
     from middlewares.anti_duplicate import CallbackDeduplicationMiddleware
-    dp.callback_query.middleware(CallbackDeduplicationMiddleware(debounce_window=0.8))
+    dp.callback_query.middleware(CallbackDeduplicationMiddleware(debounce_window=0.35))
 
     # Register Routers in proper order (Master Core / Cancel Router first)
     dp.include_router(core.router)
@@ -256,6 +264,8 @@ async def main():
             bot,
             allowed_updates=dp.resolve_used_update_types(),
             polling_timeout=30,
+            handle_as_tasks=True,
+            tasks_concurrency_limit=64,
             handle_signals=False
         )
     finally:

@@ -1,6 +1,7 @@
 # SQLite Database Handler for Reseller Bot
 import sqlite3
 import os
+import threading
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 
@@ -9,17 +10,23 @@ DB_PATH = os.getenv("DATABASE_PATH") or os.path.join(os.path.dirname(os.path.abs
 class Database:
     def __init__(self, db_path: str = DB_PATH):
         self.db_path = db_path
+        self._local = threading.local()
+        self._settings_cache: Dict[str, str] = {}
         self._init_db()
 
     def _get_connection(self):
-        conn = sqlite3.connect(self.db_path, timeout=15.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA synchronous = NORMAL")
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA busy_timeout = 15000")
-        conn.execute("PRAGMA cache_size = -10000")   # ~10MB page cache
-        conn.execute("PRAGMA mmap_size = 134217728") # 128MB memory-mapped I/O
-        conn.execute("PRAGMA temp_store = MEMORY")   # temp tables in RAM
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = sqlite3.connect(self.db_path, timeout=15.0)
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA synchronous = NORMAL")
+            conn.execute("PRAGMA foreign_keys = ON")
+            conn.execute("PRAGMA busy_timeout = 15000")
+            conn.execute("PRAGMA cache_size = -10000")   # ~10MB page cache
+            conn.execute("PRAGMA mmap_size = 134217728") # 128MB memory-mapped I/O
+            conn.execute("PRAGMA temp_store = MEMORY")   # temp tables in RAM
+            self._local.conn = conn
         return conn
 
     def _init_db(self):
@@ -1233,13 +1240,18 @@ class Database:
 
     # --- DYNAMIC SETTINGS METHODS ---
     def get_setting(self, key: str, default: str = "") -> str:
+        if key in self._settings_cache:
+            return self._settings_cache[key]
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
             row = cursor.fetchone()
-            return row["value"] if row else default
+            val = row["value"] if row else default
+            self._settings_cache[key] = val
+            return val
 
     def set_setting(self, key: str, value: str) -> bool:
+        self._settings_cache[key] = str(value)
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(value)))

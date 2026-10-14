@@ -17,7 +17,7 @@ from keyboards.user_kb import (
     get_casual_guide_kb,
     get_course_request_prompt_kb
 )
-from utils.ui_nav import render_screen, render_safe_html_text
+from utils.ui_nav import render_screen, render_safe_html_text, get_cached_bot_info
 
 router = Router()
 
@@ -321,8 +321,8 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
     # PATH A: GROUP & SUPERGROUP (VIP Group Anti-Spam & Dedicated Search)
     # =========================================================================
     if is_group:
-        bot_info = await bot.get_me()
-        bot_username = (bot_info.username or "").lower()
+        bot_info = await get_cached_bot_info(bot)
+        bot_username = (bot_info.username or "").lower() if bot_info else ""
 
         is_reply_to_bot = bool(
             message.reply_to_message and
