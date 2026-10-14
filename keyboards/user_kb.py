@@ -74,6 +74,27 @@ def get_reseller_verification_kb(username: Optional[str] = None, lang: str = "bn
     ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+def get_force_sub_kb(channel_username: str = "@ProAccessBD", deep_param: Optional[str] = None, lang: str = "bn") -> InlineKeyboardMarkup:
+    clean_channel = channel_username.replace("@", "")
+    channel_url = f"https://t.me/{clean_channel}"
+    cb_data = f"verify_sub:{deep_param}" if deep_param else "verify_sub:none"
+    
+    if lang == "en":
+        btn_join = "📢 Join Official Channel"
+        btn_verify = "🔄 ✅ I Have Joined / Verify"
+    elif lang == "hi":
+        btn_join = "📢 ऑफिशियल चैनल से जुड़ें"
+        btn_verify = "🔄 ✅ जुड़ गया हूँ / सत्यापित करें"
+    else: # bn
+        btn_join = f"📢 জয়েন চ্যানেল ({channel_username})"
+        btn_verify = "🔄 ✅ জয়েন করেছি / ভেরিফাই করুন"
+
+    kb = [
+        [InlineKeyboardButton(text=btn_join, url=channel_url)],
+        [InlineKeyboardButton(text=btn_verify, callback_data=cb_data)]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
 def get_main_dashboard_inline_kb(lang: str = "bn", is_admin: bool = False, admin_username: str = ADMIN_USERNAME) -> InlineKeyboardMarkup:
     """Modern single-screen app inline keyboard with 100% strict localization."""
     if lang == "en":

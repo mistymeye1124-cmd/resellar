@@ -91,7 +91,8 @@ def setup_database():
         "gateway_bkash_active": "1",
         "gateway_nagad_active": "1",
         "gateway_rocket_active": "0",
-        "gateway_binance_active": "1"
+        "gateway_binance_active": "1",
+        "force_channel": "@ProAccessBD"
     }
 
     added_settings = 0

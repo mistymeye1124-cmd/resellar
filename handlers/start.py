@@ -1,9 +1,11 @@
 # Start and Profile Handlers with Modern Single-Screen Interactive Dashboard
+import logging
+import html
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, InlineKeyboardMarkup
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
-import html
+from aiogram.exceptions import TelegramBadRequest
 from database.db import db
 from keyboards.user_kb import (
     get_main_reply_kb,
@@ -11,14 +13,34 @@ from keyboards.user_kb import (
     get_language_kb,
     get_main_dashboard_inline_kb,
     get_user_profile_kb,
-    make_custom_button
+    make_custom_button,
+    get_force_sub_kb
 )
 from config import ADMIN_USERNAME, OFFICIAL_CHANNEL, ADMIN_IDS
 from utils.i18n import t, LANGUAGES
 from utils.emojis import em_tag
 from utils.ui_nav import render_screen
 
+logger = logging.getLogger("StartHandler")
+
 router = Router()
+
+async def check_channel_membership(bot, user_id: int, channel: str = OFFICIAL_CHANNEL) -> bool:
+    """Verifies whether a user is an active member or admin of the force channel."""
+    if not channel:
+        return True
+    try:
+        member = await bot.get_chat_member(chat_id=channel, user_id=user_id)
+        return member.status in ["creator", "administrator", "member", "restricted"]
+    except TelegramBadRequest as e:
+        err_msg = str(e).lower()
+        if "member list is inaccessible" in err_msg or "chat not found" in err_msg:
+            logger.warning(f"CRITICAL: Bot must be an Admin in {channel} to verify membership: {e}")
+            return False
+        return False
+    except Exception as e:
+        logger.error(f"Error checking membership for {user_id} in {channel}: {e}")
+        return False
 
 def escape_md(text: str) -> str:
     """Escapes Telegram Markdown special characters from user inputs."""
@@ -195,6 +217,30 @@ async def handle_start(message: Message, state: FSMContext = None):
             await message.answer(cert, reply_markup=get_reseller_verification_kb(uname, lang=lang))
         return
 
+    # Force Channel Subscription Guard (@ProAccessBD)
+    force_channel = db.get_setting("force_channel", OFFICIAL_CHANNEL)
+    if force_channel and not admin_flag:
+        is_sub = await check_channel_membership(message.bot, user.id, force_channel)
+        if not is_sub:
+            safe_fname = html.escape(user.first_name or "কাস্টমার")
+            prompt_text = (
+                f"👋 <b>স্বাগতম, {safe_fname}!</b>\n\n"
+                f"🛡️ <b>রেফারেল ভেরিফিকেশন ও বটের সমস্ত সেবা আনলক করতে আমাদের অফিসিয়াল চ্যানেলে জয়েন করুন:</b>\n\n"
+                f"📢 <b>অফিসিয়াল চ্যানেল:</b> <code>{force_channel}</code>\n\n"
+                f"<i>👉 নিচের বাটনে ট্যাপ করে চ্যানেলে জয়েন করুন, এরপর <b>'✅ জয়েন করেছি / ভেরিফাই করুন'</b> বাটনে চাপ দিন।</i>"
+            ) if lang == "bn" else (
+                f"👋 <b>Welcome, {safe_fname}!</b>\n\n"
+                f"🛡️ <b>To unlock referral rewards & bot access, please join our official channel:</b>\n\n"
+                f"📢 <b>Official Channel:</b> <code>{force_channel}</code>\n\n"
+                f"<i>👉 Tap below to join, then click <b>'✅ I Have Joined / Verify'</b> to continue.</i>"
+            )
+            await message.answer(
+                prompt_text,
+                reply_markup=get_force_sub_kb(force_channel, deep_param=deep_param, lang=lang),
+                parse_mode="HTML"
+            )
+            return
+
     # Handle deep-link referral (e.g., ?start=ref_12345, ?start=ref_12345_c12, or ?start=12345)
     welcome_bonus_text = ""
     target_course_info = None
@@ -247,6 +293,78 @@ async def handle_start(message: Message, state: FSMContext = None):
     except Exception:
         await message.answer(welcome_text, reply_markup=kb)
 
+@router.callback_query(F.data.startswith("verify_sub"))
+async def handle_verify_subscription(call: CallbackQuery):
+    user = call.from_user
+    bot = call.bot
+    lang = db.get_user_language(user.id)
+    admin_flag = is_admin(user.id)
+    parts = call.data.split(":", 1)
+    deep_param = parts[1].strip() if len(parts) > 1 and parts[1].strip() != "none" else None
+
+    force_channel = db.get_setting("force_channel", OFFICIAL_CHANNEL)
+    is_sub = await check_channel_membership(bot, user.id, force_channel)
+    if not is_sub:
+        alert_msg = (
+            f"⚠️ আপনি এখনো {force_channel} চ্যানেলে জয়েন করেননি! দয়া করে আগে চ্যানেলে জয়েন করে তারপর ভেরিফাই বাটনে চাপ দিন।"
+            if lang == "bn" else
+            f"⚠️ You haven't joined {force_channel} yet! Please join first and then tap Verify."
+        )
+        await call.answer(alert_msg, show_alert=True)
+        return
+
+    await call.answer("✅ চ্যানেল সাবস্ক্রিপশন সফলভাবে ভেরিফাইড!", show_alert=False)
+
+    welcome_bonus_text = ""
+    target_course_info = None
+    if deep_param:
+        target_ref_id = None
+        target_course_id = None
+        cleaned = deep_param.replace("ref_", "")
+        if "_c" in cleaned:
+            c_parts = cleaned.split("_c")
+            if len(c_parts) == 2 and c_parts[0].isdigit() and c_parts[1].isdigit():
+                target_ref_id = int(c_parts[0])
+                target_course_id = int(c_parts[1])
+        elif cleaned.isdigit():
+            target_ref_id = int(cleaned)
+
+        if target_ref_id and target_ref_id != user.id:
+            reward_res = db.process_referral_join(user.id, target_ref_id, course_id=target_course_id)
+            if reward_res:
+                from utils.notifier import notify_referral_rewards
+                user_info = {
+                    "id": user.id,
+                    "first_name": user.first_name,
+                    "username": user.username
+                }
+                await notify_referral_rewards(bot, user_info, reward_res)
+                if reward_res.get("welcome_bonus", 0) > 0:
+                    welcome_bonus_text = f"\n🎁 <b>রেফারেল স্পেশাল গিফট:</b> আপনার ওয়ালেটে <code>+৳{reward_res['welcome_bonus']:.2f} BDT</code> ফ্রি স্টার্টার ব্যালেন্স যুক্ত হয়েছে!\n"
+            if target_course_id:
+                target_course_info = db.get_product(target_course_id)
+
+    course_invite_html = ""
+    if target_course_info:
+        course_invite_html = (
+            f"\n🎯 <b>বিশেষ আমন্ত্রণ:</b> আপনার বন্ধু আপনাকে <b>{html.escape(target_course_info['title'])}</b> "
+            f"কোর্সটি দেখার জন্য ইনভাইট করেছেন!\n"
+        )
+
+    welcome_text = format_main_dashboard_text(
+        user_id=user.id,
+        user_obj=user,
+        lang=lang,
+        bonus_html=welcome_bonus_text,
+        course_invite_html=course_invite_html
+    )
+    kb = get_main_dashboard_inline_kb(lang, is_admin=admin_flag)
+    try:
+        await call.message.edit_text(welcome_text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await call.message.delete()
+        await call.message.answer(welcome_text, reply_markup=kb, parse_mode="HTML")
+
 
 @router.message(Command("menu"))
 @router.message(F.text.in_([
@@ -260,8 +378,33 @@ async def handle_menu_cmd(message: Message, state: FSMContext = None):
         await state.clear()
     user = message.from_user
     lang = db.get_user_language(user.id)
+    admin_flag = is_admin(user.id)
+
+    force_channel = db.get_setting("force_channel", OFFICIAL_CHANNEL)
+    if force_channel and not admin_flag:
+        is_sub = await check_channel_membership(message.bot, user.id, force_channel)
+        if not is_sub:
+            safe_fname = html.escape(user.first_name or "কাস্টমার")
+            prompt_text = (
+                f"👋 <b>স্বাগতম, {safe_fname}!</b>\n\n"
+                f"🛡️ <b>বটের সমস্ত সেবা ব্যবহার করতে আমাদের অফিসিয়াল চ্যানেলে জয়েন করুন:</b>\n\n"
+                f"📢 <b>অফিসিয়াল চ্যানেল:</b> <code>{force_channel}</code>\n\n"
+                f"<i>👉 নিচের বাটনে ট্যাপ করে চ্যানেলে জয়েন করুন, এরপর <b>'✅ জয়েন করেছি / ভেরিফাই করুন'</b> বাটনে চাপ দিন।</i>"
+            ) if lang == "bn" else (
+                f"👋 <b>Welcome, {safe_fname}!</b>\n\n"
+                f"🛡️ <b>Please join our official channel to use the bot:</b>\n\n"
+                f"📢 <b>Official Channel:</b> <code>{force_channel}</code>\n\n"
+                f"<i>👉 Tap below to join, then click <b>'✅ I Have Joined / Verify'</b> to continue.</i>"
+            )
+            await message.answer(
+                prompt_text,
+                reply_markup=get_force_sub_kb(force_channel, lang=lang),
+                parse_mode="HTML"
+            )
+            return
+
     text = format_main_dashboard_text(user.id, user, lang)
-    kb = get_main_dashboard_inline_kb(lang, is_admin=is_admin(user.id))
+    kb = get_main_dashboard_inline_kb(lang, is_admin=admin_flag)
     try:
         await message.answer(text, reply_markup=kb, parse_mode="HTML")
     except Exception:
