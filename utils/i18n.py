@@ -5,7 +5,8 @@ from typing import Dict
 LANGUAGES = {
     "bn": "🇧🇩 বাংলা",
     "en": "🇬🇧 English",
-    "hi": "🇮🇳 हिंदी"
+    "hi": "🇮🇳 हिंदी",
+    "ur": "🇵🇰 اردو"
 }
 
 def localize_item_name(name: str, lang: str = "bn") -> str:
@@ -54,166 +55,198 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "btn_home": {
         "bn": "🏠 মূল মেনু",
         "en": "🏠 Main Menu",
-        "hi": "🏠 मुख्य मेनू"
+        "hi": "🏠 मुख्य मेनू",
+        "ur": "🏠 اہم مینو"
     },
     "btn_courses": {
         "bn": "🎓 Browse Courses (কোর্স সমূহ)",
         "en": "🎓 Browse Courses",
-        "hi": "🎓 कोर्सेस देखें (Courses)"
+        "hi": "🎓 कोर्सेस देखें (Courses)",
+        "ur": "🎓 کورسز دیکھیں (Courses)"
     },
     "btn_digital": {
         "bn": "⚡ Digital Tools & Accounts",
         "en": "⚡ Digital Tools & Accounts",
-        "hi": "⚡ डिजिटल टूल्स (Tools & Accounts)"
+        "hi": "⚡ डिजिटल टूल्स (Tools & Accounts)",
+        "ur": "⚡ ڈیجیٹل ٹولز اور اکاؤنٹس"
     },
     "btn_deposit": {
         "bn": "💳 Add Balance (ডিপোজিট)",
         "en": "💳 Add Balance (Deposit)",
-        "hi": "💳 बैलेंस जोड़ें (Deposit)"
+        "hi": "💳 बैलेंस जोड़ें (Deposit)",
+        "ur": "💳 بیلنس شامل کریں (Deposit)"
     },
     "btn_reseller": {
         "bn": "🤝 Reseller Hub (রিসেলার প্যানেল)",
         "en": "🤝 Reseller Hub",
-        "hi": "🤝 रीसेलर हब (Reseller Hub)"
+        "hi": "🤝 रीसेलर हब (Reseller Hub)",
+        "ur": "🤝 ری سیلر ہب (Reseller Hub)"
     },
     "btn_orders": {
         "bn": "📦 My Purchases (অর্ডার)",
         "en": "📦 My Purchases",
-        "hi": "📦 मेरी खरीदारी (Orders)"
+        "hi": "📦 मेरी खरीदारी (Orders)",
+        "ur": "📦 میری خریداری (Orders)"
     },
     "btn_profile": {
         "bn": "👤 My Profile (প্রোফাইল)",
         "en": "👤 My Profile",
-        "hi": "👤 मेरी प्रोफाइल (Profile)"
+        "hi": "👤 मेरी प्रोफाइल (Profile)",
+        "ur": "👤 میری پروفائل (Profile)"
     },
     "btn_language": {
         "bn": "🌐 Language (ভাষা)",
         "en": "🌐 Language",
-        "hi": "🌐 भाषा (Language)"
+        "hi": "🌐 भाषा (Language)",
+        "ur": "🌐 زبان (Language)"
     },
     "btn_support": {
         "bn": "💬 Support & Help (হেল্প)",
         "en": "💬 Support & Help",
-        "hi": "💬 सपोर्ट और सहायता (Help)"
+        "hi": "💬 सपोर्ट और सहायता (Help)",
+        "ur": "💬 سپورٹ اور مدد (Help)"
     },
     "btn_verify_reseller": {
         "bn": "🛡️ Verify Reseller (রিসেলার যাচাই)",
         "en": "🛡️ Verify Reseller",
-        "hi": "🛡️ रीसेलर सत्यापन (Verify Reseller)"
+        "hi": "🛡️ रीसेलर सत्यापन (Verify Reseller)",
+        "ur": "🛡️ ری سیلر تصدیق (Verify Reseller)"
     },
     "btn_referral": {
         "bn": "👥 Refer & Earn (ফ্রি কোর্স)",
         "en": "👥 Refer & Earn (Free Courses)",
-        "hi": "👥 रेफर और कमाएं (Free Courses)"
+        "hi": "👥 रेफर और कमाएं (Free Courses)",
+        "ur": "👥 ریفر اور کمائیں (Refer & Earn)"
     },
     "btn_free_claim": {
         "bn": "🎁 Free Claim (গিভঅ্যাওয়ে)",
         "en": "🎁 Free Rewards",
-        "hi": "🎁 फ्री रिवॉर्ड्स"
+        "hi": "🎁 फ्री रिवॉर्ड्स",
+        "ur": "🎁 مفت انعامات (Free Rewards)"
     },
 
     # Common Action Buttons
     "btn_back": {
         "bn": "🔙 পেছনে যান",
         "en": "🔙 Back",
-        "hi": "🔙 वापस जाएं"
+        "hi": "🔙 वापस जाएं",
+        "ur": "🔙 واپس جائیں"
     },
     "btn_back_cats": {
         "bn": "🔙 ক্যাটাগরি তালিকা",
         "en": "🔙 Categories",
-        "hi": "🔙 श्रेणियां"
+        "hi": "🔙 श्रेणियां",
+        "ur": "🔙 زمرہ جات میں واپس جائیں"
     },
     "btn_back_subcats": {
         "bn": "🔙 সাব-ক্যাটাগরি",
         "en": "🔙 Sub-categories",
-        "hi": "🔙 उप-श्रेणियां"
+        "hi": "🔙 उप-श्रेणियां",
+        "ur": "🔙 ذیلی زمرہ جات میں واپس جائیں"
     },
     "btn_cancel": {
         "bn": "❌ বাতিল করুন",
         "en": "❌ Cancel",
-        "hi": "❌ रद्द करें"
+        "hi": "❌ रद्द करें",
+        "ur": "❌ منسوخ کریں"
     },
     "btn_cancel_home": {
         "bn": "❌ বাতিল / হোম",
         "en": "❌ Cancel / Home",
-        "hi": "❌ रद्द / होम"
+        "hi": "❌ रद्द / होम",
+        "ur": "❌ منسوخ کریں اور ہوم پر جائیں"
     },
     "btn_buy_now": {
         "bn": "🚀 Buy Now",
         "en": "🚀 Buy Now",
-        "hi": "🚀 अभी खरीदें"
+        "hi": "🚀 अभी खरीदें",
+        "ur": "⚡ خریدیں اور آرڈر تصدیق کریں"
     },
     "btn_out_of_stock": {
         "bn": "❌ স্টক শেষ (Out of Stock)",
         "en": "❌ Out of Stock",
-        "hi": "❌ आउट ऑफ स्टॉक"
+        "hi": "❌ आउट ऑफ स्टॉक",
+        "ur": "❌ اسٹاک ختم (Out of Stock)"
     },
     "btn_apply_coupon": {
         "bn": "🎟️ কুপন কোড ব্যবহার করুন",
         "en": "🎟️ Apply Promo Coupon",
-        "hi": "🎟️ कूपन कोड दर्ज करें"
+        "hi": "🎟️ कूपन कोड दर्ज करें",
+        "ur": "🎟️ پرومو کوپن لگائیں"
     },
     "btn_add_balance": {
         "bn": "💳 ব্যালেন্স যোগ করুন",
         "en": "💳 Add Balance",
-        "hi": "💳 बैलेंस जोड़ें"
+        "hi": "💳 बैलेंस जोड़ें",
+        "ur": "💳 والٹ بیلنس ریچارج کریں"
     },
     "btn_claim_ref": {
         "bn": "🎁 রেফারেল পয়েন্ট দিয়ে নিন",
         "en": "🎁 Claim with Referrals",
-        "hi": "🎁 रेफरल से क्लेम करें"
+        "hi": "🎁 रेफरल से क्लेम करें",
+        "ur": "🎁 ریفرل انعام کلیم کریں"
     },
     "btn_share_course_ref": {
         "bn": "🔗 এই কোর্সের রেফার লিংক",
         "en": "🔗 Share & Earn with Link",
-        "hi": "🔗 शेयर और कमाएं"
+        "hi": "🔗 शेयर और कमाएं",
+        "ur": "📢 اس کورس کا ریفرل لنک شیئر کریں"
     },
     "btn_view_sales_page": {
         "bn": "🌐 সেলস পেইজ ও কারিকুলাম",
         "en": "🌐 Sales Page & Curriculum",
-        "hi": "🌐 सेल्स पेज और विवरण"
+        "hi": "🌐 सेल्स पेज और विवरण",
+        "ur": "🌐 تفصیلی سیلز پیج دیکھیں"
     },
     "btn_vip_channel_access": {
         "bn": "📢 VIP Channel Access",
         "en": "📢 VIP Channel Access",
-        "hi": "📢 VIP चैनल एक्सेस"
+        "hi": "📢 VIP चैनल एक्सेस",
+        "ur": "🔓 وی آئی پی چینل تک رسائی حاصل کریں"
     },
     "btn_personal_account_access": {
         "bn": "🔐 Personal Account / Drive",
         "en": "🔐 Personal Account / Drive",
-        "hi": "🔐 पर्सनल अकाउंट / ड्राइव"
+        "hi": "🔐 पर्सनल अकाउंट / ड्राइव",
+        "ur": "🔑 اکاؤنٹ لاگ ان کی تفصیلات دیکھیں"
     },
     "btn_copy_link": {
         "bn": "📋 লিংক কপি করুন",
         "en": "📋 Copy Link",
-        "hi": "📋 लिंक कॉपी करें"
+        "hi": "📋 लिंक कॉपी करें",
+        "ur": "📋 لنک کاپی کریں"
     },
     "btn_share_telegram": {
         "bn": "🚀 টেলিগ্রামে শেয়ার করুন",
         "en": "🚀 Share on Telegram",
-        "hi": "🚀 टेलीग्राम पर शेयर करें"
+        "hi": "🚀 टेलीग्राम पर शेयर करें",
+        "ur": "📲 ٹیلیگرام پر شیئر کریں"
     },
     "btn_browse_catalog": {
         "bn": "🎓 কোর্স ক্যাটালগ",
         "en": "🎓 Browse Catalog",
-        "hi": "🎓 कोर्स कैटलॉग"
+        "hi": "🎓 कोर्स कैटलॉग",
+        "ur": "🎓 کیٹلاگ براؤز کریں"
     },
     "btn_leaderboard": {
         "bn": "🏆 লিডারবোর্ড",
         "en": "🏆 Leaderboard",
-        "hi": "🏆 लीडरबोर्ड"
+        "hi": "🏆 लीडरबोर्ड",
+        "ur": "🏆 لیڈر بورڈ دیکھیں"
     },
     "btn_refresh": {
         "bn": "🔄 রিফ্রেশ",
         "en": "🔄 Refresh",
-        "hi": "🔄 रीफ्रेश"
+        "hi": "🔄 रीफ्रेश",
+        "ur": "🔄 ریفریش کریں"
     },
 
     # Main Dashboard Single-Screen Text
     "dashboard_notice_title": {
         "bn": "📢 <b>বিশেষ নোটিশ:</b>",
         "en": "📢 <b>Official Notice:</b>",
-        "hi": "📢 <b>आधिकारिक सूचना:</b>"
+        "hi": "📢 <b>आधिकारिक सूचना:</b>",
+        "ur": "📢 **اہم اطلاع:**"
     },
 
     # Welcome Message
@@ -247,6 +280,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "• इंस्टेंट 1-टाइम प्राइवेट वीआईपी एक्सेस लिंक्स\n"
             "• **रीसेलर प्रोग्राम:** थोक भाव पर खरीदें और असीमित कमाई करें!\n\n"
             "👇 नीचे दिए गए मेनू से विकल्प चुनें:"
+        ),
+        "ur": (
+            "💎 **ALL IN ONE — ڈیجیٹل اسٹور اور وی آئی پی ہب** 💎\n"
+            "خوش آمدید، {name}! پریمیم ڈیجیٹل اسٹور۔"
         )
     },
 
@@ -275,6 +312,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "प्रीमियम कोर्सेस, एआई टूल्स और सत्यापित डिजिटल अकाउंट्स।\n\n"
             "👇 <i>अपनी पसंदीदा श्रेणी चुनें:</i>\n"
             "━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "ur": (
+            "🛍️ **کورسز اور ڈیجیٹل سروسز کیٹلاگ**\n"
+            "\n"
+            "اپنی پسند کا زمرہ منتخب کریں:"
         )
     },
     "shop_courses_text": {
@@ -301,6 +343,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "लाइफटाइम एक्सेस के साथ शीर्ष कोर्सेस।\n\n"
             "👇 <i>अपनी श्रेणी चुनें:</i>\n"
             "━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "ur": (
+            "🎓 **تمام پریمیم کورسز**\n"
+            "\n"
+            "وہ کورس منتخب کریں جو آپ دیکھنا چاہتے ہیں:"
         )
     },
     "shop_digital_text": {
@@ -327,6 +374,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "ओटीटी, वीपीएन और एआई टूल्स।\n\n"
             "👇 <i>अपनी श्रेणी चुनें:</i>\n"
             "━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "ur": (
+            "⚡ **ڈیجیٹل ٹولز اور پریمیم اکاؤنٹس**\n"
+            "\n"
+            "وہ سروس منتخب کریں جو آپ کو چاہیے:"
         )
     },
     "cat_no_products": {
@@ -341,7 +393,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "hi": (
             "⚠️ इस श्रेणी में वर्तमान में कोई उत्पाद सक्रिय नहीं है।\n"
             "जल्द ही नया स्टॉक जोड़ा जाएगा!"
-        )
+        ),
+        "ur": "⚠️ اس زمرے میں فی الحال کوئی پروڈکٹ دستیاب نہیں ہے۔"
     },
     "cat_products_count_prompt": {
         "bn": (
@@ -355,6 +408,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "hi": (
             "📦 उपलब्ध उत्पाद: <b>{count}</b>\n"
             "👉 विवरण देखने के लिए नीचे क्लिक करें:"
+        ),
+        "ur": (
+            "🛍️ **اس زمرے میں کل {count} پروڈکٹس دستیاب ہیں:**\n"
+            "براہ کرم منتخب کریں:"
         )
     },
     "subcat_selector_prompt": {
@@ -369,6 +426,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "hi": (
             "📚 <b>कोर्स ट्रैक्स और उप-श्रेणियां:</b>\n"
             "👇 अपना विषय चुनें:"
+        ),
+        "ur": (
+            "📂 **ذیلی زمرہ جات منتخب کریں:**\n"
+            "مطلوبہ سیکشن کا انتخاب کریں:"
         )
     },
     "subcat_empty_notice": {
@@ -382,19 +443,22 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         ),
         "hi": (
             "⚠️ इस उप-श्रेणी में वर्तमान में कोई कोर्स नहीं है।"
-        )
+        ),
+        "ur": "⚠️ اس ذیلی زمرے میں فی الحال کوئی کورس دستیاب نہیں ہے۔"
     },
 
     # Language Selection Prompt
     "lang_select_prompt": {
         "bn": "🌐 **আপনার পছন্দের ভাষা নির্বাচন করুন / Select your language / अपनी भाषा चुनें:**",
         "en": "🌐 **Select your preferred language / আপনার পছন্দের ভাষা নির্বাচন করুন / अपनी भाषा चुनें:**",
-        "hi": "🌐 **अपनी पसंदीदा भाषा चुनें / Select your language / আপনার পছন্দের ভাষা নির্বাচন করুন:**"
+        "hi": "🌐 **अपनी पसंदीदा भाषा चुनें / Select your language / আপনার পছন্দের ভাষা নির্বাচন করুন:**",
+        "ur": "🌐 **اپنی پسندیدہ زبان منتخب کریں / Select your preferred language:**"
     },
     "lang_updated": {
         "bn": "✅ ভাষা সফলভাবে **বাংলা** তে পরিবর্তন করা হয়েছে!",
         "en": "✅ Language has been successfully changed to **English**!",
-        "hi": "✅ भाषा सफलतापूर्वक **हिंदी** में बदल दी गई है!"
+        "hi": "✅ भाषा सफलतापूर्वक **हिंदी** में बदल दी गई है!",
+        "ur": "✅ زبان کامیابی کے ساتھ **اردو (Urdu)** میں تبدیل کر دی گئی ہے!"
     },
 
     # Profile Ledger
@@ -443,6 +507,23 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "📊 **कुल खरीदारी:** `৳{total_spent_bdt:.2f}` (${total_spent_usd:.2f})\n"
             "📦 **सफल ऑर्डर्स:** `{orders_count}`\n"
             "━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "ur": (
+            "👤 **آپ کا کسٹمر پروفائل اور لیجر**\n"
+            "\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🆔 **کسٹمر آئی ڈی:** `{user_id}`\n"
+            "👤 **نام:** {name}\n"
+            "🏷️ **صارف نام:** `{username}`\n"
+            "🎖️ **اکاؤنٹ کا درجہ:** {account_type}\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💳 **والٹ بیلنس:**\n"
+            "• BDT: `৳{balance_bdt:.2f}`\n"
+            "• USD: `${balance_usd:.2f}`\n"
+            "\n"
+            "📊 **کل خرچ:** `৳{total_spent_bdt:.2f}` (${total_spent_usd:.2f})\n"
+            "📦 **مکمل آرڈرز:** `{orders_count} عدد`\n"
+            "━━━━━━━━━━━━━━━━━━━━"
         )
     },
 
@@ -450,12 +531,14 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "reseller_badge_active": {
         "bn": "💎 ভেরিফাইড রিসেলার",
         "en": "💎 Verified VIP Reseller",
-        "hi": "💎 वेरीफाइड वीआईपी रीसेलर"
+        "hi": "💎 वेरीफाइड वीआईपी रीसेलर",
+        "ur": "👑 وی آئی پی ری سیلر پارٹنر"
     },
     "reseller_badge_regular": {
         "bn": "সাধারণ ক্রেতা",
         "en": "Verified Customer",
-        "hi": "सत्यापित ग्राहक"
+        "hi": "सत्यापित ग्राहक",
+        "ur": "⭐ تصدیق شدہ کسٹمر"
     },
 
     # Support Message
@@ -480,6 +563,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "👨‍💻 **सपोर्ट एडमिन:** @{admin}\n"
             "📢 **ऑफिशियल चैनल:** {channel}\n\n"
             "⚡ सहायता के लिए नीचे दिए गए बटन पर क्लिक करें:"
+        ),
+        "ur": (
+            "💬 **سپورٹ اور کسٹمر ہیلپ لائن**\n"
+            "\n"
+            "کسی بھی مسئلے یا سوال کے لیے ہمارے ایڈمن سے رابطہ کریں۔"
         )
     },
 
@@ -516,6 +604,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             '• <tg-emoji emoji-id="6235282831405227077">💳</tg-emoji> <b>Rocket:</b> सेंड मनी (BDT)\n'
             '• <tg-emoji emoji-id="6235545537374855311">💳</tg-emoji> <b>Binance Pay:</b> USDT डिपॉजिट (USD)\n\n'
             '👇 <b>नीचे दिए गए विकल्पों में से चुनें:</b>'
+        ),
+        "ur": (
+            "💳 **والٹ بیلنس ریچارج کریں**\n"
+            "\n"
+            "براہ کرم ادائیگی کا طریقہ منتخب کریں:"
         )
     },
 
@@ -523,12 +616,14 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "fast_approval_notice": {
         "bn": "⚡ **দ্রুত অ্যাপ্রুভ পেতে সরাসরি অ্যাডমিনকে নক দিন:**\n👉 @{admin}",
         "en": "⚡ **For faster deposit approval, contact admin directly:**\n👉 @{admin}",
-        "hi": "⚡ **तेज़ अप्रूवल के लिए सीधे एडमिन से संपर्क करें:**\n👉 @{admin}"
+        "hi": "⚡ **तेज़ अप्रूवल के लिए सीधे एडमिन से संपर्क करें:**\n👉 @{admin}",
+        "ur": "⚡ **فوری منظوری:** پیمنٹ کے بعد ٹرانزیکشن آئی ڈی اور اسکرین شاٹ بھیجیں، بیلنس جلد ہی شامل کر دیا جائے گا۔"
     },
     "btn_fast_approval": {
         "bn": "⚡ দ্রুত অ্যাপ্রুভ পেতে অ্যাডমিন নক 💬",
         "en": "⚡ Knock Admin for Fast Approval 💬",
-        "hi": "⚡ तुरंत अप्रूवल के लिए संपर्क करें 💬"
+        "hi": "⚡ तुरंत अप्रूवल के लिए संपर्क करें 💬",
+        "ur": "⚡ فوری منظوری کی درخواست"
     },
 
     # Deposit Step Inputs
@@ -544,6 +639,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "hi": (
             "👉 आपने कितनी राशि <b>{unit}</b> भेजी है, कृपया नीचे दर्ज करें:\n"
             "<i>(उदाहरण: 500 या 1000)</i>"
+        ),
+        "ur": (
+            "💵 **بیلنس کی رقم درج کریں:**\n"
+            "وہ رقم لکھیں جو آپ ریچارج کرنا چاہتے ہیں (BDT):"
         )
     },
     "dep_amount_accepted": {
@@ -560,6 +659,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "hi": (
             "✅ <b>राशि दर्ज:</b> <code>{amount} {currency}</code>\n\n"
             "👉 अब अपना <b>Transaction ID (TrxID)</b> भेजें:"
+        ),
+        "ur": (
+            "✅ رقم درج ہو گئی: **৳{amount}**\n"
+            "اب براہ کرم ٹرانزیکشن آئی ڈی یا اسکرین شاٹ بھیجیں۔"
         )
     },
     "dep_screenshot_prompt": {
@@ -579,6 +682,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "📸 <b>भुगतान का स्क्रीनशॉट अपलोड करें:</b>\n\n"
             "⚠️ कृपया सफल भुगतान का स्पष्ट स्क्रीनशॉट भेजें।\n"
             "👇 अभी स्क्रीनशॉट फोटो भेजें:"
+        ),
+        "ur": (
+            "📸 **ادائیگی کا اسکرین شاٹ بھیجیں:**\n"
+            "کامیاب ادائیگی کا اسکرین شاٹ یہاں اپلوڈ کریں۔"
         )
     },
     "dep_pending_receipt": {
@@ -615,6 +722,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "🆔 <b>अनुरोध आईडी:</b> <code>#{req_id}</code>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "⚡ त्वरित अप्रूवल के लिए एडमिन से संपर्क करें: @{admin}"
+        ),
+        "ur": (
+            "⏳ **آپ کی ڈپازٹ کی درخواست موصول ہو گئی ہے!**\n"
+            "ایڈمن جلد ہی اس کی تصدیق کر کے بیلنس شامل کر دے گا۔"
         )
     },
 
@@ -654,6 +765,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "<pre>{delivery_data}</pre>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "⚡ <b>सूचना:</b> कृपया तुरंत जुड़ें या क्रेडेंशियल्स सुरक्षित करें।"
+        ),
+        "ur": (
+            "🎉 **آپ کا آرڈر کامیابی سے مکمل ہو گیا ہے!**\n"
+            "رسائی کی تفصیلات نیچے درج ہیں:"
         )
     },
     "insufficient_balance": {
@@ -680,6 +795,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "💳 आपका वर्तमान बैलेंस: <b>{unit}{user_bal:.2f}</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             "⚡ कृपया नीचे दिए गए बटन से बैलेंस जोड़ें।"
+        ),
+        "ur": (
+            "⚠️ **ناکافی والٹ بیلنس!**\n"
+            "اس پروڈکٹ کو خریدنے کے لیے آپ کے پاس کافی بیلنس نہیں ہے۔ براہ کرم پہلے بیلنس شامل کریں۔"
         )
     },
     "insufficient_points": {
@@ -705,7 +824,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "💎 आवश्यक पॉइंट्स: <b>{price} Pts</b>\n"
             "🌟 आपके पॉइंट्स: <b>{user_pts} Pts</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        )
+        ),
+        "ur": "⚠️ **ناکافی ریفرل پوائنٹس!**"
     },
     # Global Cancellations
     "global_cancelled_msg": {
@@ -723,12 +843,14 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "❌ <b>वर्तमान प्रक्रिया रद्द कर दी गई है।</b>\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "👇 आप मुख्य डैशबोर्ड पर वापस आ गए हैं:"
-        )
+        ),
+        "ur": "❌ یہ عمل منسوخ کر دیا گیا ہے۔"
     },
     "global_cancelled_alert": {
         "bn": "প্রক্রিয়াটি বাতিল করা হয়েছে।",
         "en": "Cancelled successfully.",
-        "hi": "प्रक्रिया रद्द कर दी गई।"
+        "hi": "प्रक्रिया रद्द कर दी गई।",
+        "ur": "❌ عمل منسوخ ہو گیا۔"
     },
 
     # Orders Vault
@@ -746,6 +868,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "hi": (
             "{em_box} <b>आपका ऑर्डर वॉल्ट वर्तमान में खाली है!</b>\n\n"
             "आपने अभी तक कोई कोर्स या डिजिटल उत्पाद नहीं खरीदा है।"
+        ),
+        "ur": (
+            "📦 **آپ نے ابھی تک کوئی آرڈر نہیں خریدا ہے۔**\n"
+            "خریداری کرنے کے بعد آپ کے تمام آرڈرز یہاں ظاہر ہوں گے۔"
         )
     },
     "orders_vault_header": {
@@ -762,6 +888,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "hi": (
             "{em_box} <b>डिजिटल ऑर्डर इतिहास और एक्सेस वॉल्ट</b> {em_box}\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        ),
+        "ur": (
+            "📦 **آپ کے تمام آرڈرز اور رسائی کی فہرست:**\n"
+            "\n"
+            ""
         )
     },
 
@@ -792,6 +923,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "{em_adm} <b>सपोर्ट एडमिन:</b> @{admin}\n"
             "{em_chn} <b>ऑफिशियल चैनल:</b> {channel}\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "ur": (
+            "💬 **ہیلپ لائن اور کسٹمر سروس**\n"
+            "کسی بھی رہنمائی کے لیے ہم 24/7 حاضر ہیں۔"
         )
     },
 
@@ -830,6 +965,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "2️⃣ 🔐 <b>Personal Account / Drive Access:</b> <b>৳{acc_bdt} BDT</b> (${acc_usd} USD)\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "👇 अपना पसंदीदा विकल्प चुनें:"
+        ),
+        "ur": (
+            "🛍️ **آرڈر چیک آؤٹ**\n"
+            "براہ کرم تفصیلات چیک کریں اور تصدیق کریں:"
         )
     },
 
@@ -870,6 +1009,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "💰 मूल्य: <b>৳{charge_bdt} BDT</b> / <b>${charge_usd} USD</b>\n\n"
             "💳 आपका बैलेंस: ৳{bal_bdt:.2f} BDT | ${bal_usd:.2f} USD\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "ur": (
+            "🛍️ **پروڈکٹ کا نام:** {title}\n"
+            "💰 **قیمت:** ৳{price:.2f}\n"
+            "کیا آپ اس آرڈر کی تصدیق کرنا چاہتے ہیں؟"
         )
     },
 
@@ -888,12 +1032,14 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "hi": (
             "🎟️ **कूपन कोड दर्ज करें**\n\n"
             "👉 अपना कूपन कोड भेजें:"
-        )
+        ),
+        "ur": "🎟️ **اپنا ڈسکاؤنٹ کوپن کوڈ درج کریں:**"
     },
     "coupon_invalid_alert": {
         "bn": "❌ **ভুল কুপন কোড অথবা মেয়াদ শেষ হয়ে গেছে!**\n\nসঠিক কোড দিন অথবা ফিরে যান:",
         "en": "❌ **Invalid or expired coupon code!**\n\nPlease enter a valid code or go back:",
-        "hi": "❌ **अमान्य या समाप्त कूपन कोड!**"
+        "hi": "❌ **अमान्य या समाप्त कूपन कोड!**",
+        "ur": "❌ غلط یا ختم شدہ کوپن کوڈ!"
     },
     "coupon_applied_card": {
         "bn": (
@@ -918,14 +1064,16 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "🛒 **ऑर्डर पुष्टिकरण: {title}**\n\n"
             "🏷️ **कूपन:** `{code}` (৳{discount_bdt} छूट)\n"
             "💰 **देय राशि:** `৳{final_bdt} BDT` / `${final_usd} USD`"
-        )
+        ),
+        "ur": "🎉 کوپن کامیابی سے لاگو ہو گیا! رعایت حاصل کر لی گئی۔"
     },
 
     # Out of Stock Alert
     "out_of_stock_alert": {
         "bn": "❌ এই আইটেমটি বর্তমানে স্টকে নেই। শীঘ্রই রিস্টক করা হবে!",
         "en": "❌ This item is currently out of stock. It will be restocked soon!",
-        "hi": "❌ यह आइटम वर्तमान में स्टॉक में नहीं है। जल्द ही उपलब्ध होगा!"
+        "hi": "❌ यह आइटम वर्तमान में स्टॉक में नहीं है। जल्द ही उपलब्ध होगा!",
+        "ur": "❌ معذرت، یہ پروڈکٹ فی الحال اسٹاک میں نہیں ہے!"
     },
 
     # Orders Vault
@@ -943,6 +1091,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "hi": (
             "📦 <b>आपका ऑर्डर वॉल्ट खाली है!</b>\n\n"
             "आपने अभी तक कोई कोर्स नहीं खरीदा है।"
+        ),
+        "ur": (
+            "📦 **آپ نے ابھی تک کوئی آرڈر نہیں خریدا ہے۔**\n"
+            "خریداری کرنے کے بعد آپ کے تمام آرڈرز یہاں ظاہر ہوں گے۔"
         )
     },
     "orders_vault_header": {
@@ -959,22 +1111,30 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "hi": (
             "📦 <b>डिजिटल ऑर्डर इतिहास और एक्सेस वॉल्ट</b> 📦\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        ),
+        "ur": (
+            "📦 **آپ کے تمام آرڈرز اور رسائی کی فہرست:**\n"
+            "\n"
+            ""
         )
     },
     "orders_paid_label": {
         "bn": "পরিশোধিত মূল্য",
         "en": "Paid Amount",
-        "hi": "भुगतान राशि"
+        "hi": "भुगतान राशि",
+        "ur": "ادا شدہ رقم"
     },
     "orders_date_label": {
         "bn": "তারিখ",
         "en": "Date",
-        "hi": "तारीख"
+        "hi": "तारीख",
+        "ur": "تاریخ"
     },
     "orders_access_label": {
         "bn": "অ্যাক্সেস ডাটা / ডেলিভারি ক্রেডেনশিয়াল",
         "en": "Access Data / Delivery Credentials",
-        "hi": "एक्सेस डेटा / क्रेडेंशियल"
+        "hi": "एक्सेस डेटा / क्रेडेंशियल",
+        "ur": "رسائی کا لنک / تفصیلات"
     },
 
     # Support & Helpdesk
@@ -1004,6 +1164,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "{em_adm} <b>सपोर्ट एडमिन:</b> @{admin}\n"
             "{em_chn} <b>चैनल:</b> {channel}\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "ur": (
+            "💬 **ہیلپ لائن اور کسٹمر سروس**\n"
+            "کسی بھی رہنمائی کے لیے ہم 24/7 حاضر ہیں۔"
         )
     },
 
@@ -1023,12 +1187,14 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "❌ <b>वर्तमान प्रक्रिया सफलतापूर्वक रद्द कर दी गई है।</b>\n\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "👇 आप मुख्य डैशबोर्ड पर वापस आ गए हैं:"
-        )
+        ),
+        "ur": "❌ یہ عمل منسوخ کر دیا گیا ہے۔"
     },
     "global_cancelled_alert": {
         "bn": "প্রক্রিয়াটি বাতিল করা হয়েছে।",
         "en": "Process has been cancelled.",
-        "hi": "प्रक्रिया रद्द कर दी गई है।"
+        "hi": "प्रक्रिया रद्द कर दी गई है।",
+        "ur": "❌ عمل منسوخ ہو گیا۔"
     },
 
     # Search & Course Request Hub
@@ -1056,12 +1222,17 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "जो कोर्स या टूल हमारी सूची में नहीं है, उसका <b>नाम</b> या <b>लिंक</b> भेजें:\n\n"
             "💡 हमारी टीम जल्द से जल्द इसकी व्यवस्था करेगी!"
+        ),
+        "ur": (
+            "🎯 **کورس کی درخواست بھیجیں:**\n"
+            "جس کورس کی آپ کو ضرورت ہے اس کا نام یا لنک لکھ کر بھیجیں:"
         )
     },
     "course_req_cancelled_alert": {
         "bn": "❌ রিকোয়েস্ট বাতিল করা হয়েছে।",
         "en": "❌ Request cancelled.",
-        "hi": "❌ अनुरोध रद्द कर दिया गया।"
+        "hi": "❌ अनुरोध रद्द कर दिया गया।",
+        "ur": "❌ کورس کی درخواست منسوخ کر دی گئی۔"
     },
     "course_req_user_confirm": {
         "bn": (
@@ -1087,7 +1258,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "🆔 <b>ट्रैकिंग आईडी:</b> <code>#REQ-{req_id}</code>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "💡 हमारी टीम जल्द ही इसे सूची में जोड़ेगी। धन्यवाद!"
-        )
+        ),
+        "ur": "✅ آپ کے کورس کی درخواست ایڈمن کو بھیج دی گئی ہے!"
     },
     "search_found_single_text": {
         "bn": (
@@ -1115,7 +1287,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "📝 <b>विवरण:</b>\n{desc}...\n\n"
             "💰 <b>मूल्य:</b> <b>৳{bdt} BDT</b> या <b>${usd} USD</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        )
+        ),
+        "ur": "🔍 **آپ کی تلاش سے مماثل پروڈکٹ مل گیا:**"
     },
     "search_found_multiple_text": {
         "bn": (
@@ -1135,7 +1308,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             "आपने खोजा: <code>{query}</code>\n\n"
             "👇 विवरण और कीमत देखने के लिए नीचे दिए गए विकल्पों में से चुनें:"
-        )
+        ),
+        "ur": "🔍 **آپ کی تلاش سے مماثل {count} پروڈکٹس ملے ہیں:**"
     },
     "search_not_found_text": {
         "bn": (
@@ -1160,7 +1334,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "आपने खोजा:\n<code>{query}</code>\n\n"
             "⚠️ यह कोर्स वर्तमान में हमारी सूची में नहीं है।\n\n"
             "💡 आप इसका अनुरोध कर सकते हैं—हमारी टीम जल्द से जल्द इसकी व्यवस्था करेगी!"
-        )
+        ),
+        "ur": "❌ معذرت، آپ کی تلاش کے مطابق کوئی پروڈکٹ نہیں ملا۔"
     },
     "search_casual_guide_text": {
         "bn": (
@@ -1180,50 +1355,58 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
             "क्या आपको किसी विशिष्ट कोर्स या टूल की आवश्यकता है?\n\n"
             "• नीचे दिए गए कीबोर्ड मेनू का उपयोग करें\n"
             "• या जो कोर्स चाहिए उसका <b>नाम या लिंक</b> सीधे यहाँ चैट में भेजें!"
-        )
+        ),
+        "ur": "🔍 جس کورس یا پروڈکٹ کو تلاش کرنا ہے اس کا نام ٹائپ کریں:"
     },
     "deposit_invalid_method_alert": {
         "bn": "মেথড পাওয়া যায়নি!",
         "en": "Payment method not found!",
-        "hi": "भुगतान विधि नहीं मिली!"
+        "hi": "भुगतान विधि नहीं मिली!",
+        "ur": "❌ ادائیگی کا غلط طریقہ منتخب کیا گیا ہے۔"
     },
     "deposit_method_maintenance_alert": {
         "bn": "⚠️ এই পেমেন্ট মেথডটি সাময়িক রক্ষণাবেক্ষণের জন্য বন্ধ আছে। অনুগ্রহ করে অন্য মেথড বেছে নিন।",
         "en": "⚠️ This payment gateway is temporarily undergoing maintenance. Please select an alternate method.",
-        "hi": "⚠️ यह भुगतान गेटवे अस्थायी रूप से रखरखाव के अधीन है। कृपया अन्य विधि चुनें।"
+        "hi": "⚠️ यह भुगतान गेटवे अस्थायी रूप से रखरखाव के अधीन है। कृपया अन्य विधि चुनें।",
+        "ur": "⚠️ ادائیگی کا یہ طریقہ فی الحال مینٹیننس میں ہے۔"
     },
     "catalog_subcat_not_found_alert": {
         "bn": "সাব-ক্যাটাগরি পাওয়া যায়নি!",
         "en": "Sub-category not found!",
-        "hi": "उप-श्रेणी नहीं मिली!"
+        "hi": "उप-श्रेणी नहीं मिली!",
+        "ur": "❌ ذیلی زمرہ نہیں ملا۔"
     },
     "catalog_prod_not_found_alert": {
         "bn": "প্রোডাক্ট পাওয়া যায়নি!",
         "en": "Product not found!",
-        "hi": "उत्पाद नहीं मिला!"
+        "hi": "उत्पाद नहीं मिला!",
+        "ur": "❌ پروڈکٹ نہیں ملا۔"
     },
 
     # Product Stock Status Badges
     "product_stock_out": {
         "bn": "🔴 আউট অব স্টক (Out of Stock)",
         "en": "🔴 Out of Stock",
-        "hi": "🔴 आउट ऑफ स्टॉक (Out of Stock)"
+        "hi": "🔴 आउट ऑफ स्टॉक (Out of Stock)",
+        "ur": "🔴 اسٹاک ختم"
     },
     "product_stock_in": {
         "bn": "🟢 ইন-স্টক ({count} টি অবশিষ্ট)",
         "en": "🟢 In Stock ({count} available)",
-        "hi": "🟢 स्टॉक में उपलब्ध ({count})"
+        "hi": "🟢 स्टॉक में उपलब्ध ({count})",
+        "ur": "🟢 اسٹاک میں دستیاب ({count} عدد)"
     },
     "product_stock_instant": {
         "bn": "🟢 ইন-স্টক (স্বয়ংক্রিয় ইনস্ট্যান্ট অ্যাক্সেস)",
         "en": "🟢 In Stock (Instant Delivery)",
-        "hi": "🟢 स्टॉक में उपलब्ध (त्वरित डिलीवरी)"
+        "hi": "🟢 स्टॉक में उपलब्ध (त्वरित डिलीवरी)",
+        "ur": "🟢 فوری آٹو ڈلیوری دستیاب"
     }
 }
 
 def t(key: str, lang: str = "bn", **kwargs) -> str:
     """Retrieve translated text by key and language code, with format interpolation."""
-    lang_code = lang if lang in ["bn", "en", "hi"] else "bn"
+    lang_code = lang if lang in LANGUAGES else "bn"
     entry = TRANSLATIONS.get(key, {})
     template = entry.get(lang_code) or entry.get("en") or entry.get("bn") or key
     if kwargs:

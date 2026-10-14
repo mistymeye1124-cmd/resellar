@@ -121,6 +121,26 @@ def format_main_dashboard_text(user_id: int, user_obj=None, lang: str = "bn", bo
             f"• {em_res} <b>रीसेलर हब:</b> थोक दरें और अनलिमिटेड कमाई\n\n"
             f"👉 <i>ब्राउज करने के लिए नीचे दिए गए बटन पर टैप करें:</i>"
         )
+    elif lang == "ur":
+        tier_label = "👑 وی آئی پی ری سیلر" if is_res else "⭐ تصدیق شدہ صارف"
+        text = (
+            f"{ann_html}"
+            f"💎 <b>ALL IN ONE — ڈیجیٹل اسٹور اور وی آئی پی ہب</b> 💎\n"
+            f"<i>خوش آمدید، {safe_name}! پریمیم ڈیجیٹل اسٹور۔</i>\n\n"
+            f"{box_border}\n"
+            f"{em_usr} <b>کسٹمر آئی ڈی:</b> <code>#{user_id}</code>\n"
+            f"{em_shd} <b>رکنیت کا درجہ:</b> <code>{tier_label}</code>\n"
+            f"{em_wal} <b>والٹ بیلنس:</b> <b>৳{db_user['balance_bdt']:.2f}</b> | <b>${db_user['balance_usd']:.2f} USD</b>\n"
+            f"💎 <b>ریوارڈ پوائنٹس:</b> <b>{points} Pts</b>\n"
+            f"🟢 <b>سروس اسٹیٹس:</b> <code>24/7 فوری آٹو ڈلیوری</code>\n"
+            f"{box_border}{bonus_html}{course_invite_html}\n\n"
+            f"🛍️ <b>اسٹور کی خدمات:</b>\n"
+            f"• {em_crs} <b>کورسز:</b> لائف ٹائم ڈرائیو اور وی آئی پی چینلز\n"
+            f"• {em_dgt} <b>اکاؤنٹس:</b> OTT، AI ٹولز اور پریمیم اکاؤنٹس\n"
+            f"• {em_gft} <b>مفت انعامات:</b> روزانہ ڈراپس اور ٹرائل والٹس\n"
+            f"• {em_res} <b>ری سیلر ہب:</b> ہول سیل ریٹس اور روزانہ کمائی\n\n"
+            f"👉 <i>براؤز کرنے کے لیے نیچے دیے گئے بٹن پر کلک کریں:</i>"
+        )
     else: # Bengali (default)
         tier_label = "👑 ভিআইপি রিসেলার" if is_res else "⭐ ভেরিফাইড ইউজার"
         text = (
@@ -443,7 +463,14 @@ async def handle_set_language_callback(call: CallbackQuery):
 
     # Synchronize persistent bottom reply keyboard to match selected language immediately IF enabled
     is_menu_on = db.get_user_bottom_menu_status(user_id)
-    confirm_msg = f"✅ Menu language updated to <b>{lang_name}</b>" if new_lang == "en" else f"✅ মেনু ভাষা পরিবর্তন করা হয়েছে: <b>{lang_name}</b>"
+    if new_lang == "en":
+        confirm_msg = f"✅ Menu language updated to <b>{lang_name}</b>"
+    elif new_lang == "ur":
+        confirm_msg = f"✅ مینو کی زبان تبدیل کر دی گئی ہے: <b>{lang_name}</b>"
+    elif new_lang == "hi":
+        confirm_msg = f"✅ मेनू भाषा बदल दी गई है: <b>{lang_name}</b>"
+    else:
+        confirm_msg = f"✅ মেনু ভাষা পরিবর্তন করা হয়েছে: <b>{lang_name}</b>"
     if is_menu_on:
         reply_kb = get_main_reply_kb(new_lang, is_admin=is_admin(user_id))
         try:
@@ -505,6 +532,31 @@ def format_user_profile_data(user_id: int, user_obj=None):
             f"• Orders: <b>{len(orders)} Orders</b>\n"
             f"{box_border}\n\n"
             f"💡 <i>Use buttons below to convert points or manage:</i>"
+        )
+    elif lang == "ur":
+        tier_label = "👑 وی آئی پی ری سیلر" if is_reseller else "⭐ تصدیق شدہ صارف"
+        profile_text = (
+            f"{box_border}\n"
+            f"👤 <b>کسٹمر پروفائل اور والٹ</b>\n"
+            f"{box_border}\n"
+            f"<i>خوش آمدید {safe_name}! آپ کی پروفائل کی تفصیلات:</i>\n\n"
+            f"{em_usr} <b>کسٹمر آئی ڈی:</b> <code>#{user_id}</code>\n"
+            f"{em_shd} <b>رکنیت کا درجہ:</b> <code>{tier_label}</code>\n"
+            f"🏷️ <b>ٹیلیگرام صارف:</b> {uname}\n"
+            f"{box_border}\n"
+            f"{em_wal} <b>والٹ بیلنس:</b>\n"
+            f"• <b>روپے (BDT):</b> <b>৳{db_user['balance_bdt']:.2f}</b>\n"
+            f"• <b>ڈالر (USD):</b> <b>${db_user['balance_usd']:.2f}</b>\n\n"
+            f"💎 <b>ریفرل ارننگ اور پوائنٹس والٹ:</b>\n"
+            f"• 🌟 پوائنٹس: <b>{ref_summary['available_points']} Pts</b> <i>(~৳{ref_summary['bdt_value']:.0f})</i>\n"
+            f"• 👥 ریفرلز: <b>{ref_summary['total_referrals']}</b> (T1: {ref_summary['t1_count']} | T2: {ref_summary['t2_count']})\n"
+            f"• {em_crs} کورس ریفرلز: <b>{ref_summary['course_referrals']}</b>\n"
+            f"• 💱 کیش میں تبدیل: <b>৳{ref_summary['converted_bdt_total']:.2f}</b>\n\n"
+            f"{em_ord} <b>خریداری کی ہسٹری:</b>\n"
+            f"• کل خرچ: <b>৳{db_user['total_spent_bdt']:.2f}</b> (${db_user['total_spent_usd']:.2f})\n"
+            f"• مکمل آرڈرز: <b>{len(orders)} عدد</b>\n"
+            f"{box_border}\n\n"
+            f"💡 <i>پوائنٹس تبدیل کرنے یا شاپنگ کے لیے نیچے دیے گئے بٹن استعمال کریں:</i>"
         )
     else:
         tier_label = "👑 ভিআইপি রিসেলার" if is_reseller else "⭐ ভেরিফাইড ইউজার"

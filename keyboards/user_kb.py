@@ -15,13 +15,13 @@ from utils.emojis import (
 
 def get_main_reply_kb(lang: str = "bn", is_admin: bool = False) -> ReplyKeyboardMarkup:
     """Persistent reply keyboard at the bottom of the chat with native Telegram Premium animated emojis."""
-    menu_label = "🏠 মূল মেনু" if lang == "bn" else ("🏠 Main Menu" if lang == "en" else "🏠 मुख्य मेनू")
+    menu_label = "🏠 মূল মেনু" if lang == "bn" else ("🏠 Main Menu" if lang == "en" else ("🏠 اہم مینو" if lang == "ur" else "🏠 मुख्य मेनू"))
     courses_label = t("btn_courses", lang)
     deposit_label = t("btn_deposit", lang)
     orders_label = t("btn_orders", lang)
     profile_label = t("btn_profile", lang)
     support_label = t("btn_support", lang)
-    reseller_label = "🤝 রিসেলার হাব" if lang == "bn" else ("🤝 Reseller Hub" if lang == "en" else "🤝 रीसेलर हब")
+    reseller_label = "🤝 রিসেলার হাব" if lang == "bn" else ("🤝 Reseller Hub" if lang == "en" else ("🤝 ری سیلر ہب" if lang == "ur" else "🤝 रीसेलर हब"))
 
     kb = [
         [
@@ -85,6 +85,9 @@ def get_force_sub_kb(channel_username: str = "@ProAccessBD", deep_param: Optiona
     elif lang == "hi":
         btn_join = "📢 ऑफिशियल चैनल से जुड़ें"
         btn_verify = "🔄 ✅ जुड़ गया हूँ / सत्यापित करें"
+    elif lang == "ur":
+        btn_join = f"📢 آفیشل چینل میں شامل ہوں ({channel_username})"
+        btn_verify = "🔄 ✅ شامل ہو گیا ہوں / تصدیق کریں"
     else: # bn
         btn_join = f"📢 জয়েন চ্যানেল ({channel_username})"
         btn_verify = "🔄 ✅ জয়েন করেছি / ভেরিফাই করুন"
@@ -121,6 +124,18 @@ def get_main_dashboard_inline_kb(lang: str = "bn", is_admin: bool = False, admin
         lang_txt = "🌐 भाषा"
         sup_txt = "💬 सहायता"
         adm_txt = "👑 एडमिन पैनल"
+    elif lang == "ur":
+        shop_txt = "🛍️ اسٹور براؤز کریں"
+        prof_txt = "👤 میری پروفائل"
+        dep_txt = "💳 بیلنس شامل کریں"
+        free_txt = "🎁 مفت انعامات"
+        ref_txt = "👥 ریفر اور کمائیں"
+        ver_txt = "🛡️ ری سیلر تصدیق"
+        res_txt = "💼 ری سیلر ہب"
+        ord_txt = "📜 میرے آرڈرز"
+        lang_txt = "🌐 زبان (Language)"
+        sup_txt = "💬 ہیلپ لائن"
+        adm_txt = "👑 ایڈمن پینل"
     else:
         shop_txt = "🛍️ কোর্স ও শপ"
         prof_txt = "👤 প্রোফাইল"
@@ -170,7 +185,8 @@ def get_language_kb(lang: str = "bn") -> InlineKeyboardMarkup:
             make_custom_button(text="English", callback_data="set_lang:en", emoji_key="lang_en")
         ],
         [
-            make_custom_button(text="हिन्दी (Hindi)", callback_data="set_lang:hi", emoji_key="lang_hi")
+            make_custom_button(text="हिन्दी (Hindi)", callback_data="set_lang:hi", emoji_key="lang_hi"),
+            make_custom_button(text="اردو (Urdu)", callback_data="set_lang:ur", emoji_key="lang_ur")
         ],
         [
             make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
@@ -202,6 +218,14 @@ def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admi
         race_label = "🏁 लाइव सेल्स रेस"
         apply_label = "📝 रीसेलर आवेदन"
         knock_label = "⚡ त्वरित संपर्क"
+    elif lang == "ur":
+        price_label = "💎 ہول سیل قیمت کی فہرست"
+        lb_label = "🏆 لیڈر بورڈ"
+        post_label = "📢 مارکیٹنگ پوسٹس"
+        order_label = "🛍️ ہول سیل کیٹلاگ"
+        race_label = "🏁 لائیو سیلز مقابلہ"
+        apply_label = "📝 بطور ری سیلر درخواست دیں"
+        knock_label = "⚡ فوری رابطہ"
     else:
         price_label = "💎 পাইকারি মূল্য তালিকা"
         lb_label = "🏆 লিডারবোর্ড"
@@ -885,6 +909,14 @@ def get_user_profile_kb(user_id: int, available_points: int = 0, balance_bdt: fl
         ref_hub_txt = "👥 रेफरल हब"
         refresh_txt = "🔄 रीफ्रेश"
         menu_toggle_txt = "⌨️ बॉटम मेनू: 🟢 चालू (छुपाएं)" if show_bottom_menu else "⌨️ बॉटम मेनू: 🔴 बंद (चालू करें)"
+    elif lang == "ur":
+        pts_txt = "💱 پوائنٹس تبدیل کریں"
+        conv_curr_txt = "💵 BDT ➔ USD"
+        crs_ref_txt = "📚 کورس ریفرلز"
+        hist_txt = "📜 ہسٹری"
+        ref_hub_txt = "👥 ریفرل ہب"
+        refresh_txt = "🔄 ریفریش"
+        menu_toggle_txt = "⌨️ نیچے کا مینو: 🟢 فعال (چھپائیں)" if show_bottom_menu else "⌨️ نیچے کا مینو: 🔴 غیر فعال (دکھائیں)"
     else:
         pts_txt = "💱 Convert Points"
         conv_curr_txt = "💵 BDT ➔ USD"
