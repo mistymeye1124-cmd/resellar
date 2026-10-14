@@ -193,6 +193,63 @@ async def handle_quick_req_submit(call: CallbackQuery, bot: Bot):
                 pass
 
 
+def detect_group_lang(text: str, user_tg_lang: str | None = None, db_user_lang: str | None = None) -> str:
+    """Intelligently detects language for group chat context."""
+    if re.search(r'[\u0600-\u06FF]', text):
+        return "ur"
+    if re.search(r'[\u0980-\u09FF]', text):
+        return "bn"
+    if re.search(r'[\u0900-\u097F]', text):
+        return "hi"
+    if db_user_lang and db_user_lang in ["ur", "hi", "en"]:
+        return db_user_lang
+    if user_tg_lang:
+        code = user_tg_lang.lower()
+        if code.startswith(("ur", "ar")):
+            return "ur"
+        if code.startswith("hi"):
+            return "hi"
+        if code.startswith("bn"):
+            return "bn"
+        if code.startswith("en"):
+            return "en"
+    if db_user_lang == "bn" and not text.isascii():
+        return "bn"
+    return "en"
+
+
+def get_group_product_kb(product: Dict[str, Any], bot_username: str, lang: str = "bn") -> InlineKeyboardMarkup:
+    """Delivers clean, safe action buttons for group chat (redirects purchase/access to private bot DM)."""
+    buttons = []
+    btn_buy_text = {
+        "ur": "🛒 بوٹ میں حاصل کریں / تفصیلات",
+        "hi": "🛒 बॉट में खरीदें / विवरण",
+        "en": "🛒 Buy / View in Bot DM",
+        "bn": "🛒 বট ইনবক্সে কিনুন / বিস্তারিত"
+    }.get(lang, "🛒 Buy / View in Bot DM")
+
+    buttons.append([
+        InlineKeyboardButton(
+            text=btn_buy_text,
+            url=f"https://t.me/{bot_username}?start=c_{product['id']}"
+        )
+    ])
+
+    sales_url = product.get("sales_page_url")
+    if sales_url:
+        btn_sales_text = {
+            "ur": "🌐 کورس ویب سائٹ / تفصیلات",
+            "hi": "🌐 कोर्स वेबसाइट / प्रीव्यू",
+            "en": "🌐 Course Page / Preview",
+            "bn": "🌐 কোর্স ওয়েবসাইট / প্রিভিউ"
+        }.get(lang, "🌐 Course Page / Preview")
+        buttons.append([
+            InlineKeyboardButton(text=btn_sales_text, url=sales_url)
+        ])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 # --- 2. SMART SEARCH & INTENT RECOGNITION LISTENER ---
 
 @router.message(F.text)
@@ -203,11 +260,18 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
         return
 
     text = message.text.strip()
-    if not text or text.startswith("/"):
+    if not text:
         return
 
-    # Skip if text belongs to recognized reply buttons (handled elsewhere)
+    is_group = (message.chat.type in ["group", "supergroup"])
+
+    # If in private chat, ignore slash commands here (handled by registered Command filters)
+    if not is_group and text.startswith("/"):
+        return
+
     t_lower = text.lower()
+
+    # Skip if text belongs to recognized reply buttons (handled elsewhere)
     for known in [
         "main menu", "মূল মেনু", "menu", "মেনু", "হোম", "home",
         "browse courses", "কোর্স সমূহ", "digital accounts", "ডিজিটাল শপ",
@@ -220,7 +284,6 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
             return
 
     user_id = message.from_user.id
-    lang = db.get_user_language(user_id)
 
     # CHECK 1: Casual Greetings & Chat (Intent B - Anti-Spam)
     is_greeting = False
@@ -234,14 +297,18 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
                 is_greeting = True
 
     if is_greeting:
+        # In groups/supergroups, stay 100% silent on greetings
+        if is_group:
+            return
         cnt = casual_tracker.get(user_id, 0) + 1
         casual_tracker[user_id] = cnt
         if cnt == 1:
-            # First greeting: stay silent / no spam
+            # First greeting in DM: stay silent
             return
         else:
-            # Consecutive greeting (2nd message): send friendly guidance card
+            # Consecutive greeting in DM: send friendly guidance card
             casual_tracker[user_id] = 0
+            lang = db.get_user_language(user_id)
             guide_text = t("search_casual_guide_text", lang)
             await message.answer(guide_text, reply_markup=get_casual_guide_kb(lang), parse_mode="HTML")
             return
@@ -250,7 +317,143 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
     if len(text) < 2 or t_lower in JUNK_WORDS:
         return
 
-    # CHECK 3: Check URL, Keywords or Course Name (Intent A)
+    # =========================================================================
+    # PATH A: GROUP & SUPERGROUP (VIP Group Anti-Spam & Dedicated Search)
+    # =========================================================================
+    if is_group:
+        bot_info = await bot.get_me()
+        bot_username = (bot_info.username or "").lower()
+
+        is_reply_to_bot = bool(
+            message.reply_to_message and
+            message.reply_to_message.from_user and
+            message.reply_to_message.from_user.id == bot.id
+        )
+        is_tagged = bool(bot_username and f"@{bot_username}" in t_lower) or is_reply_to_bot
+        is_slash_search = t_lower.startswith(("/search", "/find", "/course"))
+        is_explicit = is_tagged or is_slash_search
+
+        # Clean query
+        clean_query = text
+        if bot_username and f"@{bot_username}" in t_lower:
+            clean_query = re.sub(rf"@{re.escape(bot_username)}", "", clean_query, flags=re.IGNORECASE)
+        if is_slash_search:
+            clean_query = re.sub(r"^/(search|find|course)\s*", "", clean_query, flags=re.IGNORECASE)
+        clean_query = clean_query.strip()
+
+        # If user explicitly called bot without query
+        if not clean_query or len(clean_query) < 2:
+            if is_explicit:
+                glang = detect_group_lang(text, message.from_user.language_code, db.get_user_language(user_id))
+                prompt_msg = {
+                    "ur": f"👋 جی! کورس یا ٹول تلاش کرنے کے لیے نام لکھیں۔ مثلاً:\n<code>@{bot_username} Python</code> یا <code>/search Python</code>",
+                    "hi": f"👋 नमस्ते! कोई भी कोर्स या टूल खोजने के लिए नाम लिखें। जैसे:\n<code>@{bot_username} Python</code> या <code>/search Python</code>",
+                    "en": f"👋 Hi! Type a course or tool name to search. Example:\n<code>@{bot_username} Python</code> or <code>/search Python</code>",
+                    "bn": f"👋 আসসালামু আলাইকুম! কোনো কোর্স বা টুল খুঁজতে নাম লিখে পাঠান। যেমন:\n<code>@{bot_username} Python</code> বা <code>/search Python</code>"
+                }.get(glang, f"👋 Hi! Type a course name to search. Example: <code>@{bot_username} Python</code>")
+                await message.reply(prompt_msg, parse_mode="HTML")
+            return
+
+        # Check conversational guard:
+        # If not explicit and not a URL: ignore long sentences (> 4 words) that are normal conversation between members
+        words = clean_query.split()
+        is_url = ("http://" in clean_query or "https://" in clean_query or "www." in clean_query or ('.' in clean_query and ' ' not in clean_query and '/' in clean_query))
+        if not is_explicit and not is_url:
+            if len(words) > 4 and not any(clean_query.lower().startswith(k) for k in ["course", "কোর্স", "kurs", "tutorial", "account", "tool"]):
+                return
+
+        # Execute DB search
+        matches = db.search_courses(clean_query, limit=5)
+        glang = detect_group_lang(clean_query, message.from_user.language_code, db.get_user_language(user_id))
+
+        if not matches:
+            # NO MATCH IN DB:
+            # If not explicitly calling the bot, STAY 100% SILENT! (Group chat remains peaceful)
+            if not is_explicit:
+                return
+
+            # Explicitly called: send compact 2-line polite DM redirect
+            not_found_msg = {
+                "ur": f"🔍 <b>'{html.escape(clean_query)}'</b> فوری کیٹلاگ میں نہیں ملا۔\nاس کورس کی درخواست کے لیے نیچے دیے گئے بٹن پر کلک کریں:",
+                "hi": f"🔍 <b>'{html.escape(clean_query)}'</b> अभी कैटलॉग में नहीं मिला।\nइस कोर्स का अनुरोध करने के लिए नीचे दिए गए बटन पर टैप करें:",
+                "en": f"🔍 <b>'{html.escape(clean_query)}'</b> was not found in the instant catalog.\nTap below to request this course directly in bot DM:",
+                "bn": f"🔍 <b>'{html.escape(clean_query)}'</b> ইনস্ট্যান্ট ক্যাটালগে পাওয়া যায়নি।\nকোর্সটির রিকোয়েস্ট পাঠাতে নিচের বাটনে ট্যাপ করুন:"
+            }.get(glang, f"🔍 <b>'{html.escape(clean_query)}'</b> is not in catalog. Tap below to request:")
+
+            req_btn_text = {
+                "ur": "📩 بوٹ میں کورس کی درخواست کریں",
+                "hi": "📩 बॉट में कोर्स रिक्वेस्ट भेजें",
+                "en": "📩 Request Course in Bot DM",
+                "bn": "📩 বট ইনবক্সে রিকোয়েস্ট পাঠান"
+            }.get(glang, "📩 Request Course in Bot DM")
+
+            kb = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(
+                    text=req_btn_text,
+                    url=f"https://t.me/{bot_username}?start=req_course"
+                )
+            ]])
+            await message.reply(not_found_msg, reply_markup=kb, parse_mode="HTML")
+            return
+
+        # MATCHES FOUND IN DB:
+        if len(matches) == 1:
+            prod = matches[0]
+            reg_bdt = int(prod["price_bdt"])
+            reg_usd = prod["price_usd"]
+            em_crs = em_tag("courses", "🎓")
+            c_title = localize_item_name(prod['title'], glang)
+            detail_text = t(
+                "search_found_single_text",
+                glang,
+                em_crs=em_crs,
+                title=html.escape(c_title),
+                desc=render_safe_html_text(prod.get('description', '')[:300]),
+                bdt=reg_bdt,
+                usd=reg_usd
+            )
+            g_kb = get_group_product_kb(prod, bot_username, glang)
+            if prod.get("photo_file_id"):
+                try:
+                    await message.reply_photo(
+                        photo=prod["photo_file_id"],
+                        caption=detail_text,
+                        reply_markup=g_kb,
+                        parse_mode="HTML"
+                    )
+                    return
+                except Exception:
+                    pass
+            await message.reply(detail_text, reply_markup=g_kb, parse_mode="HTML")
+            return
+
+        else:
+            # Multiple matches found in group
+            header = {
+                "ur": f"🔍 <b>'{html.escape(clean_query)}'</b> کے لیے {len(matches)} کورسز ملے:",
+                "hi": f"🔍 <b>'{html.escape(clean_query)}'</b> के लिए {len(matches)} कोर्स मिले:",
+                "en": f"🔍 Found {len(matches)} courses matching <b>'{html.escape(clean_query)}'</b>:",
+                "bn": f"🔍 <b>'{html.escape(clean_query)}'</b> এর জন্য {len(matches)}টি কোর্স পাওয়া গেছে:"
+            }.get(glang, f"🔍 Found {len(matches)} matching courses:")
+
+            buttons = []
+            for m in matches:
+                m_title = localize_item_name(m['title'], glang)
+                bdt = int(m['price_bdt'])
+                btn_lbl = f"📦 {m_title[:32]} (৳{bdt})"
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=btn_lbl,
+                        url=f"https://t.me/{bot_username}?start=c_{m['id']}"
+                    )
+                ])
+            await message.reply(header, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+            return
+
+    # =========================================================================
+    # PATH B: PRIVATE DM (100% UNTOUCHED ORIGINAL SEARCH & LEAD CAPTURE)
+    # =========================================================================
+    lang = db.get_user_language(user_id)
     is_url = ("http://" in text or "https://" in text or "www." in text or ('.' in text and ' ' not in text and '/' in text))
     has_keyword = any(k in t_lower for k in INTENT_KEYWORDS)
 
@@ -320,3 +523,4 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
             )
             await message.answer(not_found_text, reply_markup=get_course_not_found_kb(text, lang), parse_mode="HTML")
             return
+

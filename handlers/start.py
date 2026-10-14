@@ -261,6 +261,46 @@ async def handle_start(message: Message, state: FSMContext = None):
             )
             return
 
+    # Handle deep-link direct course request (e.g., ?start=req_course)
+    if deep_param == "req_course":
+        from handlers.search import handle_request_course_start
+        await handle_request_course_start(message, state)
+        return
+
+    # Handle deep-link direct product showcase (e.g., ?start=c_1 or ?start=prod_1)
+    if deep_param and (deep_param.startswith("c_") or deep_param.startswith("prod_")):
+        raw_id = deep_param.replace("prod_", "").replace("c_", "")
+        if raw_id.isdigit():
+            prod_id = int(raw_id)
+            prod = db.get_product(prod_id)
+            if prod:
+                in_stock = (prod.get("is_in_stock", 1) == 1)
+                reg_bdt = int(prod["price_bdt"])
+                reg_usd = prod["price_usd"]
+                em_crs = em_tag("courses", "🎓")
+                from utils.i18n import localize_item_name
+                from utils.ui_nav import render_safe_html_text
+                from keyboards.user_kb import get_product_detail_kb
+                c_title = localize_item_name(prod['title'], lang)
+                detail_text = t(
+                    "search_found_single_text",
+                    lang,
+                    em_crs=em_crs,
+                    title=html.escape(c_title),
+                    desc=render_safe_html_text(prod.get('description', '')[:300]),
+                    bdt=reg_bdt,
+                    usd=reg_usd
+                )
+                kb = get_product_detail_kb(prod, in_stock, lang, user_id=user.id)
+                if prod.get("photo_file_id"):
+                    try:
+                        await message.answer_photo(photo=prod["photo_file_id"], caption=detail_text, reply_markup=kb, parse_mode="HTML")
+                        return
+                    except Exception:
+                        pass
+                await message.answer(detail_text, reply_markup=kb, parse_mode="HTML")
+                return
+
     # Handle deep-link referral (e.g., ?start=ref_12345, ?start=ref_12345_c12, or ?start=12345)
     welcome_bonus_text = ""
     target_course_info = None
@@ -338,6 +378,16 @@ async def handle_verify_subscription(call: CallbackQuery):
     welcome_bonus_text = ""
     target_course_info = None
     if deep_param:
+        if deep_param == "req_course":
+            from handlers.search import handle_request_course_start
+            await handle_request_course_start(call.message, None)
+            return
+
+        if deep_param.startswith("c_") or deep_param.startswith("prod_"):
+            raw_id = deep_param.replace("prod_", "").replace("c_", "")
+            if raw_id.isdigit():
+                target_course_info = db.get_product(int(raw_id))
+
         target_ref_id = None
         target_course_id = None
         cleaned = deep_param.replace("ref_", "")
