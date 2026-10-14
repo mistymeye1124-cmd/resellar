@@ -26,16 +26,16 @@ def get_admin_main_kb(stats: Dict[str, Any] = None, is_super: bool = True, permi
                 make_custom_button(text="Manage Courses", callback_data="admin_list_prods", emoji_key="catalog")
             ],
             [
-                make_custom_button(text=res_label, callback_data="admin_resellers_menu", emoji_key="diamond"),
-                make_custom_button(text="Smart User Search", callback_data="admin_search_user_prompt", emoji_key="search")
+                make_custom_button(text="👥 Users Directory (সকল ইউজার)", callback_data="admin_users_dir:1:all", emoji_key="diamond"),
+                make_custom_button(text=res_label, callback_data="admin_resellers_menu", emoji_key="crown")
             ],
             [
-                make_custom_button(text=dep_label, callback_data="admin_pending_deps", emoji_key="deposit"),
-                make_custom_button(text="Live Order Ledger", callback_data="admin_recent_orders", emoji_key="orders")
+                make_custom_button(text="🔍 Smart User Search", callback_data="admin_search_user_prompt", emoji_key="search"),
+                make_custom_button(text=dep_label, callback_data="admin_pending_deps", emoji_key="deposit")
             ],
             [
-                make_custom_button(text="Broadcast Studio", callback_data="admin_broadcast_hub", emoji_key="broadcast"),
-                make_custom_button(text="Showcase to Channel", callback_data="admin_channel_post", emoji_key="channel")
+                make_custom_button(text="Live Order Ledger", callback_data="admin_recent_orders", emoji_key="orders"),
+                make_custom_button(text="Broadcast Studio", callback_data="admin_broadcast_hub", emoji_key="broadcast")
             ],
             [
                 make_custom_button(text="User Balance Manager", callback_data="admin_manage_balance", emoji_key="wallet"),
@@ -236,9 +236,62 @@ def get_user_control_kb(target_id: int, is_reseller: bool = False, is_banned: bo
             make_custom_button(text="Send Direct DM", callback_data=f"usr_ctl_dm:{target_id}", emoji_key="support")
         ],
         [
-            make_custom_button(text="Back to Admin", callback_data="admin_main_dashboard", emoji_key="back")
+            make_custom_button(text="Back to User Directory", callback_data="admin_users_dir:1:all", emoji_key="back"),
+            make_custom_button(text="Back to Admin", callback_data="admin_main_dashboard", emoji_key="home")
         ]
     ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def get_users_directory_kb(users: List[Dict[str, Any]], current_page: int, total_pages: int, filter_type: str = "all") -> InlineKeyboardMarkup:
+    """Navigation and clickable user list for Admin Users Directory with live intelligence."""
+    buttons = []
+    
+    # 1. Filter selectors row
+    f_all = "⭐ সব" if filter_type == "all" else "সব"
+    f_res = "💎 রিসেলার" if filter_type == "resellers" else "রিসেলার"
+    f_dep = "💰 ডিপোজিট" if filter_type == "top_deposit" else "ডিপোজিট"
+    f_earn = "🎁 আর্নার" if filter_type == "top_earners" else "আর্নার"
+    f_q = "⏳ কিউ" if filter_type == "in_queue" else "কিউ"
+    
+    buttons.append([
+        make_custom_button(text=f_all, callback_data="admin_users_dir:1:all", emoji_key="sparkle"),
+        make_custom_button(text=f_res, callback_data="admin_users_dir:1:resellers", emoji_key="diamond"),
+        make_custom_button(text=f_dep, callback_data="admin_users_dir:1:top_deposit", emoji_key="deposit"),
+        make_custom_button(text=f_earn, callback_data="admin_users_dir:1:top_earners", emoji_key="free_claim"),
+        make_custom_button(text=f_q, callback_data="admin_users_dir:1:in_queue", emoji_key="zap")
+    ])
+    
+    # 2. Clickable User Buttons
+    for u in users:
+        uname = f"@{u['username']}" if u.get('username') else str(u['user_id'])
+        fname = (u.get('first_name') or 'User')[:11].strip()
+        bal = int(u.get('balance_bdt', 0))
+        q_cnt = u.get('queue_orders_count', 0) + u.get('pending_deposits_count', 0) + u.get('pending_requests_count', 0)
+        q_flag = f" ⏳{q_cnt}" if q_cnt > 0 else ""
+        icon = "💎" if u.get("is_reseller", 0) >= 1 else "👤"
+        ord_c = u.get('orders_count', 0)
+        
+        btn_label = f"{icon} {fname} • ৳{bal} • {ord_c} ord{q_flag}"
+        buttons.append([
+            make_custom_button(text=btn_label, callback_data=f"usr_ctl_view:{u['user_id']}", emoji_key="box")
+        ])
+        
+    # 3. Pagination controls
+    nav_row = []
+    if current_page > 1:
+        nav_row.append(make_custom_button(text="◀️ Previous", callback_data=f"admin_users_dir:{current_page - 1}:{filter_type}", emoji_key="back"))
+    nav_row.append(make_custom_button(text=f"📄 {current_page} / {total_pages}", callback_data=f"admin_users_dir:{current_page}:{filter_type}", emoji_key="refresh"))
+    if current_page < total_pages:
+        nav_row.append(make_custom_button(text="Next ▶️", callback_data=f"admin_users_dir:{current_page + 1}:{filter_type}", emoji_key="sparkle"))
+    if nav_row:
+        buttons.append(nav_row)
+    
+    # 4. Search & Back buttons
+    buttons.append([
+        make_custom_button(text="🔍 ইউজার সার্চ করুন", callback_data="admin_search_user_prompt", emoji_key="search"),
+        make_custom_button(text="🔙 অ্যাডমিন ড্যাশবোর্ড", callback_data="admin_main_dashboard", emoji_key="home")
+    ])
+    
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_product_edit_options_kb(product_id: int, is_active: bool = True, has_photo: bool = False, stock_count: int = 0, is_in_stock: bool = True) -> InlineKeyboardMarkup:

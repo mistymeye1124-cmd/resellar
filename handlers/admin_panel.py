@@ -289,43 +289,163 @@ def format_admin_dashboard_text(stats: dict, is_super: bool = True, perms: dict 
     )
 
 def format_user_dossier_text(user: dict) -> str:
-    quota_info = db.get_reseller_quota_info(user['user_id'])
-    orders = db.get_user_orders(user['user_id'])
+    user_id = user['user_id']
+    profile = db.get_user_analytics_summary(user_id) or user
+    quota_info = db.get_reseller_quota_info(user_id)
     
-    is_res = user.get("is_reseller", 0) == 1
-    is_perm = user.get("reseller_deactivated_permanent", 0) == 1 or user.get("is_reseller", 0) == -1
-    is_ban = user.get("is_banned", 0) == 1
+    is_res = profile.get("is_reseller", 0) == 1
+    is_perm = profile.get("reseller_deactivated_permanent", 0) == 1 or profile.get("is_reseller", 0) == -1
+    is_ban = profile.get("is_banned", 0) == 1
     
     res_status = "💎 Active Reseller" if is_res else ("🛑 Quota Banned" if is_perm else "👤 Regular User")
     ban_status = "🔴 BANNED" if is_ban else "🟢 ACTIVE"
     
+    raw_u = profile.get('username')
+    uname_str = f"@{html.escape(raw_u)}" if raw_u else "N/A"
+    fname = html.escape(str(profile.get('first_name', 'N/A')))
+    join_date = str(profile.get('joined_at', ''))[:10] or "N/A"
+    
+    # 1. Earnings & Referrals Breakdown
+    ref_by_info = profile.get("referrer_info")
+    if ref_by_info:
+        r_uname = f"@{ref_by_info['username']}" if ref_by_info.get('username') else str(ref_by_info['user_id'])
+        ref_by_str = f"<code>{html.escape(r_uname)}</code>"
+    else:
+        ref_by_str = "<i>অর্গানিক / সরাসরি</i>"
+        
+    t1_cnt = profile.get('referral_count_t1', 0)
+    t2_cnt = profile.get('referral_count_t2', 0)
+    ref_pts = profile.get('referral_points', 0)
+    ref_earn_bdt = float(profile.get('referral_earnings_bdt', 0.0))
+    free_drops_c = profile.get('free_drops_claimed', 0)
+    
+    # 2. Deposits Breakdown
+    dep_bdt = float(profile.get('deposits_approved_bdt', 0.0))
+    dep_usd = float(profile.get('deposits_approved_usd', 0.0))
+    dep_cnt = profile.get('deposits_approved_count', 0)
+    pending_dep = profile.get('deposits_pending_count', 0)
+    last_dep = profile.get('last_deposit')
+    if last_dep:
+        last_dep_str = f"{last_dep['method'].upper()} ৳{int(last_dep['amount'])} ({str(last_dep['created_at'])[:10]})"
+    else:
+        last_dep_str = "কোনো হিস্টোরি নেই"
+        
+    # 3. Orders & Queue Breakdown
+    orders_cnt = profile.get('orders_completed_count', 0)
+    queue_orders = profile.get('orders_queue', [])
+    pending_reqs = profile.get('pending_requests', [])
+    total_queue = profile.get('total_queue_count', 0)
+    
+    if total_queue > 0:
+        q_lines = []
+        for q in queue_orders[:4]:
+            q_lines.append(f"• ⏳ অর্ডার #{q['id']}: <b>{html.escape(q['product_title'][:20])}</b> ({q.get('status', 'pending')})")
+        for req in pending_reqs[:3]:
+            q_lines.append(f"• 📝 কোর্স রিকোয়েস্ট: <i>{html.escape(req['course_query'][:22])}</i> (পেন্ডিং)")
+        if pending_dep > 0:
+            q_lines.append(f"• 💳 ডিপোজিট ভেরিফিকেশন: <code>{pending_dep} টি কিউতে অপেক্ষারত</code>")
+        queue_section = (
+            f"\n🚨 <b>পেন্ডিং কিউ অর্ডার ও রিকোয়েস্ট ({total_queue} টি):</b>\n"
+            + "\n".join(q_lines) + "\n"
+        )
+    else:
+        queue_section = "\n⏳ <b>কিউ / পেন্ডিং অর্ডার:</b> <code>০ টি (কোনো কিউ নেই ✅)</code>\n"
+
     quota_line = ""
     if is_res:
         quota_line = (
-            f"🎯 <b>মাসিক কোটা:</b> <code>{quota_info['sales']} / {quota_info['target']} টি সম্পন্ন</code>\n"
-            f"⏳ <b>বাকি সময়:</b> <code>{quota_info['days_left']} দিন বাকি</code>\n"
+            f"🎯 <b>মাসিক কোটা:</b> <code>{quota_info['sales']} / {quota_info['target']} টি সম্পন্ন</code> "
+            f"(⏳ {quota_info['days_left']} দিন বাকি)\n"
         )
     elif is_perm:
-        quota_line = "⚠️ <b>কোটা স্ট্যাটাস:</b> ৩০ দিনে কোটা পূরণ না করায় অ্যাকাউন্ট স্বয়ংক্রিয়ভাবে বাতিল করা হয়েছিল।\n"
-
-    raw_u = user.get('username')
-    uname_str = f"<code>@{html.escape(raw_u)}</code>" if raw_u else "<code>N/A</code>"
-    fname = html.escape(str(user.get('first_name', 'N/A')))
+        quota_line = "⚠️ <b>কোটা স্ট্যাটাস:</b> ৩০ দিনে কোটা পূরণ না করায় অ্যাকাউন্ট বাতিল করা হয়েছিল।\n"
 
     return (
-        f"👤 <b>ইউজার ডসিয়ার ও কন্ট্রোল কার্ড</b>\n\n"
-        f"• <b>নাম:</b> {fname}\n"
-        f"• <b>ইউজারনেম:</b> {uname_str}\n"
-        f"• <b>আইডি:</b> <code>{user['user_id']}</code>\n"
-        f"• <b>অ্যাকাউন্ট স্ট্যাটাস:</b> {ban_status} | {res_status}\n"
-        f"• <b>রিসেলার কোড:</b> <code>{user.get('reseller_code') or 'N/A'}</code>\n"
-        f"• <b>ভাষা:</b> <code>{user.get('language', 'bn').upper()}</code>\n"
-        f"• <b>ওয়ালেট ব্যালেন্স:</b> <code>৳{user['balance_bdt']:.2f} BDT</code> | <code>${user['balance_usd']:.2f} USD</code>\n"
-        f"• <b>মোট কেনাকাটা:</b> <code>৳{user['total_spent_bdt']:.2f} BDT</code>\n"
-        f"• <b>মোট সম্পন্ন অর্ডার:</b> <code>{len(orders)} টি</code>\n"
-        f"{quota_line}\n"
-        "👇 নিচের অ্যাকশন বাটন ব্যবহার করুন:"
+        f"📊 <b>ইউজার ইন্টেলিজেন্স ও কমপ্লিট ডসিয়ার</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>ইউজার তথ্য:</b>\n"
+        f"• নাম: <b>{fname}</b> | {uname_str}\n"
+        f"• আইডি: <code>{user_id}</code> | যোগদানের তারিখ: <code>{join_date}</code>\n"
+        f"• অ্যাকাউন্ট স্ট্যাটাস: <b>{ban_status}</b> | <b>{res_status}</b>\n"
+        f"• রিসেলার কোড: <code>{profile.get('reseller_code') or 'N/A'}</code>\n"
+        f"• ভাষা: <code>{str(profile.get('language', 'bn')).upper()}</code>\n"
+        f"{quota_line}"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💰 <b>ডিপোজিট বিবরণ (Deposit Overview):</b>\n"
+        f"• মোট সফল ডিপোজিট: <b>৳{dep_bdt:.2f} BDT</b> | <b>${dep_usd:.2f} USD</b> ({dep_cnt} টি)\n"
+        f"• পেন্ডিং ডিপোজিট (কিউতে): <code>{pending_dep} টি</code>\n"
+        f"• বর্তমান ব্যালেন্স: <b>৳{profile.get('balance_bdt', 0.0):.2f} BDT</b> | <b>${profile.get('balance_usd', 0.0):.2f} USD</b>\n"
+        f"• সর্বশেষ ডিপোজিট: <code>{last_dep_str}</code>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🎁 <b>আর্নিং ও রেফারেল (Earnings Breakdown):</b>\n"
+        f"• ডিরেক্ট রেফারেল (Tier 1): <b>{t1_cnt} জন</b> | সাব-রেফারেল (Tier 2): <b>{t2_cnt} জন</b>\n"
+        f"• রেফারেল পয়েন্ট ব্যালেন্স: <b>{ref_pts} Pts</b>\n"
+        f"• মোট রেফারেল আর্নিং: <b>৳{ref_earn_bdt:.2f} BDT</b>\n"
+        f"• ফ্রি ড্রপ ক্লেইম: <b>{free_drops_c} টি</b>\n"
+        f"• কার রেফারেল দিয়ে জয়েন: {ref_by_str}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📦 <b>অর্ডার ও কিউ স্ট্যাটাস (Orders & Queue):</b>\n"
+        f"• মোট সম্পন্ন অর্ডার: <b>{orders_cnt} টি</b>\n"
+        f"• মোট কেনাকাটা / খরচ: <b>৳{float(profile.get('total_spent_bdt', 0.0)):.2f} BDT</b>\n"
+        f"{queue_section}"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👇 <i>এই ইউজারের যেকোনো একশন নিতে নিচের বাটন ব্যবহার করুন:</i>"
     )
+
+def format_users_directory_text(data: dict) -> str:
+    users = data["users"]
+    page = data["current_page"]
+    total_pages = data["total_pages"]
+    total_matching = data["total_matching"]
+    f_type = data["filter_type"]
+    g = data["global_stats"]
+    
+    filter_names = {
+        "all": "🌟 সকল ইউজার",
+        "resellers": "💎 রিসেলারগণ",
+        "top_deposit": "💰 শীর্ষ ডিপোজিটকারী",
+        "top_earners": "🎁 শীর্ষ আর্নার / রেফারেল",
+        "top_buyers": "📦 শীর্ষ ক্রেতা",
+        "in_queue": "⏳ কিউ / পেন্ডিং অর্ডারযুক্ত"
+    }
+    current_filter_label = filter_names.get(f_type, "🌟 সকল ইউজার")
+    
+    header = (
+        f"👥 <b>ইউজার ডিরেক্টরি ও অ্যানালিটিক্স হাব</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📈 <b>সার্বিক পরিসংখ্যান:</b>\n"
+        f"• মোট ইউজার: <b>{g['total_users']} জন</b> | রিসেলার: <b>{g['total_resellers']} জন</b>\n"
+        f"• মোট ডিপোজিট: <b>৳{g['total_deposited_bdt']:.0f} BDT</b> | মোট অর্ডার: <b>{g['total_orders']} টি</b>\n"
+        f"• বর্তমানে কিউতে পেন্ডিং: <b>{g['total_queue']} টি</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔍 ফিল্টার: <b>{current_filter_label}</b> (মোট {total_matching} জন | পৃষ্ঠা: {page}/{total_pages})\n\n"
+    )
+    
+    if not users:
+        return header + "<i>এই ফিল্টারে কোনো ইউজার পাওয়া যায়নি।</i>"
+        
+    lines = []
+    for idx, u in enumerate(users, start=1 + (page - 1) * data["per_page"]):
+        raw_u = u.get('username')
+        uname = f"@{raw_u}" if raw_u else "no_uname"
+        fname = html.escape(str(u.get('first_name', 'N/A'))[:13])
+        is_r = "💎" if u.get("is_reseller", 0) >= 1 else "👤"
+        ban = "🔴" if u.get("is_banned", 0) == 1 else ""
+        
+        dep = int(u.get('total_deposited_bdt', 0))
+        bal = int(u.get('balance_bdt', 0))
+        ord_c = u.get('orders_count', 0)
+        q_cnt = u.get('queue_orders_count', 0) + u.get('pending_deposits_count', 0) + u.get('pending_requests_count', 0)
+        q_badge = f" • ⏳<b>{q_cnt} কিউ</b>" if q_cnt > 0 else ""
+        
+        lines.append(
+            f"<b>#{idx} {is_r}{ban} {fname}</b> (<code>{u['user_id']}</code> | {uname})\n"
+            f"   💰 ব্যালেন্স: <code>৳{bal}</code> | ডিপোজিট: <code>৳{dep}</code> | অর্ডার: <code>{ord_c}টি</code>{q_badge}"
+        )
+        
+    body = "\n\n".join(lines)
+    footer = "\n\n👉 <i>যেকোনো ইউজারের পূর্ণ বিবরণ দেখতে নিচের বাটনে ক্লিক করুন:</i>"
+    return header + body + footer
 
 
 def get_admin_dashboard_text(user_id: int = None) -> str:
@@ -907,7 +1027,37 @@ async def handle_cmd_blastreseller(message: Message, bot: Bot):
             await asyncio.sleep(0.04)
         except Exception:
             fail += 1
-    await status_msg.edit_text(f"✅ **রিসেলার ব্রডকাস্ট সম্পন্ন!**\n• সফল: `{sent}` জন\n• ব্যর্থ: `{fail}` জন", parse_mode="Markdown")
+# --- 2.9 USERS DIRECTORY & INTELLIGENCE CENTER ---
+
+@router.message(Command("users"))
+@router.message(F.text.in_(["/users", "Users", "ইউজার তালিকা", "ইউজার ডিরেক্টরি", "সকল ইউজার", "ইউজার"]))
+async def handle_admin_users_cmd(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    data = db.get_paginated_users_directory(page=1, per_page=8, filter_type="all")
+    text = format_users_directory_text(data)
+    from keyboards.admin_kb import get_users_directory_kb
+    kb = get_users_directory_kb(data["users"], data["current_page"], data["total_pages"], data["filter_type"])
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("admin_users_dir:"))
+async def handle_admin_users_dir_cb(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    parts = call.data.split(":")
+    page = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 1
+    filter_type = parts[2] if len(parts) > 2 else "all"
+    
+    data = db.get_paginated_users_directory(page=page, per_page=8, filter_type=filter_type)
+    text = format_users_directory_text(data)
+    from keyboards.admin_kb import get_users_directory_kb
+    kb = get_users_directory_kb(data["users"], data["current_page"], data["total_pages"], data["filter_type"])
+    
+    await call.answer()
+    try:
+        await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
 # --- 3. SMART USER SEARCH & DOSSIER CONTROLS ---
@@ -1046,18 +1196,40 @@ async def handle_usr_ctl_orders(call: CallbackQuery):
     target_id = int(call.data.split(":")[1])
     orders = db.get_user_orders(target_id)
     await call.answer()
+    
+    back_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🔙 ইউজার ডসিয়ারে ফিরুন", callback_data=f"usr_ctl_view:{target_id}"),
+            InlineKeyboardButton(text="👥 ইউজার ডিরেক্টরি", callback_data="admin_users_dir:1:all")
+        ]
+    ])
+    
     if not orders:
-        await call.message.answer(f"📦 ইউজার `{target_id}` এর কোনো অর্ডার হিস্টোরি নেই।", parse_mode="Markdown")
+        await call.message.answer(f"📦 ইউজার <code>{target_id}</code> এর কোনো অর্ডার হিস্টোরি নেই।", reply_markup=back_kb, parse_mode="HTML")
         return
-    text = f"📜 **অর্ডার হিস্টোরি (`{target_id}`):**\n\n"
-    for idx, o in enumerate(orders[:10], start=1):
+        
+    completed = [o for o in orders if o.get("status") == "completed"]
+    queue = [o for o in orders if o.get("status") in ("pending", "in_queue", "processing")]
+    
+    text = f"📜 <b>অর্ডার হিস্টোরি ও লাইভ কিউ (ইউজার: <code>{target_id}</code>)</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+    if queue:
+        text += f"🚨 <b>বর্তমানে কিউ / পেন্ডিং অর্ডার ({len(queue)} টি):</b>\n"
+        for q in queue:
+            text += f"• ⏳ #{q['id']} | <b>{html.escape(q['product_title'])}</b> ({q['amount_paid']} {q['currency']}) - <code>{q.get('status', 'pending')}</code>\n"
+        text += "────────────────────\n\n"
+    else:
+        text += "⏳ <b>কিউ অর্ডার:</b> <code>কোনো পেন্ডিং অর্ডার নেই (সব ডেলিভার্ড ✅)</code>\n\n"
+        
+    text += f"✅ <b>সম্পন্ন অর্ডারসমূহ (সর্বশেষ {min(10, len(completed))} টি):</b>\n"
+    for idx, o in enumerate(completed[:10], start=1):
+        tier_str = f" [{o.get('access_tier')}]" if o.get('access_tier') and o['access_tier'] != 'default' else ""
         text += (
-            f"**{idx}. {o['product_title']}**\n"
-            f"• মূল্য: `{o['amount_paid']} {o['currency']}`\n"
-            f"• তারিখ: `{o['created_at'][:16]}`\n"
-            f"───────────────────\n"
+            f"<b>{idx}. {html.escape(o['product_title'])}{tier_str}</b>\n"
+            f"• মূল্য: <code>{o['amount_paid']} {o['currency']}</code> | স্ট্যাটাস: <code>{o.get('status', 'completed')}</code>\n"
+            f"• তারিখ: <code>{str(o['created_at'])[:16]}</code>\n"
+            f"────────────────────\n"
         )
-    await call.message.answer(text, parse_mode="Markdown")
+    await call.message.answer(text, reply_markup=back_kb, parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("usr_ctl_dm:"))
 async def handle_usr_ctl_dm_prompt(call: CallbackQuery, state: FSMContext):

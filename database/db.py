@@ -2074,6 +2074,224 @@ class Database:
             """, (limit,))
             return [dict(row) for row in cursor.fetchall()]
 
+    def get_user_analytics_summary(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Deep analytics dossier for a specific user: earnings breakdown, deposit history, and order/queue stats."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+            user = cursor.fetchone()
+            if not user:
+                return None
+            res = dict(user)
+            
+            # 1. Deposit Statistics ("deposit koto")
+            cursor.execute("""
+            SELECT 
+                COUNT(*) as count_approved,
+                COALESCE(SUM(CASE WHEN currency = 'BDT' THEN amount ELSE 0 END), 0) as approved_bdt,
+                COALESCE(SUM(CASE WHEN currency = 'USD' THEN amount ELSE 0 END), 0) as approved_usd
+            FROM transactions 
+            WHERE user_id = ? AND status = 'approved'
+            """, (user_id,))
+            dep_row = cursor.fetchone()
+            res["deposits_approved_count"] = dep_row["count_approved"] if dep_row else 0
+            res["deposits_approved_bdt"] = dep_row["approved_bdt"] if dep_row else 0.0
+            res["deposits_approved_usd"] = dep_row["approved_usd"] if dep_row else 0.0
+            
+            cursor.execute("SELECT COUNT(*) as pending_dep FROM transactions WHERE user_id = ? AND status = 'pending'", (user_id,))
+            pending_row = cursor.fetchone()
+            res["deposits_pending_count"] = pending_row["pending_dep"] if pending_row else 0
+            
+            # Last approved deposit
+            cursor.execute("SELECT method, amount, currency, trx_id, created_at FROM transactions WHERE user_id = ? AND status = 'approved' ORDER BY id DESC LIMIT 1", (user_id,))
+            last_dep = cursor.fetchone()
+            res["last_deposit"] = dict(last_dep) if last_dep else None
+            
+            # 2. Earnings Analysis ("kivabe earn korce")
+            referrer_info = None
+            if res.get("referred_by"):
+                cursor.execute("SELECT user_id, first_name, username FROM users WHERE user_id = ?", (res["referred_by"],))
+                ref_row = cursor.fetchone()
+                if ref_row:
+                    referrer_info = dict(ref_row)
+            res["referrer_info"] = referrer_info
+            
+            cursor.execute("""
+            SELECT 
+                COUNT(CASE WHEN tier = 1 THEN 1 END) as t1_joins,
+                COUNT(CASE WHEN tier = 2 THEN 1 END) as t2_joins,
+                COALESCE(SUM(bonus_amount), 0) as total_referral_bonus_earned
+            FROM referral_logs
+            WHERE referrer_id = ?
+            """, (user_id,))
+            ref_log_row = cursor.fetchone()
+            res["referral_log_t1"] = ref_log_row["t1_joins"] if ref_log_row else 0
+            res["referral_log_t2"] = ref_log_row["t2_joins"] if ref_log_row else 0
+            res["referral_log_earnings"] = ref_log_row["total_referral_bonus_earned"] if ref_log_row else 0.0
+            
+            cursor.execute("SELECT COUNT(*) as drops_claimed FROM free_drop_claims WHERE user_id = ?", (user_id,))
+            claim_row = cursor.fetchone()
+            res["free_drops_claimed"] = claim_row["drops_claimed"] if claim_row else 0
+            
+            # 3. Orders and Queue Analysis ("total order and quie order")
+            cursor.execute("SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC", (user_id,))
+            all_orders = [dict(r) for r in cursor.fetchall()]
+            
+            completed_orders = [o for o in all_orders if o.get("status") == "completed"]
+            queue_orders = [o for o in all_orders if o.get("status") in ("pending", "in_queue", "processing")]
+            
+            cursor.execute("SELECT * FROM course_requests WHERE user_id = ? AND status = 'pending' ORDER BY id DESC", (user_id,))
+            pending_requests = [dict(r) for r in cursor.fetchall()]
+            
+            res["orders_all"] = all_orders
+            res["orders_completed_count"] = len(completed_orders)
+            res["orders_queue"] = queue_orders
+            res["orders_queue_count"] = len(queue_orders)
+            res["pending_requests"] = pending_requests
+            res["pending_requests_count"] = len(pending_requests)
+            res["total_queue_count"] = len(queue_orders) + len(pending_requests)
+            
+            return res
+
+    def get_paginated_users_directory(self, page: int = 1, per_page: int = 8, filter_type: str = "all", search: Optional[str] = None) -> Dict[str, Any]:
+        """Paginated directory of all users with live earnings, deposit totals, order counts, and queue items."""
+        page = max(1, page)
+        offset = (page - 1) * per_page
+        
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Global summary counters
+            cursor.execute("SELECT COUNT(*) as total_users FROM users")
+            total_users_global = cursor.fetchone()["total_users"]
+            
+            cursor.execute("SELECT COUNT(*) as total_resellers FROM users WHERE is_reseller >= 1")
+            total_resellers_global = cursor.fetchone()["total_resellers"]
+            
+            cursor.execute("SELECT COALESCE(SUM(amount), 0) as total_dep FROM transactions WHERE status = 'approved' AND currency = 'BDT'")
+            total_dep_global = cursor.fetchone()["total_dep"]
+            
+            cursor.execute("SELECT COUNT(*) as total_orders FROM orders")
+            total_orders_global = cursor.fetchone()["total_orders"]
+            
+            cursor.execute("""
+            SELECT 
+                (SELECT COUNT(*) FROM transactions WHERE status = 'pending') +
+                (SELECT COUNT(*) FROM orders WHERE status IN ('pending', 'in_queue', 'processing')) +
+                (SELECT COUNT(*) FROM course_requests WHERE status = 'pending') as queue_items
+            """)
+            total_queue_global = cursor.fetchone()["queue_items"]
+            
+            base_query = """
+            SELECT 
+                u.user_id,
+                u.username,
+                u.first_name,
+                u.balance_bdt,
+                u.balance_usd,
+                u.total_spent_bdt,
+                u.joined_at,
+                u.is_banned,
+                u.is_reseller,
+                u.reseller_code,
+                u.referral_count_t1,
+                u.referral_points,
+                u.referral_earnings_bdt,
+                u.referred_by,
+                COALESCE(dep.total_dep_bdt, 0) as total_deposited_bdt,
+                COALESCE(dep.pending_dep_cnt, 0) as pending_deposits_count,
+                COALESCE(ord.total_orders_cnt, 0) as orders_count,
+                COALESCE(ord.queue_orders_cnt, 0) as queue_orders_count,
+                COALESCE(req.pending_req_cnt, 0) as pending_requests_count
+            FROM users u
+            LEFT JOIN (
+                SELECT 
+                    user_id, 
+                    SUM(CASE WHEN status = 'approved' AND currency = 'BDT' THEN amount ELSE 0 END) as total_dep_bdt,
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_dep_cnt
+                FROM transactions
+                GROUP BY user_id
+            ) dep ON u.user_id = dep.user_id
+            LEFT JOIN (
+                SELECT 
+                    user_id,
+                    COUNT(*) as total_orders_cnt,
+                    SUM(CASE WHEN status IN ('pending', 'in_queue', 'processing') THEN 1 ELSE 0 END) as queue_orders_cnt
+                FROM orders
+                GROUP BY user_id
+            ) ord ON u.user_id = ord.user_id
+            LEFT JOIN (
+                SELECT 
+                    user_id,
+                    COUNT(*) as pending_req_cnt
+                FROM course_requests
+                WHERE status = 'pending'
+                GROUP BY user_id
+            ) req ON u.user_id = req.user_id
+            """
+            
+            where_clauses = []
+            params = []
+            
+            if search:
+                clean_s = search.strip().lstrip("@")
+                if clean_s.isdigit():
+                    where_clauses.append("(u.user_id = ? OR u.reseller_code LIKE ?)")
+                    params.extend([int(clean_s), f"%{clean_s}%"])
+                else:
+                    where_clauses.append("(LOWER(u.username) LIKE ? OR LOWER(u.first_name) LIKE ? OR UPPER(u.reseller_code) LIKE ?)")
+                    params.extend([f"%{clean_s.lower()}%", f"%{clean_s.lower()}%", f"%{clean_s.upper()}%"])
+            
+            if filter_type == "resellers":
+                where_clauses.append("u.is_reseller >= 1")
+            elif filter_type == "top_deposit":
+                where_clauses.append("(COALESCE(dep.total_dep_bdt, 0) > 0 OR u.balance_bdt > 0)")
+            elif filter_type == "top_earners":
+                where_clauses.append("(u.referral_count_t1 > 0 OR u.referral_earnings_bdt > 0 OR u.referral_points > 0)")
+            elif filter_type == "top_buyers":
+                where_clauses.append("(COALESCE(ord.total_orders_cnt, 0) > 0 OR u.total_spent_bdt > 0)")
+            elif filter_type == "in_queue":
+                where_clauses.append("(COALESCE(dep.pending_dep_cnt, 0) > 0 OR COALESCE(ord.queue_orders_cnt, 0) > 0 OR COALESCE(req.pending_req_cnt, 0) > 0)")
+                
+            where_sql = f" WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+            
+            if filter_type == "top_deposit":
+                order_sql = " ORDER BY dep.total_dep_bdt DESC, u.balance_bdt DESC"
+            elif filter_type == "top_earners":
+                order_sql = " ORDER BY u.referral_count_t1 DESC, u.referral_earnings_bdt DESC, u.referral_points DESC"
+            elif filter_type == "top_buyers":
+                order_sql = " ORDER BY ord.total_orders_cnt DESC, u.total_spent_bdt DESC"
+            elif filter_type == "in_queue":
+                order_sql = " ORDER BY (COALESCE(dep.pending_dep_cnt, 0) + COALESCE(ord.queue_orders_cnt, 0) + COALESCE(req.pending_req_cnt, 0)) DESC, u.joined_at DESC"
+            else:
+                order_sql = " ORDER BY u.joined_at DESC"
+                
+            count_sql = f"SELECT COUNT(*) as cnt FROM ({base_query}{where_sql})"
+            cursor.execute(count_sql, params)
+            total_matching = cursor.fetchone()["cnt"]
+            
+            paginated_sql = f"{base_query}{where_sql}{order_sql} LIMIT ? OFFSET ?"
+            cursor.execute(paginated_sql, params + [per_page, offset])
+            rows = [dict(r) for r in cursor.fetchall()]
+            
+            total_pages = max(1, (total_matching + per_page - 1) // per_page)
+            
+            return {
+                "users": rows,
+                "current_page": page,
+                "total_pages": total_pages,
+                "total_matching": total_matching,
+                "per_page": per_page,
+                "filter_type": filter_type,
+                "global_stats": {
+                    "total_users": total_users_global,
+                    "total_resellers": total_resellers_global,
+                    "total_deposited_bdt": total_dep_global,
+                    "total_orders": total_orders_global,
+                    "total_queue": total_queue_global
+                }
+            }
+
     def toggle_user_ban(self, user_id: int) -> int:
         with self._get_connection() as conn:
             cursor = conn.cursor()
