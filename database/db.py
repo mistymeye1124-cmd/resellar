@@ -1514,6 +1514,13 @@ class Database:
             cursor.execute("SELECT user_id FROM users")
             return [row["user_id"] for row in cursor.fetchall()]
 
+    def get_active_users_for_broadcast(self) -> List[Dict[str, Any]]:
+        """Returns list of active non-banned users with their preferred language for smart multilingual broadcast."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, COALESCE(language, 'bn') as language FROM users WHERE is_banned = 0")
+            return [dict(row) for row in cursor.fetchall()]
+
     def find_user(self, query: Optional[str]) -> Optional[Dict[str, Any]]:
         """Smart finder by User ID, @username, or Reseller Code."""
         if not query:

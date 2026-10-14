@@ -941,8 +941,11 @@ async def handle_publish_groq_course(call: CallbackQuery, state: FSMContext, bot
     )
 
     buttons = [
-        [InlineKeyboardButton(text="👁️ ক্যাটালগে কোর্সটি দেখুন", callback_data=f"prod:{prod_id}")],
-        [InlineKeyboardButton(text="➕ আরেকটি কোর্স অটো-অ্যাড করুন", callback_data="admin_groq_auto_add")],
+        [InlineKeyboardButton(text="📢 সবাইকে নোটিফাই করুন (Broadcast)", callback_data=f"prod_bcast_prompt:{prod_id}")],
+        [
+            InlineKeyboardButton(text="👁️ ক্যাটালগে দেখুন", callback_data=f"prod:{prod_id}"),
+            InlineKeyboardButton(text="➕ আরেকটি কোর্স অটো-অ্যাড", callback_data="admin_groq_auto_add")
+        ],
         [InlineKeyboardButton(text="🏠 মেইন অ্যাডমিন প্যানেল", callback_data="admin_main_dashboard")]
     ]
 

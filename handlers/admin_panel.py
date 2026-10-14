@@ -47,6 +47,7 @@ from keyboards.admin_kb import (
 from keyboards.user_kb import get_cancel_fsm_kb
 from config import ADMIN_IDS, OFFICIAL_CHANNEL, USD_TO_BDT_RATE, PAYMENT_CONFIG, ADMIN_USERNAME, get_live_usd_rate
 from utils.backup_manager import send_database_backup
+from utils.emojis import render_premium_html, make_custom_button, apply_premium_emojis_to_keyboard
 
 router = Router()
 
@@ -3622,10 +3623,218 @@ async def handle_prod_photo(message: Message, state: FSMContext):
             f"💰 খুচরা মূল্য: <code>৳{price_bdt:.0f} BDT</code> (${price_usd})\n"
             f"💎 রিসেলার রেট: <code>৳{res_bdt:.0f} BDT</code> (${res_usd})\n"
             f"📦 ধরন: <code>{ptype}</code>\n\n"
-            f"কাস্টমাররা এখনই ক্যাটালগে এই কোর্সটি দেখতে পাবে!"
+            f"⚡ <i>আপনি কি এখনই সকল ইউজারকে এই নতুন কোর্সের নোটিফিকেশন পাঠাতে চান?</i>"
         )
 
-    await message.answer(confirm_text, reply_markup=get_admin_main_kb(db.get_extended_bot_stats()), parse_mode="HTML")
+    post_add_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            make_custom_button(text="📢 সবাইকে নোটিফাই করুন (Broadcast)", callback_data=f"prod_bcast_prompt:{prod_id}", emoji_key="broadcast")
+        ],
+        [
+            make_custom_button(text="👁️ ক্যাটালগে দেখুন", callback_data=f"prod:{prod_id}", emoji_key="cart"),
+            make_custom_button(text="🔇 স্কিপ (ড্যাশবোর্ড)", callback_data="admin_main_dashboard", emoji_key="home")
+        ]
+    ])
+    await message.answer(confirm_text, reply_markup=post_add_kb, parse_mode="HTML")
+
+
+# --- 11B. SMART MULTILINGUAL NEW PRODUCT BROADCAST ENGINE ---
+
+def format_product_broadcast_post(product: dict, lang: str = "bn") -> tuple:
+    """
+    Formats the ultra-compact, high-converting promotional post for new products.
+    The course/product title is kept 100% UNCHANGED across all languages.
+    Returns (rendered_html_text, reply_markup).
+    """
+    title = product.get("title", "Premium Course")
+    price_bdt = int(product.get("price_bdt", 0))
+    price_usd = product.get("price_usd", 0.0)
+    res_bdt = int(product.get("reseller_price_bdt", 0))
+    res_usd = product.get("reseller_price_usd", 0.0)
+    prod_id = product.get("id")
+
+    if lang == "en":
+        text = (
+            "🔥 <b>HOT DROP ALERT!</b> ⚡\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"📦 <b>{html.escape(title)}</b>\n\n"
+            f"💰 <b>Price:</b> <b>${price_usd}</b> <i>(৳{price_bdt} BDT)</i>\n"
+            f"💎 <b>Reseller Rate:</b> <code>${res_usd}</code> <i>(Wholesale)</i>\n"
+            "⚡ <b>Delivery:</b> 🟢 <code>Instant 24/7 Access</code>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "👇 <i>Grab your instant access below:</i>"
+        )
+        buy_text = f"🛍️ Order Now • ${price_usd}"
+        cat_text = "📚 Browse Catalog"
+    elif lang == "hi":
+        text = (
+            "🔥 <b>हॉट ड्रॉप अलर्ट!</b> ⚡\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"📦 <b>{html.escape(title)}</b>\n\n"
+            f"💰 <b>कीमत:</b> <b>৳{price_bdt}</b> <i>(${price_usd})</i>\n"
+            f"💎 <b>रीसेलर रेट:</b> <code>৳{res_bdt}</code> <i>(थोक डिस्काउंट)</i>\n"
+            "⚡ <b>डिलीवरी:</b> 🟢 <code>तुरंत ऑटो एक्सेस</code>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "👇 <i>स्टॉक खत्म होने से पहले अभी लें:</i>"
+        )
+        buy_text = f"🛍️ अभी खरीदें • ৳{price_bdt}"
+        cat_text = "📚 कैटलॉग देखें"
+    else:  # bn default
+        text = (
+            "🔥 <b>হট ড্রপ অ্যালার্ট! / HOT DROP</b> ⚡\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"📦 <b>{html.escape(title)}</b>\n\n"
+            f"💰 <b>রেগুলার মূল্য:</b> <b>৳{price_bdt}</b> <i>(${price_usd})</i>\n"
+            f"💎 <b>রিসেলার রেট:</b> <code>৳{res_bdt}</code> <i>(পাইকারি ছাড়)</i>\n"
+            "⚡ <b>ডেলিভারি:</b> 🟢 <code>ইনস্ট্যান্ট অটো অ্যাক্সেস</code>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "👇 <i>দেরি না করে এখনই সংগ্রহ করুন:</i>"
+        )
+        buy_text = f"🛍️ এখনই অর্ডার করুন • ৳{price_bdt}"
+        cat_text = "📚 বটের মূল ক্যাটালগ"
+
+    text = render_premium_html(text)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            make_custom_button(text=buy_text, callback_data=f"prod:{prod_id}", emoji_key="cart")
+        ],
+        [
+            make_custom_button(text=cat_text, callback_data="nav_courses", emoji_key="courses")
+        ]
+    ])
+    kb = apply_premium_emojis_to_keyboard(kb)
+    return text, kb
+
+
+async def broadcast_new_product_task(bot: Bot, admin_id: int, product_id: int):
+    """Background worker sending smart localized cards with rate limiting."""
+    prod = db.get_product(product_id)
+    if not prod:
+        return
+
+    users = db.get_active_users_for_broadcast()
+    if not users:
+        try:
+            await bot.send_message(chat_id=admin_id, text="⚠️ কোনো সক্রিয় ইউজার পাওয়া যায়নি।")
+        except Exception:
+            pass
+        return
+
+    templates = {
+        "bn": format_product_broadcast_post(prod, "bn"),
+        "en": format_product_broadcast_post(prod, "en"),
+        "hi": format_product_broadcast_post(prod, "hi")
+    }
+
+    sent_counts = {"bn": 0, "en": 0, "hi": 0}
+    blocked_count = 0
+    total_sent = 0
+    photo_id = prod.get("photo_file_id")
+
+    for u in users:
+        uid = u["user_id"]
+        ulang = u.get("language", "bn")
+        if ulang not in templates:
+            ulang = "bn"
+        text, kb = templates[ulang]
+
+        try:
+            if photo_id:
+                try:
+                    await bot.send_photo(chat_id=uid, photo=photo_id, caption=text, reply_markup=kb, parse_mode="HTML")
+                except Exception:
+                    await bot.send_message(chat_id=uid, text=text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await bot.send_message(chat_id=uid, text=text, reply_markup=kb, parse_mode="HTML")
+
+            sent_counts[ulang] += 1
+            total_sent += 1
+            await asyncio.sleep(0.04)
+        except Exception as e:
+            err_str = str(e).lower()
+            if "forbidden" in err_str or "blocked" in err_str or "deactivated" in err_str:
+                blocked_count += 1
+            await asyncio.sleep(0.02)
+
+    report_text = (
+        "🎉 <b>নতুন প্রোডাক্ট ব্রডকাস্ট সফলভাবে সম্পন্ন হয়েছে!</b> 🚀\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"📦 <b>কোর্স:</b> <b>{html.escape(prod['title'])}</b>\n"
+        f"✅ <b>মোট সফল ডেলিভারি:</b> <code>{total_sent} জন ইউজার</code>\n"
+        f"• 🇧🇩 বাংলা ভাষায়: <code>{sent_counts['bn']} জন</code>\n"
+        f"• 🇬🇧 ইংরেজি ভাষায়: <code>{sent_counts['en']} জন</code>\n"
+        f"• 🇮🇳 হিন্দি ভাষায়: <code>{sent_counts['hi']} জন</code>\n"
+        f"🚫 <b>বট ব্লকড/নিষ্ক্রিয়:</b> <code>{blocked_count} জন</code>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "⚡ <i>ইউজাররা এখন নোটিফিকেশন পেয়ে ক্যাটালগ ভিজিট করছে!</i>"
+    )
+    try:
+        await bot.send_message(
+            chat_id=admin_id,
+            text=render_premium_html(report_text),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [make_custom_button(text="🏠 অ্যাডমিন ড্যাশবোর্ড", callback_data="admin_main_dashboard", emoji_key="home")]
+            ]),
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+
+
+@router.callback_query(F.data.startswith("prod_bcast_prompt:"))
+async def handle_prod_bcast_prompt(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    await call.answer()
+    prod_id = int(call.data.split(":")[1])
+    prod = db.get_product(prod_id)
+    if not prod:
+        await call.message.answer("⚠️ প্রোডাক্ট পাওয়া যায়নি।")
+        return
+
+    users = db.get_active_users_for_broadcast()
+    total_users = len(users)
+
+    preview_text, _ = format_product_broadcast_post(prod, "bn")
+
+    prompt_card = (
+        "📢 <b>নতুন প্রোডাক্ট ব্রডকাস্ট কনফার্মেশন</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"👥 মোট প্রাপক: <b>{total_users} জন ইউজার</b>\n"
+        "🌐 মোড: <b>স্মার্ট অটো-ল্যাঙ্গুয়েজ (বাংলা, English ও हिन्दी)</b>\n"
+        "✨ ফিচার: <b>অ্যানিমেটেড প্রিমিয়াম ইমোজি ও ডিরেক্ট বাই বাটন</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "👇 <i>ইউজাররা ঠিক এই ফরম্যাটে নিজস্ব ভাষায় প্রিমিয়াম কার্ড পাবে (বাংলা প্রিভিউ):</i>\n\n"
+        f"{preview_text}"
+    )
+
+    confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            make_custom_button(text="🚀 এখনই সবার কাছে পাঠান (Send Now)", callback_data=f"prod_bcast_send:{prod_id}", emoji_key="sparkle")
+        ],
+        [
+            make_custom_button(text="❌ বাতিল করুন (Cancel)", callback_data="admin_main_dashboard", emoji_key="cross")
+        ]
+    ])
+
+    await call.message.answer(prompt_card, reply_markup=confirm_kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("prod_bcast_send:"))
+async def handle_prod_bcast_send(call: CallbackQuery, bot: Bot):
+    if not is_admin(call.from_user.id):
+        return
+    prod_id = int(call.data.split(":")[1])
+    await call.answer("🚀 ব্রডকাস্ট ব্যাকগ্রাউন্ডে শুরু হচ্ছে...", show_alert=False)
+
+    await call.message.edit_text(
+        "⏳ <b>ব্রডকাস্ট প্রসেসিং শুরু হয়েছে...</b>\n\n"
+        "বট ব্যাকগ্রাউন্ডে প্রতিটি ইউজারের নির্ধারিত ভাষায় অ্যানিমেটেড প্রিমিয়াম কার্ড পাঠাচ্ছে। "
+        "সম্পন্ন হলে সরাসরি আপনাকে বিস্তারিত রিপোর্ট পাঠানো হবে।",
+        parse_mode="HTML"
+    )
+
+    asyncio.create_task(broadcast_new_product_task(bot, call.from_user.id, prod_id))
 
 
 # --- 12. STOCK UPLOAD (Bulk Accounts / Keys) ---
