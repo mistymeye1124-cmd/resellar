@@ -399,8 +399,13 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
         # MATCHES FOUND IN DB:
         if len(matches) == 1:
             prod = matches[0]
-            reg_bdt = int(prod["price_bdt"])
-            reg_usd = prod["price_usd"]
+            ch_p = float(prod.get("price_channel_bdt") or 0)
+            acc_p = float(prod.get("price_account_bdt") or 0)
+            eff_bdt = ch_p if (ch_p > 0 and acc_p <= 0) else (acc_p if (acc_p > 0 and ch_p <= 0) else float(prod.get("price_bdt") or 0))
+            if eff_bdt <= 0 and (ch_p > 0 or acc_p > 0):
+                eff_bdt = ch_p if ch_p > 0 else acc_p
+            reg_bdt = int(eff_bdt)
+            reg_usd = prod["price_usd"] if float(prod.get("price_usd") or 0) > 0 else round(eff_bdt / get_live_usd_rate(), 2)
             em_crs = em_tag("courses", "🎓")
             c_title = localize_item_name(prod['title'], glang)
             detail_text = t(
@@ -431,7 +436,7 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
             # Multiple matches found in group
             header = {
                 "ur": f"🔍 <b>'{html.escape(clean_query)}'</b> کے لیے {len(matches)} کورسز ملے:",
-                "hi": f"🔍 <b>'{html.escape(clean_query)}'</b> के लिए {len(matches)} कोर्स मिले:",
+                "hi": f"🔍 <b>'{html.escape(clean_query)}'</b> کے لیے {len(matches)} कोर्स मिले:",
                 "en": f"🔍 Found {len(matches)} courses matching <b>'{html.escape(clean_query)}'</b>:",
                 "bn": f"🔍 <b>'{html.escape(clean_query)}'</b> এর জন্য {len(matches)}টি কোর্স পাওয়া গেছে:"
             }.get(glang, f"🔍 Found {len(matches)} matching courses:")
@@ -439,7 +444,12 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
             buttons = []
             for m in matches:
                 m_title = localize_item_name(m['title'], glang)
-                bdt = int(m['price_bdt'])
+                m_ch = float(m.get("price_channel_bdt") or 0)
+                m_acc = float(m.get("price_account_bdt") or 0)
+                m_eff = m_ch if (m_ch > 0 and m_acc <= 0) else (m_acc if (m_acc > 0 and m_ch <= 0) else float(m.get("price_bdt") or 0))
+                if m_eff <= 0 and (m_ch > 0 or m_acc > 0):
+                    m_eff = m_ch if m_ch > 0 else m_acc
+                bdt = int(m_eff)
                 btn_lbl = f"📦 {m_title[:32]} (৳{bdt})"
                 buttons.append([
                     InlineKeyboardButton(
@@ -469,8 +479,13 @@ async def handle_smart_course_search(message: Message, bot: Bot, state: FSMConte
         prod = matches[0]
         in_stock = (prod.get("is_in_stock", 1) == 1)
         
-        reg_bdt = int(prod["price_bdt"])
-        reg_usd = prod["price_usd"]
+        ch_p = float(prod.get("price_channel_bdt") or 0)
+        acc_p = float(prod.get("price_account_bdt") or 0)
+        eff_bdt = ch_p if (ch_p > 0 and acc_p <= 0) else (acc_p if (acc_p > 0 and ch_p <= 0) else float(prod.get("price_bdt") or 0))
+        if eff_bdt <= 0 and (ch_p > 0 or acc_p > 0):
+            eff_bdt = ch_p if ch_p > 0 else acc_p
+        reg_bdt = int(eff_bdt)
+        reg_usd = prod["price_usd"] if float(prod.get("price_usd") or 0) > 0 else round(eff_bdt / get_live_usd_rate(), 2)
         
         em_dia = em_tag("diamond", "💎")
         em_crs = em_tag("courses", "🎓")

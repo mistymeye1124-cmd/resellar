@@ -231,10 +231,15 @@ async def handle_product_detail(call: CallbackQuery):
         stock_title = "স্টক অবস্থা:"
         cta_text = "👉 <i>ইনস্ট্যান্ট অ্যাক্সেস নিতে নিচের বাটনে ক্লিক করুন:</i>"
 
-    reg_bdt = int(prod["price_bdt"])
-    reg_usd = prod["price_usd"]
-    res_bdt = int(prod["reseller_price_bdt"]) if prod.get("reseller_price_bdt") else int(reg_bdt * 0.70)
-    res_usd = prod["reseller_price_usd"] if prod.get("reseller_price_usd") else round(reg_usd * 0.70, 2)
+    ch_p = float(prod.get("price_channel_bdt") or 0)
+    acc_p = float(prod.get("price_account_bdt") or 0)
+    main_p = float(prod["price_bdt"] or 0)
+    eff_p = ch_p if ch_p > 0 else (acc_p if acc_p > 0 else main_p)
+
+    reg_bdt = int(eff_p)
+    reg_usd = prod["price_usd"] or round(reg_bdt / get_live_usd_rate(), 2)
+    res_bdt = int(prod["reseller_price_bdt"]) if (prod.get("reseller_price_bdt") and float(prod["reseller_price_bdt"]) > 0) else int(reg_bdt * 0.70)
+    res_usd = prod["reseller_price_usd"] if (prod.get("reseller_price_usd") and float(prod["reseller_price_usd"]) > 0) else round(reg_usd * 0.70, 2)
     charge_bdt = res_bdt if is_reseller else reg_bdt
 
     t1_bonus = float(db.get_setting("referral_t1_bonus", "10.0"))
@@ -252,12 +257,12 @@ async def handle_product_detail(call: CallbackQuery):
     if prod.get("sales_page_url"):
         sales_info = f"🌐 <b>{sales_title}</b>\n<code>{html.escape(prod['sales_page_url'])}</code>\n\n"
 
-    has_dual = (float(prod.get("price_channel_bdt") or 0) > 0 and float(prod.get("price_account_bdt") or 0) > 0)
+    has_dual = (ch_p > 0 and acc_p > 0)
     live_rate = get_live_usd_rate()
     if has_dual:
-        ch_b = float(prod["price_channel_bdt"])
+        ch_b = ch_p
         ch_u = float(prod.get("price_channel_usd") or round(ch_b / live_rate, 2))
-        acc_b = float(prod["price_account_bdt"])
+        acc_b = acc_p
         acc_u = float(prod.get("price_account_usd") or round(acc_b / live_rate, 2))
         
         if lang in ["en", "hi", "ur"]:
@@ -300,6 +305,60 @@ async def handle_product_detail(call: CallbackQuery):
                     f"🎯 <i>(আর মাত্র ৳{int(rem_bdt)} বা {rem_refs} টি রেফারেল করলেই ফ্রি আনলক!)</i>"
                 )
         active_prod = prod
+    elif ch_p > 0 and acc_p <= 0:
+        ch_b = ch_p
+        ch_u = float(prod.get("price_channel_usd") or round(ch_b / live_rate, 2))
+        r_ch_b = float(prod.get("reseller_price_channel_bdt") or round(ch_b * 0.70, 2))
+        charge_bdt = r_ch_b if is_reseller else ch_b
+        refs_needed = max(1, int(charge_bdt / t1_bonus)) if t1_bonus > 0 else 1
+        rem_bdt = max(0.0, charge_bdt - user_bal_bdt)
+        rem_refs = max(1, int(rem_bdt / t1_bonus)) if t1_bonus > 0 else 1
+        
+        if is_reseller:
+            price_section = (
+                f"💳 <b>প্যাকেজ অপশন (ভিআইপি চ্যানেল অ্যাক্সেস):</b>\n"
+                f"• 📢 <b>VIP Channel Access:</b> <b>৳{int(r_ch_b)} BDT</b> (${round(r_ch_b/live_rate, 2)}) <i>(খুচরা ৳{int(ch_b)})</i>\n\n"
+                f"🎁 <b>রেফারেল দিয়ে ফ্রি নিন:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
+                f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>"
+            )
+        else:
+            price_section = (
+                f"💳 <b>প্যাকেজ অপশন (ভিআইপি চ্যানেল অ্যাক্সেস):</b>\n"
+                f"• 📢 <b>VIP Channel Access:</b> <b>৳{int(ch_b)} BDT</b> (${ch_u} USD)\n\n"
+                f"🎁 <b>অথবা রেফারেল দিয়ে সম্পূর্ণ ফ্রি:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
+                f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(বর্তমান ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>\n"
+                f"🎯 <i>(আর মাত্র ৳{int(rem_bdt)} বা {rem_refs} টি রেফারেল করলেই ফ্রি আনলক!)</i>"
+            )
+        active_prod = dict(prod)
+        active_prod["price_bdt"] = ch_b
+        active_prod["price_usd"] = ch_u
+    elif acc_p > 0 and ch_p <= 0:
+        acc_b = acc_p
+        acc_u = float(prod.get("price_account_usd") or round(acc_b / live_rate, 2))
+        r_acc_b = float(prod.get("reseller_price_account_bdt") or round(acc_b * 0.70, 2))
+        charge_bdt = r_acc_b if is_reseller else acc_b
+        refs_needed = max(1, int(charge_bdt / t1_bonus)) if t1_bonus > 0 else 1
+        rem_bdt = max(0.0, charge_bdt - user_bal_bdt)
+        rem_refs = max(1, int(rem_bdt / t1_bonus)) if t1_bonus > 0 else 1
+
+        if is_reseller:
+            price_section = (
+                f"💳 <b>প্যাকেজ অপশন (পার্সোনাল একাউন্ট / ড্রাইভ):</b>\n"
+                f"• 🔐 <b>Personal Account / Drive:</b> <b>৳{int(r_acc_b)} BDT</b> (${round(r_acc_b/live_rate, 2)}) <i>(খুচরা ৳{int(acc_b)})</i>\n\n"
+                f"🎁 <b>রেফারেল দিয়ে ফ্রি নিন:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
+                f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>"
+            )
+        else:
+            price_section = (
+                f"💳 <b>প্যাকেজ অপশন (পার্সোনাল একাউন্ট / ড্রাইভ):</b>\n"
+                f"• 🔐 <b>Personal Account / Drive:</b> <b>৳{int(acc_b)} BDT</b> (${acc_u} USD)\n\n"
+                f"🎁 <b>অথবা রেফারেল দিয়ে সম্পূর্ণ ফ্রি:</b> মাত্র <code>{refs_needed} টি</code> রেফারেল!\n"
+                f"📊 <b>আপনার ব্যালেন্স প্রগ্রেস:</b> <code>{prog_bar}</code> <i>(বর্তমান ব্যালেন্স: ৳{user_bal_bdt:.0f})</i>\n"
+                f"🎯 <i>(আর মাত্র ৳{int(rem_bdt)} বা {rem_refs} টি রেফারেল করলেই ফ্রি আনলক!)</i>"
+            )
+        active_prod = dict(prod)
+        active_prod["price_bdt"] = acc_b
+        active_prod["price_usd"] = acc_u
     elif is_reseller:
         if lang in ["en", "hi", "ur"]:
             price_section = (
@@ -418,7 +477,12 @@ async def handle_claim_ref(call: CallbackQuery, bot: Bot):
     lang = db.get_user_language(user_id)
     clean_title = localize_item_name(prod['title'], lang)
 
-    reg_bdt = float(prod["price_bdt"])
+    ch_p = float(prod.get("price_channel_bdt") or 0)
+    acc_p = float(prod.get("price_account_bdt") or 0)
+    eff_bdt = ch_p if (ch_p > 0 and acc_p <= 0) else (acc_p if (acc_p > 0 and ch_p <= 0) else float(prod.get("price_bdt") or 0))
+    if eff_bdt <= 0 and (ch_p > 0 or acc_p > 0):
+        eff_bdt = ch_p if ch_p > 0 else acc_p
+    reg_bdt = eff_bdt
     res_bdt = float(prod["reseller_price_bdt"]) if prod.get("reseller_price_bdt") else round(reg_bdt * 0.70, 2)
     charge_bdt = res_bdt if is_reseller else reg_bdt
     user_bal = float(user.get("balance_bdt") or 0.0)
@@ -613,9 +677,22 @@ async def handle_buy_tier_select(call: CallbackQuery):
     clean_title = localize_item_name(prod['title'], lang)
     
     live_rate = get_live_usd_rate()
-    ch_bdt = float(prod.get("price_channel_bdt") or prod["price_bdt"])
+    ch_raw = float(prod.get("price_channel_bdt") or 0)
+    acc_raw = float(prod.get("price_account_bdt") or 0)
+
+    # If only one tier is active (> 0), bypass dual selection directly to single checkout
+    if ch_raw > 0 and acc_raw <= 0:
+        call.data = f"buy_tier:{prod_id}:channel"
+        await handle_buy_tier_chosen(call)
+        return
+    elif acc_raw > 0 and ch_raw <= 0:
+        call.data = f"buy_tier:{prod_id}:account"
+        await handle_buy_tier_chosen(call)
+        return
+
+    ch_bdt = ch_raw if ch_raw > 0 else float(prod.get("price_bdt") or 0)
     ch_usd = float(prod.get("price_channel_usd") or round(ch_bdt / live_rate, 2))
-    acc_bdt = float(prod.get("price_account_bdt") or prod["price_bdt"])
+    acc_bdt = acc_raw if acc_raw > 0 else float(prod.get("price_bdt") or 0)
     acc_usd = float(prod.get("price_account_usd") or round(acc_bdt / live_rate, 2))
     
     if is_reseller:
@@ -765,13 +842,15 @@ async def handle_buy_prompt(call: CallbackQuery):
     if not user:
         user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
     is_reseller = user.get("is_reseller", 0) >= 1
-    lang = db.get_user_language(user_id)
     clean_title = localize_item_name(prod['title'], lang)
+    ch_p = float(prod.get("price_channel_bdt") or 0)
+    acc_p = float(prod.get("price_account_bdt") or 0)
+    eff_p = ch_p if ch_p > 0 else (acc_p if acc_p > 0 else float(prod["price_bdt"] or 0))
 
-    reg_bdt = int(prod["price_bdt"])
-    reg_usd = prod["price_usd"]
-    res_bdt = int(prod["reseller_price_bdt"]) if prod.get("reseller_price_bdt") else int(reg_bdt * 0.70)
-    res_usd = prod["reseller_price_usd"] if prod.get("reseller_price_usd") else round(reg_usd * 0.70, 2)
+    reg_bdt = int(eff_p)
+    reg_usd = prod["price_usd"] or round(reg_bdt / get_live_usd_rate(), 2)
+    res_bdt = int(prod["reseller_price_bdt"]) if (prod.get("reseller_price_bdt") and float(prod["reseller_price_bdt"]) > 0) else int(reg_bdt * 0.70)
+    res_usd = prod["reseller_price_usd"] if (prod.get("reseller_price_usd") and float(prod["reseller_price_usd"]) > 0) else round(reg_usd * 0.70, 2)
 
     charge_bdt = res_bdt if is_reseller else reg_bdt
     charge_usd = res_usd if is_reseller else reg_usd
@@ -881,14 +960,17 @@ async def handle_apply_coupon_code(message: Message, state: FSMContext):
     is_reseller = user.get("is_reseller", 0) >= 1
     clean_title = localize_item_name(prod['title'], lang)
     
-    if tier == "channel":
+    ch_p = float(prod.get("price_channel_bdt") or 0)
+    acc_p = float(prod.get("price_account_bdt") or 0)
+    if tier == "channel" or (tier == "default" and ch_p > 0 and acc_p <= 0):
         reg_bdt = float(prod.get("price_channel_bdt") or prod["price_bdt"])
         res_bdt = float(prod.get("reseller_price_channel_bdt") or round(reg_bdt * 0.70, 2))
-    elif tier == "account":
+    elif tier == "account" or (tier == "default" and acc_p > 0 and ch_p <= 0):
         reg_bdt = float(prod.get("price_account_bdt") or prod["price_bdt"])
         res_bdt = float(prod.get("reseller_price_account_bdt") or round(reg_bdt * 0.70, 2))
     else:
-        reg_bdt = float(prod["price_bdt"])
+        eff_p = ch_p if ch_p > 0 else (acc_p if acc_p > 0 else float(prod.get("price_bdt") or 0))
+        reg_bdt = eff_p
         res_bdt = float(prod["reseller_price_bdt"]) if prod.get("reseller_price_bdt") else round(reg_bdt * 0.70, 2)
         
     base_bdt = res_bdt if is_reseller else reg_bdt
@@ -955,10 +1037,15 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
         user = db.register_or_update_user(user_id, call.from_user.username, call.from_user.first_name)
     is_reseller = user.get("is_reseller", 0) >= 1
 
+    ch_p = float(prod.get("price_channel_bdt") or 0)
+    acc_p = float(prod.get("price_account_bdt") or 0)
+    is_channel_action = (tier == "channel" or (tier == "default" and (prod.get("product_type") == "channel_link" or (ch_p > 0 and acc_p <= 0))))
+    is_account_action = (tier == "account" or (tier == "default" and (prod.get("product_type") in ["stock_account", "drive_link"] or (acc_p > 0 and ch_p <= 0))))
+
     # Security Guard: Reseller Sell Permissions check before deducting any money or points
     if is_reseller:
         perms = db.get_user_permissions(user_id)
-        if (tier == "account" or (tier == "default" and prod.get("product_type") == "stock_account")) and not perms["can_sell_account"]:
+        if is_account_action and not perms["can_sell_account"]:
             alert_msg = (
                 "🔒 Account Access is Restricted!\nThis option is reserved for Elite VIP Resellers."
                 if lang in ["en", "hi", "ur"] else
@@ -966,7 +1053,7 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
             )
             await call.answer(alert_msg, show_alert=True)
             return
-        if (tier == "channel" or (tier == "default" and prod.get("product_type") == "channel_link")) and not perms["can_sell_channel"]:
+        if is_channel_action and not perms["can_sell_channel"]:
             alert_msg = (
                 "🔒 Channel Access is currently disabled for your account."
                 if lang in ["en", "hi", "ur"] else
@@ -977,19 +1064,22 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
 
     # Price Calculation based on access tier
     live_rate = get_live_usd_rate()
-    if tier == "channel":
+    if tier == "channel" or (tier == "default" and ch_p > 0 and acc_p <= 0):
         reg_bdt = float(prod.get("price_channel_bdt") or prod["price_bdt"])
         reg_usd = float(prod.get("price_channel_usd") or round(reg_bdt / live_rate, 2))
         res_bdt = float(prod.get("reseller_price_channel_bdt") or round(reg_bdt * 0.70, 2))
         res_usd = round(res_bdt / live_rate, 2)
-    elif tier == "account":
+    elif tier == "account" or (tier == "default" and acc_p > 0 and ch_p <= 0):
         reg_bdt = float(prod.get("price_account_bdt") or prod["price_bdt"])
         reg_usd = float(prod.get("price_account_usd") or round(reg_bdt / live_rate, 2))
         res_bdt = float(prod.get("reseller_price_account_bdt") or round(reg_bdt * 0.70, 2))
         res_usd = round(res_bdt / live_rate, 2)
     else:
-        reg_bdt = float(prod["price_bdt"])
-        reg_usd = float(prod["price_usd"])
+        eff_p = ch_p if ch_p > 0 else (acc_p if acc_p > 0 else float(prod.get("price_bdt") or 0))
+        reg_bdt = eff_p
+        reg_usd = float(prod.get("price_usd") or 0)
+        if reg_usd <= 0:
+            reg_usd = round(reg_bdt / live_rate, 2)
         res_bdt = float(prod["reseller_price_bdt"]) if prod.get("reseller_price_bdt") else round(reg_bdt * 0.70, 2)
         res_usd = float(prod["reseller_price_usd"]) if prod.get("reseller_price_usd") else round(reg_usd * 0.70, 2)
 
@@ -1089,7 +1179,7 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
     delivery_data = ""
     is_manual_delivery = False
     manual_delivery_reason = ""
-    if tier == "channel" or (tier == "default" and prod["product_type"] == "channel_link"):
+    if is_channel_action:
         channel_id = prod.get("channel_id") or ""
         if channel_id:
             delivery_data = await generate_single_use_invite_link(bot, channel_id, prod["title"])
@@ -1103,7 +1193,7 @@ async def handle_confirm_buy(call: CallbackQuery, bot: Bot):
             is_manual_delivery = True
             manual_delivery_reason = "কোর্সে কোনো চ্যানেল বা ড্রাইভ লিংক যুক্ত নেই"
             delivery_data = "Manual Processing: Admin will send your invite link shortly." if lang in ["en", "hi", "ur"] else "ম্যানুয়াল প্রসেসিং: অ্যাডমিন আপনার অর্ডারের ইনভাইট লিংক পাঠাবে।"
-    elif tier == "account" or (tier == "default" and prod["product_type"] == "stock_account"):
+    elif is_account_action:
         item = db.pop_stock_item(prod_id, user_id)
         if item:
             delivery_data = item

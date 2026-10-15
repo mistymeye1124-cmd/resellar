@@ -40,6 +40,8 @@ class GroqAutoCourseState(StatesGroup):
     editing_title = State()
     editing_desc = State()
     selecting_category = State()
+    adding_new_category = State()
+    adding_new_subcategory = State()
 
 class GroqKeysState(StatesGroup):
     waiting_for_new_key = State()
@@ -396,23 +398,34 @@ def format_groq_preview_text(data: Dict[str, Any], for_caption: bool = False) ->
     """Helper to format the Preview Card text with strict length guarding for Telegram limits."""
     live_rate = get_live_usd_rate()
     ch_p = int(data.get("price_channel_bdt", 150))
-    ch_u = round(ch_p / live_rate, 2)
+    ch_u = round(ch_p / live_rate, 2) if ch_p > 0 else 0.0
     acc_p = int(data.get("price_account_bdt", 350))
-    acc_u = round(acc_p / live_rate, 2)
+    acc_u = round(acc_p / live_rate, 2) if acc_p > 0 else 0.0
 
-    ch_res = int(ch_p * 0.70)
-    acc_res = int(acc_p * 0.70)
+    ch_res = int(ch_p * 0.70) if ch_p > 0 else 0
+    acc_res = int(acc_p * 0.70) if acc_p > 0 else 0
 
-    if data.get("channel_target"):
-        ch_target_val = html.escape(str(data["channel_target"]), quote=False)
-        ch_title_val = html.escape(str(data.get("channel_title") or data["channel_target"]), quote=False)
-        if data.get("channel_verified"):
-            ch_stat = f"<code>{ch_target_val}</code> (<b>{ch_title_val}</b>) 🟢"
+    if ch_p > 0:
+        ch_price_line = f"• 📢 <b>VIP Channel:</b> <b>৳{ch_p} BDT</b> (${ch_u}) <i>(রিসেলার ৳{ch_res})</i>"
+        if data.get("channel_target"):
+            ch_target_val = html.escape(str(data["channel_target"]), quote=False)
+            ch_title_val = html.escape(str(data.get("channel_title") or data["channel_target"]), quote=False)
+            if data.get("channel_verified"):
+                ch_stat = f"<code>{ch_target_val}</code> (<b>{ch_title_val}</b>) 🟢"
+            else:
+                ch_stat = f"<code>{ch_target_val}</code> ⚠️ <i>(বট পারমিশন চেক বাকি)</i>"
         else:
-            ch_stat = f"<code>{ch_target_val}</code> ⚠️ <i>(বট পারমিশন চেক বাকি)</i>"
+            ch_stat = "⚠️ <i>(সেট করা হয়নি — ইনভাইট বন্ধ)</i>"
     else:
-        ch_stat = "⚠️ <i>(সেট করা হয়নি — ইনভাইট বন্ধ)</i>"
-    acc_stat = "✅ <i>(সেট হয়েছে)</i>" if data.get("account_data") else "⚠️ <i>(সেট করা হয়নি — ড্রাইভ/অ্যাকাউন্ট লিঙ্ক বাকি)</i>"
+        ch_price_line = "• 📢 <b>VIP Channel:</b> 🔴 <b>বন্ধ (অফ করা আছে)</b>"
+        ch_stat = "⚪ <i>(অফ — চ্যানেল ইনভাইট লিংক বন্ধ)</i>"
+
+    if acc_p > 0:
+        acc_price_line = f"• 🔐 <b>Personal Account / Drive:</b> <b>৳{acc_p} BDT</b> (${acc_u}) <i>(রিসেলার ৳{acc_res})</i>"
+        acc_stat = "✅ <i>(সেট হয়েছে)</i>" if data.get("account_data") else "⚠️ <i>(সেট করা হয়নি — ড্রাইভ/অ্যাকাউন্ট লিঙ্ক বাকি)</i>"
+    else:
+        acc_price_line = "• 🔐 <b>Personal Account / Drive:</b> 🔴 <b>বন্ধ (অফ করা আছে)</b>"
+        acc_stat = "⚪ <i>(অফ — অ্যাকাউন্ট/ড্রাইভ ডেলিভারি বন্ধ)</i>"
 
     sales_url = data.get("sales_page_url", "")
     sales_url_display = (sales_url[:57] + "...") if len(sales_url) > 60 else sales_url
@@ -427,8 +440,8 @@ def format_groq_preview_text(data: Dict[str, Any], for_caption: bool = False) ->
         f"🌐 <b>অরিজিনাল সেলস পেজ:</b> <code>{html.escape(sales_url_display, quote=False)}</code>\n"
         f"📁 <b>ক্যাটাগরি:</b> <b>{html.escape(data.get('category_name', 'কোর্স'), quote=False)}</b>\n\n"
         "💳 <b>অ্যাক্সেস প্রাইসিং (খুচরা ও রিসেলার):</b>\n"
-        f"• 📢 <b>VIP Channel:</b> <b>৳{ch_p} BDT</b> (${ch_u}) <i>(রিসেলার ৳{ch_res})</i>\n"
-        f"• 🔐 <b>Personal Account / Drive:</b> <b>৳{acc_p} BDT</b> (${acc_u}) <i>(রিসেলার ৳{acc_res})</i>\n\n"
+        f"{ch_price_line}\n"
+        f"{acc_price_line}\n\n"
         "📦 <b>ডেলিভারি কনফিগারেশন:</b>\n"
         f"• 📢 VIP Telegram Channel: {ch_stat}\n"
         f"• 🔐 Account / Drive Vault: {acc_stat}\n"
@@ -513,11 +526,13 @@ async def handle_shortcut_edit_ch_price(call: CallbackQuery, state: FSMContext, 
     card_msg_id = data.get("card_msg_id", call.message.message_id)
     is_photo = data.get("is_photo", bool(call.message.photo))
 
+    cur_text = f"৳{cur} BDT" if cur > 0 else "🔴 বন্ধ (OFF)"
     prompt = (
         "💰 <b>VIP Channel Access মূল্য নির্ধারণ:</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"• বর্তমান সেট করা রেট: <code>৳{cur} BDT</code>\n\n"
-        "👇 <b>নতুন রেট সংখ্যায় লিখে চ্যাটে সেন্ড করুন (যেমন: 200):</b>"
+        f"• বর্তমান সেট করা রেট: <code>{cur_text}</code>\n\n"
+        "👇 <b>নতুন রেট সংখ্যায় লিখে চ্যাটে সেন্ড করুন (যেমন: 200):</b>\n"
+        "💡 <i>(এই অপশনটি বন্ধ রাখতে সরাসরি <code>0</code> লিখে পাঠান)</i>"
     )
     await edit_groq_card_in_place(bot, chat_id, card_msg_id, prompt, get_cancel_to_preview_kb(), is_photo)
 
@@ -535,7 +550,7 @@ async def handle_save_shortcut_ch_price(message: Message, state: FSMContext, bot
         pass
 
     try:
-        val = int(float((message.text or "").strip()))
+        val = max(0, int(float((message.text or "").strip())))
     except ValueError:
         return
 
@@ -559,11 +574,13 @@ async def handle_shortcut_edit_acc_price(call: CallbackQuery, state: FSMContext,
     card_msg_id = data.get("card_msg_id", call.message.message_id)
     is_photo = data.get("is_photo", bool(call.message.photo))
 
+    cur_text = f"৳{cur} BDT" if cur > 0 else "🔴 বন্ধ (OFF)"
     prompt = (
         "💰 <b>Personal Account / Drive মূল্য নির্ধারণ:</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"• বর্তমান সেট করা রেট: <code>৳{cur} BDT</code>\n\n"
-        "👇 <b>নতুন রেট সংখ্যায় লিখে চ্যাটে সেন্ড করুন (যেমন: 450):</b>"
+        f"• বর্তমান সেট করা রেট: <code>{cur_text}</code>\n\n"
+        "👇 <b>নতুন রেট সংখ্যায় লিখে চ্যাটে সেন্ড করুন (যেমন: 450):</b>\n"
+        "💡 <i>(এই অপশনটি বন্ধ রাখতে সরাসরি <code>0</code> লিখে পাঠান)</i>"
     )
     await edit_groq_card_in_place(bot, chat_id, card_msg_id, prompt, get_cancel_to_preview_kb(), is_photo)
 
@@ -581,7 +598,7 @@ async def handle_save_shortcut_acc_price(message: Message, state: FSMContext, bo
         pass
 
     try:
-        val = int(float((message.text or "").strip()))
+        val = max(0, int(float((message.text or "").strip())))
     except ValueError:
         return
 
@@ -776,6 +793,7 @@ async def handle_save_shortcut_account_data(message: Message, state: FSMContext,
 
 
 @router.callback_query(F.data == "groq_edit:category", GroqAutoCourseState.review_and_shortcuts)
+@router.callback_query(F.data == "groq_edit:category", GroqAutoCourseState.selecting_category)
 async def handle_shortcut_edit_category(call: CallbackQuery, state: FSMContext, bot: Bot):
     await call.answer()
     await state.set_state(GroqAutoCourseState.selecting_category)
@@ -785,14 +803,83 @@ async def handle_shortcut_edit_category(call: CallbackQuery, state: FSMContext, 
     card_msg_id = data.get("card_msg_id", call.message.message_id)
     is_photo = data.get("is_photo", bool(call.message.photo))
 
-    cats = db.get_all_categories()
+    cats = db.get_categories(parent_id=None)
     buttons = []
     for c in cats:
-        buttons.append([InlineKeyboardButton(text=f"{c.get('icon', '📁')} {c['name']}", callback_data=f"groq_sel_cat:{c['id']}")])
-    buttons.append([InlineKeyboardButton(text="🔙 প্রিভিউতে ফিরে যান (Cancel)", callback_data="groq_back_to_preview")])
+        subcats = db.get_subcategories(c["id"])
+        sub_tag = f" (📂 {len(subcats)} সাব)" if subcats else ""
+        btn_txt = f"{c.get('icon', '📁')} {c['name']}{sub_tag}"
+        cb = f"groq_view_subcats:{c['id']}" if subcats else f"groq_sel_cat:{c['id']}"
+        buttons.append([InlineKeyboardButton(text=btn_txt, callback_data=cb)])
+        
+    buttons.append([
+        InlineKeyboardButton(text="➕ নতুন ক্যাটাগরি তৈরি করুন (New Category)", callback_data="groq_add_cat")
+    ])
+    buttons.append([
+        InlineKeyboardButton(text="🔙 প্রিভিউতে ফিরে যান (Cancel)", callback_data="groq_back_to_preview")
+    ])
 
-    prompt = "📁 <b>কোর্সের জন্য ক্যাটাগরি বেছে নিন:</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nনিচের তালিকা থেকে একটি ক্যাটাগরি সিলেক্ট করুন:"
+    prompt = (
+        "📁 <b>কোর্সের জন্য ক্যাটাগরি ও সাব-ক্যাটাগরি নির্ধারণ:</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "👇 নিচের তালিকা থেকে ক্যাটাগরি সিলেক্ট করুন অথবা সরাসরি নতুন ক্যাটাগরি তৈরি করুন:"
+    )
     await edit_groq_card_in_place(bot, chat_id, card_msg_id, prompt, InlineKeyboardMarkup(inline_keyboard=buttons), is_photo)
+
+
+@router.callback_query(F.data.startswith("groq_view_subcats:"), GroqAutoCourseState.selecting_category)
+async def handle_groq_view_subcats(call: CallbackQuery, state: FSMContext, bot: Bot):
+    cat_id = int(call.data.split(":")[1])
+    cat = db.get_category(cat_id)
+    subcats = db.get_subcategories(cat_id)
+    data = await state.get_data()
+
+    chat_id = data.get("chat_id", call.message.chat.id)
+    card_msg_id = data.get("card_msg_id", call.message.message_id)
+    is_photo = data.get("is_photo", bool(call.message.photo))
+    await call.answer()
+
+    buttons = []
+    for sc in subcats:
+        buttons.append([InlineKeyboardButton(text=f"{sc.get('icon', '📁')} {sc['name']}", callback_data=f"groq_sel_subcat:{sc['id']}:{cat_id}")])
+
+    cat_name = cat['name'] if cat else 'ক্যাটাগরি'
+    buttons.append([InlineKeyboardButton(text=f"✅ সরাসরি '{cat_name[:16]}' এ রাখুন", callback_data=f"groq_sel_cat:{cat_id}")])
+    buttons.append([InlineKeyboardButton(text="➕ নতুন সাব-ক্যাটাগরি তৈরি করুন (New Subcat)", callback_data=f"groq_add_subcat:{cat_id}")])
+    buttons.append([InlineKeyboardButton(text="🔙 ক্যাটাগরি তালিকায় ব্যাক", callback_data="groq_edit:category")])
+
+    prompt = (
+        f"📂 <b>'{cat_name}' এর সাব-ক্যাটাগরি তালিকা:</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "👇 এই কোর্সের জন্য নির্দিষ্ট সাব-ক্যাটাগরি বেছে নিন অথবা নতুন তৈরি করুন:"
+    )
+    await edit_groq_card_in_place(bot, chat_id, card_msg_id, prompt, InlineKeyboardMarkup(inline_keyboard=buttons), is_photo)
+
+
+@router.callback_query(F.data.startswith("groq_sel_subcat:"), GroqAutoCourseState.selecting_category)
+async def handle_save_shortcut_subcategory(call: CallbackQuery, state: FSMContext, bot: Bot):
+    parts = call.data.split(":")
+    subcat_id = int(parts[1])
+    parent_cat_id = int(parts[2])
+
+    subcat = db.get_category(subcat_id)
+    parent = db.get_category(parent_cat_id)
+    p_name = parent["name"] if parent else "কোর্স"
+    s_name = subcat["name"] if subcat else "সাব-ক্যাটাগরি"
+    full_display = f"{p_name[:10]} > {s_name[:10]}"
+
+    await state.update_data(category_id=parent_cat_id, subcategory_id=subcat_id, category_name=full_display)
+    await state.set_state(GroqAutoCourseState.review_and_shortcuts)
+    await call.answer(f"সাব-ক্যাটাগরি সেট: {s_name}", show_alert=False)
+
+    data = await state.get_data()
+    chat_id = data.get("chat_id", call.message.chat.id)
+    card_msg_id = data.get("card_msg_id", call.message.message_id)
+    is_photo = data.get("is_photo", bool(call.message.photo))
+
+    text = format_groq_preview_text(data)
+    kb = get_groq_preview_kb(data)
+    await edit_groq_card_in_place(bot, chat_id, card_msg_id, text, kb, is_photo)
 
 
 @router.callback_query(F.data.startswith("groq_sel_cat:"), GroqAutoCourseState.selecting_category)
@@ -800,7 +887,7 @@ async def handle_save_shortcut_category(call: CallbackQuery, state: FSMContext, 
     cat_id = int(call.data.split(":")[1])
     cat = db.get_category(cat_id)
     cname = cat["name"] if cat else "কোর্স"
-    await state.update_data(category_id=cat_id, category_name=cname)
+    await state.update_data(category_id=cat_id, subcategory_id=None, category_name=cname)
     await state.set_state(GroqAutoCourseState.review_and_shortcuts)
     await call.answer(f"ক্যাটাগরি সেট: {cname}", show_alert=False)
 
@@ -811,6 +898,114 @@ async def handle_save_shortcut_category(call: CallbackQuery, state: FSMContext, 
 
     text = format_groq_preview_text(data)
     kb = get_groq_preview_kb(data)
+    await edit_groq_card_in_place(bot, chat_id, card_msg_id, text, kb, is_photo)
+
+
+@router.callback_query(F.data == "groq_add_cat", GroqAutoCourseState.selecting_category)
+async def handle_groq_start_add_cat(call: CallbackQuery, state: FSMContext, bot: Bot):
+    await call.answer()
+    await state.set_state(GroqAutoCourseState.adding_new_category)
+    data = await state.get_data()
+    chat_id = data.get("chat_id", call.message.chat.id)
+    card_msg_id = data.get("card_msg_id", call.message.message_id)
+    is_photo = data.get("is_photo", bool(call.message.photo))
+
+    prompt = (
+        "➕ <b>নতুন ক্যাটাগরি তৈরি করুন:</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "👇 <b>ক্যাটাগরির নাম লিখে পাঠান:</b>\n\n"
+        "<i>(যেমন: 📱 Video Editing অথবা 💻 Programming — লেখার সাথে সাথে ক্যাটাগরি তৈরি হয়ে কোর্সে সিলেক্ট হয়ে যাবে)</i>"
+    )
+    await edit_groq_card_in_place(bot, chat_id, card_msg_id, prompt, get_cancel_to_preview_kb(), is_photo)
+
+
+@router.message(GroqAutoCourseState.adding_new_category)
+async def handle_groq_save_new_cat(message: Message, state: FSMContext, bot: Bot):
+    if not is_admin(message.from_user.id):
+        return
+    data = await state.get_data()
+    chat_id = data.get("chat_id", message.chat.id)
+    card_msg_id = data.get("card_msg_id")
+    is_photo = data.get("is_photo", True)
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    cat_name = message.text.strip()
+    if not cat_name or len(cat_name) < 2:
+        prompt = "❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):"
+        await edit_groq_card_in_place(bot, chat_id, card_msg_id, prompt, get_cancel_to_preview_kb(), is_photo)
+        return
+
+    new_cat_id = db.add_category(name=cat_name, icon="📁", cat_type="course", parent_id=None)
+    await state.update_data(category_id=new_cat_id, subcategory_id=None, category_name=cat_name)
+    await state.set_state(GroqAutoCourseState.review_and_shortcuts)
+
+    updated_data = await state.get_data()
+    text = format_groq_preview_text(updated_data)
+    kb = get_groq_preview_kb(updated_data)
+    await edit_groq_card_in_place(bot, chat_id, card_msg_id, text, kb, is_photo)
+
+
+@router.callback_query(F.data.startswith("groq_add_subcat:"), GroqAutoCourseState.selecting_category)
+async def handle_groq_start_add_subcat(call: CallbackQuery, state: FSMContext, bot: Bot):
+    cat_id = int(call.data.split(":")[1])
+    parent = db.get_category(cat_id)
+    p_name = parent["name"] if parent else "ক্যাটাগরি"
+    await call.answer()
+    await state.set_state(GroqAutoCourseState.adding_new_subcategory)
+    await state.update_data(target_parent_cat_id=cat_id)
+
+    data = await state.get_data()
+    chat_id = data.get("chat_id", call.message.chat.id)
+    card_msg_id = data.get("card_msg_id", call.message.message_id)
+    is_photo = data.get("is_photo", bool(call.message.photo))
+
+    prompt = (
+        f"➕ <b>'{p_name}' এর জন্য নতুন সাব-ক্যাটাগরি তৈরি করুন:</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "👇 <b>সাব-ক্যাটাগরির নাম লিখে পাঠান:</b>\n\n"
+        "<i>(যেমন: Premiere Pro, Python Masterclass ইত্যাদি — তৈরি হওয়ার পর সরাসরি সিলেক্ট হয়ে যাবে)</i>"
+    )
+    await edit_groq_card_in_place(bot, chat_id, card_msg_id, prompt, get_cancel_to_preview_kb(), is_photo)
+
+
+@router.message(GroqAutoCourseState.adding_new_subcategory)
+async def handle_groq_save_new_subcat(message: Message, state: FSMContext, bot: Bot):
+    if not is_admin(message.from_user.id):
+        return
+    data = await state.get_data()
+    chat_id = data.get("chat_id", message.chat.id)
+    card_msg_id = data.get("card_msg_id")
+    is_photo = data.get("is_photo", True)
+    parent_id = data.get("target_parent_cat_id", 1)
+
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    sub_name = message.text.strip()
+    if not sub_name or len(sub_name) < 2:
+        prompt = "❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):"
+        await edit_groq_card_in_place(bot, chat_id, card_msg_id, prompt, get_cancel_to_preview_kb(), is_photo)
+        return
+
+    parent = db.get_category(parent_id)
+    cat_type = parent.get("type", "course") if parent else "course"
+    new_sub_id = db.add_category(name=sub_name, icon="📁", cat_type=cat_type, parent_id=parent_id)
+
+    p_name = parent["name"] if parent else "কোর্স"
+    full_display = f"{p_name[:10]} > {sub_name[:10]}"
+
+    await state.update_data(category_id=parent_id, subcategory_id=new_sub_id, category_name=full_display)
+    await state.set_state(GroqAutoCourseState.review_and_shortcuts)
+
+    updated_data = await state.get_data()
+    text = format_groq_preview_text(updated_data)
+    kb = get_groq_preview_kb(updated_data)
     await edit_groq_card_in_place(bot, chat_id, card_msg_id, text, kb, is_photo)
 
 
@@ -894,27 +1089,61 @@ async def handle_publish_groq_course(call: CallbackQuery, state: FSMContext, bot
     await state.clear()
     await call.answer()
 
-    live_rate = get_live_usd_rate()
-    ch_bdt = float(data.get("price_channel_bdt", 150))
-    ch_usd = round(ch_bdt / live_rate, 2)
-    acc_bdt = float(data.get("price_account_bdt", 350))
-    acc_usd = round(acc_bdt / live_rate, 2)
+    ch_bdt = float(data.get("price_channel_bdt", 150) or 0)
+    acc_bdt = float(data.get("price_account_bdt", 350) or 0)
 
-    r_ch_bdt = round(ch_bdt * 0.70, 2)
-    r_acc_bdt = round(acc_bdt * 0.70, 2)
+    if ch_bdt <= 0 and acc_bdt <= 0:
+        await call.answer("❌ চ্যানেল বা অ্যাকাউন্ট যেকোনো একটি অবশ্যই সক্রিয় রাখতে হবে (মূল্য ০ এর বেশি নির্ধারণ করুন)!", show_alert=True)
+        return
+
+    await state.clear()
+    await call.answer()
+
+    live_rate = get_live_usd_rate()
+    ch_usd = round(ch_bdt / live_rate, 2) if ch_bdt > 0 else 0.0
+    acc_usd = round(acc_bdt / live_rate, 2) if acc_bdt > 0 else 0.0
+
+    r_ch_bdt = round(ch_bdt * 0.70, 2) if ch_bdt > 0 else 0.0
+    r_acc_bdt = round(acc_bdt * 0.70, 2) if acc_bdt > 0 else 0.0
+
+    if ch_bdt > 0 and acc_bdt > 0:
+        ptype = "dual_access"
+        final_price_bdt = ch_bdt
+        final_price_usd = ch_usd
+        final_reseller_bdt = r_ch_bdt
+        final_reseller_usd = round(r_ch_bdt / live_rate, 2)
+    elif ch_bdt > 0:
+        ptype = "channel_link"
+        final_price_bdt = ch_bdt
+        final_price_usd = ch_usd
+        final_reseller_bdt = r_ch_bdt
+        final_reseller_usd = round(r_ch_bdt / live_rate, 2)
+        acc_bdt = 0.0
+        acc_usd = 0.0
+        r_acc_bdt = 0.0
+    else: # acc_bdt > 0 and ch_bdt <= 0
+        ptype = "drive_link" if data.get("account_data") else "stock_account"
+        final_price_bdt = acc_bdt
+        final_price_usd = acc_usd
+        final_reseller_bdt = r_acc_bdt
+        final_reseller_usd = round(r_acc_bdt / live_rate, 2)
+        ch_bdt = 0.0
+        ch_usd = 0.0
+        r_ch_bdt = 0.0
 
     prod_id = db.add_product(
         category_id=data.get("category_id", 1),
+        subcategory_id=data.get("subcategory_id"),
         title=data["title"],
         description=data["description"],
-        price_bdt=ch_bdt,
-        price_usd=ch_usd,
-        product_type="dual_access",
-        channel_id=data.get("channel_target"),
-        drive_link=data.get("account_data"),
+        price_bdt=final_price_bdt,
+        price_usd=final_price_usd,
+        product_type=ptype,
+        channel_id=data.get("channel_target") if ch_bdt > 0 else None,
+        drive_link=data.get("account_data") if acc_bdt > 0 else None,
         photo_file_id=data.get("photo_file_id"),
-        reseller_price_bdt=r_ch_bdt,
-        reseller_price_usd=round(r_ch_bdt / live_rate, 2),
+        reseller_price_bdt=final_reseller_bdt,
+        reseller_price_usd=final_reseller_usd,
         price_channel_bdt=ch_bdt,
         price_channel_usd=ch_usd,
         price_account_bdt=acc_bdt,
@@ -923,9 +1152,12 @@ async def handle_publish_groq_course(call: CallbackQuery, state: FSMContext, bot
         reseller_price_account_bdt=r_acc_bdt,
         is_in_stock=1,
         sales_page_url=data.get("sales_page_url"),
-        channel_title=data.get("channel_title"),
-        channel_verified=1 if data.get("channel_verified") else 0
+        channel_title=data.get("channel_title") if ch_bdt > 0 else None,
+        channel_verified=1 if (data.get("channel_verified") and ch_bdt > 0) else 0
     )
+
+    ch_summary = f"• 📢 VIP Channel: <b>৳{int(ch_bdt)} BDT</b> (${ch_usd}) <i>(রিসেলার ৳{int(r_ch_bdt)})</i>" if ch_bdt > 0 else "• 📢 VIP Channel: 🔴 <b>বন্ধ (OFF)</b>"
+    acc_summary = f"• 🔐 Account / Drive: <b>৳{int(acc_bdt)} BDT</b> (${acc_usd}) <i>(রিসেলার ৳{int(r_acc_bdt)})</i>" if acc_bdt > 0 else "• 🔐 Account / Drive: 🔴 <b>বন্ধ (OFF)</b>"
 
     success_text = (
         "🎉🚀 <b>আলহামদুলিল্লাহ! কোর্সটি সফলভাবে পাবলিশ ও লাইভ হয়েছে!</b> 🚀🎉\n"
@@ -934,8 +1166,8 @@ async def handle_publish_groq_course(call: CallbackQuery, state: FSMContext, bot
         f"🆔 <b>প্রোডাক্ট আইডি:</b> <code>#{prod_id}</code>\n"
         f"📂 <b>ক্যাটাগরি:</b> {html.escape(data.get('category_name', 'কোর্স'))}\n\n"
         "💳 <b>অ্যাক্সেস প্রাইসিং রেট:</b>\n"
-        f"• 📢 VIP Channel: <b>৳{int(ch_bdt)} BDT</b> (${ch_usd}) <i>(রিসেলার ৳{int(r_ch_bdt)})</i>\n"
-        f"• 🔐 Account / Drive: <b>৳{int(acc_bdt)} BDT</b> (${acc_usd}) <i>(রিসেলার ৳{int(r_acc_bdt)})</i>\n"
+        f"{ch_summary}\n"
+        f"{acc_summary}\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         "✨ <i>কাস্টমাররা এখনই বট ক্যাটালগে এই কোর্স দেখতে ও ইনস্ট্যান্ট অর্ডার করতে পারবে!</i>"
     )

@@ -3016,13 +3016,47 @@ async def handle_start_add_prod(call: CallbackQuery, state: FSMContext):
     buttons = []
     for c in all_cats:
         buttons.append([InlineKeyboardButton(text=f"{c.get('icon', '📁')} {c['name']}", callback_data=f"sel_cat:{c['id']}")])
+    buttons.append([InlineKeyboardButton(text="➕ নতুন ক্যাটাগরি তৈরি করুন (New Category)", callback_data="addprod_new_cat")])
     buttons.append([InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_fsm")])
     
     await state.set_state(AddProductState.waiting_for_category)
     await call.message.answer(
         "➕ **নতুন কোর্স / প্রোডাক্ট যুক্ত করার উইজার্ড**\n\n"
-        "প্রথমে নিচের তালিকা থেকে ক্যাটাগরি নির্বাচন করুন:",
+        "প্রথমে নিচের তালিকা থেকে ক্যাটাগরি নির্বাচন করুন (অথবা নতুন ক্যাটাগরি তৈরি করুন):",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
+
+@router.callback_query(F.data == "addprod_new_cat", AddProductState.waiting_for_category)
+async def handle_addprod_new_cat(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await state.set_state(CategoryAddState.waiting_for_name)
+    await state.update_data(return_to="add_prod")
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 প্রোডাক্ট উইজার্ডে ফিরে যান", callback_data="admin_add_prod")]
+    ])
+    await call.message.edit_text(
+        "➕ <b>নতুন ক্যাটাগরি তৈরি করুন</b>\n\n"
+        "👇 নতুন ক্যাটাগরির নাম লিখে পাঠান:\n"
+        "<i>(ক্যাটাগরি তৈরির পর সরাসরি প্রোডাক্ট উইজার্ডে ফিরে আসবেন)</i>",
+        reply_markup=cancel_kb,
+        parse_mode="HTML"
+    )
+
+@router.callback_query(F.data.startswith("addprod_new_subcat:"))
+async def handle_addprod_new_subcat(call: CallbackQuery, state: FSMContext):
+    cat_id = int(call.data.split(":")[1])
+    await call.answer()
+    await state.set_state(SubcategoryAddState.waiting_for_name)
+    await state.update_data(parent_cat_id=cat_id, return_to="add_prod")
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 বাতিল", callback_data=f"sel_cat:{cat_id}")]
+    ])
+    await call.message.edit_text(
+        "➕ <b>নতুন সাব-ক্যাটাগরি তৈরি করুন</b>\n\n"
+        "👇 সাব-ক্যাটাগরির নাম লিখে পাঠান:\n"
+        "<i>(সাব-ক্যাটাগরি তৈরির পর সরাসরি প্রোডাক্টে সিলেক্ট হয়ে যাবে)</i>",
+        reply_markup=cancel_kb,
+        parse_mode="HTML"
     )
 
 @router.callback_query(F.data.startswith("sel_cat:"), AddProductState.waiting_for_category)
@@ -3032,22 +3066,24 @@ async def handle_select_category_prod(call: CallbackQuery, state: FSMContext):
     await call.answer()
     
     # Check if category has subcategories
-    if db.has_subcategories(cat_id):
-        subcats = db.get_subcategories(cat_id)
+    subcats = db.get_subcategories(cat_id)
+    if subcats:
         sub_buttons = []
         for sc in subcats:
             sub_buttons.append([InlineKeyboardButton(text=f"{sc.get('icon', '📁')} {sc['name']}", callback_data=f"sel_subcat:{sc['id']}")])
+        sub_buttons.append([InlineKeyboardButton(text="➕ নতুন সাব-ক্যাটাগরি তৈরি করুন", callback_data=f"addprod_new_subcat:{cat_id}")])
         sub_buttons.append([InlineKeyboardButton(text="⏩ Skip (সাব-ক্যাটাগরি ছাড়া সরাসরি যোগ)", callback_data="sel_subcat:0")])
         sub_buttons.append([InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_fsm")])
 
         await state.set_state(AddProductState.waiting_for_subcategory)
         await call.message.answer(
-            "📂 **এই ক্যাটাগরির অধীনে একাধিক বিষয় / সাব-ক্যাটাগরি রয়েছে!**\n\n"
+            "📂 **এই ক্যাটাগরির অধীনে সাব-ক্যাটাগরি রয়েছে!**\n\n"
             "কোর্সটি কোন সাব-ক্যাটাগরির অধীনে যুক্ত করতে চান নির্বাচন করুন:",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=sub_buttons)
         )
         return
 
+    # If no subcategories yet, also give quick option to add a subcat or continue
     await state.update_data(subcategory_id=None)
     await state.set_state(AddProductState.waiting_for_title)
     await call.message.answer(
@@ -3616,9 +3652,20 @@ async def handle_prod_photo(message: Message, state: FSMContext):
         acc_usd = round(acc_bdt / live_rate, 2)
         r_acc_bdt = float(data.get("reseller_price_account_bdt", round(acc_bdt * 0.70, 2)))
         
-        main_price_bdt = min(ch_bdt, acc_bdt)
+        if ch_bdt > 0 and acc_bdt > 0:
+            main_price_bdt = min(ch_bdt, acc_bdt)
+            main_res_bdt = min(r_ch_bdt, r_acc_bdt)
+        elif ch_bdt > 0:
+            main_price_bdt = ch_bdt
+            main_res_bdt = r_ch_bdt
+        elif acc_bdt > 0:
+            main_price_bdt = acc_bdt
+            main_res_bdt = r_acc_bdt
+        else:
+            main_price_bdt = float(data.get("price_bdt", 250))
+            main_res_bdt = round(main_price_bdt * 0.70, 2)
+
         main_price_usd = round(main_price_bdt / live_rate, 2)
-        main_res_bdt = min(r_ch_bdt, r_acc_bdt)
         main_res_usd = round(main_res_bdt / live_rate, 2)
         
         channel_id = data.get("target")
@@ -4227,9 +4274,21 @@ async def handle_edit_p_select(call: CallbackQuery, target_prod_id: int = None):
     
     sales_info = p.get("sales_page_url") or "দেওয়া নেই ❌"
     
+    ch_p = float(p.get("price_channel_bdt") or 0)
+    acc_p = float(p.get("price_account_bdt") or 0)
+    main_p = float(p.get("price_bdt") or 0)
+    eff_p = ch_p if ch_p > 0 else (acc_p if acc_p > 0 else main_p)
+    eff_res = float(p.get("reseller_price_bdt") or 0)
+    if eff_res <= 0:
+        eff_res = round(eff_p * 0.70, 2)
+
     tier_info = "বন্ধ (Single Price)"
-    if (p.get("price_channel_bdt") or 0) > 0 and (p.get("price_account_bdt") or 0) > 0:
-        tier_info = f"চালু ✅ (📢 VIP: ৳{int(p['price_channel_bdt'])} | 🔐 Account: ৳{int(p['price_account_bdt'])})"
+    if ch_p > 0 and acc_p > 0:
+        tier_info = f"চালু ✅ (📢 VIP: ৳{int(ch_p)} | 🔐 Account: ৳{int(acc_p)})"
+    elif ch_p > 0:
+        tier_info = f"শুধু চ্যানেল চালু (📢 VIP: ৳{int(ch_p)} | 🔐 Account: বন্ধ 🔴)"
+    elif acc_p > 0:
+        tier_info = f"শুধু একাউন্ট চালু (📢 VIP: বন্ধ 🔴 | 🔐 Account: ৳{int(acc_p)})"
     
     type_map = {
         "channel_link": "📢 প্রাইভেট চ্যানেল লিংক",
@@ -4245,8 +4304,8 @@ async def handle_edit_p_select(call: CallbackQuery, target_prod_id: int = None):
         f"📋 <b>সাধারণ তথ্য:</b>\n"
         f"• ক্যাটাগরি: <b>{cat_name}</b>\n"
         f"• স্ট্যাটাস: {status_str} | স্টক: <b>{stock_status_str}</b> ({stock_count} টি)\n"
-        f"• খুচরা রেট: <code>৳{p['price_bdt']} BDT</code> (${p['price_usd']})\n"
-        f"• রিসেলার রেট: <code>৳{p['reseller_price_bdt']} BDT</code> (${p['reseller_price_usd']})\n\n"
+        f"• খুচরা রেট: <code>৳{int(eff_p)} BDT</code> (${p['price_usd'] or round(eff_p / 120, 2)})\n"
+        f"• রিসেলার রেট: <code>৳{int(eff_res)} BDT</code> (${p['reseller_price_usd'] or round(eff_res / 120, 2)})\n\n"
         f"📡 <b>ডেলিভারি ও অ্যাক্সেস স্ট্যাটাস:</b>\n"
         f"• প্যাকেজ মোড: <b>{type_str}</b>\n"
         f"• 📢 <b>VIP চ্যানেল:</b> {ch_display}\n"
@@ -5000,19 +5059,29 @@ async def handle_edit_p_acc_price_save(message: Message, state: FSMContext):
         
     data = await state.get_data()
     prod_id = data["edit_prod_id"]
-    ch_bdt = data["new_ch_bdt"]
+    ch_bdt = max(0.0, float(data.get("new_ch_bdt", 0)))
+    acc_bdt = max(0.0, acc_bdt)
+
+    if ch_bdt <= 0 and acc_bdt <= 0:
+        await message.answer("❌ চ্যানেল বা অ্যাকাউন্ট যেকোনো একটি অবশ্যই সক্রিয় রাখতে হবে (মূল্য ০ এর বেশি দিন)! আবার মূল্য লিখুন:", reply_markup=get_cancel_fsm_kb())
+        return
+
     await state.clear()
     
     live_rate = get_live_usd_rate()
-    ch_usd = round(ch_bdt / live_rate, 2)
-    acc_usd = round(acc_bdt / live_rate, 2)
+    ch_usd = round(ch_bdt / live_rate, 2) if ch_bdt > 0 else 0.0
+    acc_usd = round(acc_bdt / live_rate, 2) if acc_bdt > 0 else 0.0
     
     db.update_product_tier_pricing(prod_id, ch_bdt, ch_usd, acc_bdt, acc_usd)
+
+    ch_line = f"• 📢 VIP Channel Access: `৳{int(ch_bdt)} BDT` (${ch_usd} USD)" if ch_bdt > 0 else "• 📢 VIP Channel Access: 🔴 **বন্ধ (OFF)**"
+    acc_line = f"• 🔐 Personal Account Access: `৳{int(acc_bdt)} BDT` (${acc_usd} USD)" if acc_bdt > 0 else "• 🔐 Personal Account Access: 🔴 **বন্ধ (OFF)**"
+
     await message.answer(
-        f"✅ **ডুয়েল অ্যাক্সেস প্রাইসিং সফলভাবে আপডেট করা হয়েছে!**\n\n"
-        f"• 📢 VIP Channel Access: `৳{int(ch_bdt)} BDT` (${ch_usd} USD)\n"
-        f"• 🔐 Personal Account Access: `৳{int(acc_bdt)} BDT` (${acc_usd} USD)\n\n"
-        f"_(রিসেলারদের জন্য স্বয়ংক্রিয়ভাবে ৩০% পাইকারি ছাড় নির্ধারিত হয়েছে)_",
+        f"✅ **অ্যাক্সেস প্রাইসিং সফলভাবে আপডেট করা হয়েছে!**\n\n"
+        f"{ch_line}\n"
+        f"{acc_line}\n\n"
+        f"_(সক্রিয় অপশনের ওপর রিসেলারদের জন্য স্বয়ংক্রিয়ভাবে ৩০% পাইকারি ছাড় নির্ধারিত হয়েছে)_",
         reply_markup=get_admin_main_kb(db.get_extended_bot_stats()),
         parse_mode="Markdown"
     )
@@ -6302,3 +6371,578 @@ async def handle_subadm_remove(call: CallbackQuery):
         reply_markup=get_subadmins_list_kb(subadmins),
         parse_mode="Markdown"
     )
+
+
+# =====================================================================
+# 19. CATEGORY & SUBCATEGORY MANAGEMENT SUITE
+# =====================================================================
+
+@router.callback_query(F.data == "admin_cats_menu")
+async def handle_admin_categories_menu(call: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    if not is_admin(call.from_user.id):
+        await call.answer("অননুমোদিত অ্যাক্সেস!", show_alert=True)
+        return
+    await call.answer()
+
+    categories = db.get_categories(parent_id=None)
+    total_cats = len(categories)
+    
+    text = (
+        "📁 <b>ক্যাটাগরি ও সাব-ক্যাটাগরি কন্ট্রোল সেন্টার</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📊 <b>মোট মূল ক্যাটাগরি:</b> <code>{total_cats} টি</code>\n\n"
+        "<i>যেকোনো ক্যাটাগরিতে ক্লিক করে তার নাম, আইকন, সাব-ক্যাটাগরি পরিচালনা করতে পারেন অথবা নতুন ক্যাটাগরি যুক্ত করুন:</i>"
+    )
+    kb = get_admin_categories_kb(categories)
+    try:
+        await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data == "cat_add_new")
+async def handle_start_add_category(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    await call.answer()
+    await state.set_state(CategoryAddState.waiting_for_name)
+    await state.update_data(return_to="cats_menu")
+    
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 বাতিল (Cancel)", callback_data="admin_cats_menu")]
+    ])
+    text = (
+        "➕ <b>নতুন ক্যাটাগরি তৈরি করুন</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "👇 <b>ক্যাটাগরির আকর্ষণীয় নাম লিখুন:</b>\n\n"
+        "<i>(যেমন: 📱 Video Editing & Freelancing অথবা 💻 Programming & Web Dev)</i>"
+    )
+    await call.message.edit_text(text, reply_markup=cancel_kb, parse_mode="HTML")
+
+
+@router.message(CategoryAddState.waiting_for_name)
+async def handle_category_name_received(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    cat_name = message.text.strip()
+    if not cat_name or len(cat_name) < 2:
+        await message.answer("❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):", reply_markup=get_cancel_fsm_kb())
+        return
+
+    await state.update_data(name=cat_name)
+    await state.set_state(CategoryAddState.waiting_for_icon)
+    
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏩ Skip (ডিফল্ট 📁 আইকন রাখুন)", callback_data="cat_skip_icon")]
+    ])
+    text = (
+        f"✅ ক্যাটাগরির নাম: <b>{html.escape(cat_name)}</b>\n\n"
+        "🎨 <b>এবার একটি ইমোজি বা আইকন পাঠান:</b>\n"
+        "<i>(যেমন: 🎬, 💻, 🎨, 🤖 অথবা ডিফল্ট রাখতে নিচের স্কিপ বাটনে ক্লিক করুন)</i>"
+    )
+    await message.answer(text, reply_markup=cancel_kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data == "cat_skip_icon", CategoryAddState.waiting_for_icon)
+async def handle_category_skip_icon(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await state.update_data(icon="📁")
+    await state.set_state(CategoryAddState.waiting_for_type)
+    
+    type_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🎓 কোর্স ক্যাটাগরি (Course)", callback_data="cat_type_sel:course"),
+            InlineKeyboardButton(text="⚡ ডিজিটাল একাউন্ট/টুল (Digital)", callback_data="cat_type_sel:digital")
+        ],
+        [InlineKeyboardButton(text="🔙 বাতিল", callback_data="admin_cats_menu")]
+    ])
+    await call.message.edit_text("⚙️ <b>ক্যাটাগরির ধরন (Type) নির্বাচন করুন:</b>", reply_markup=type_kb, parse_mode="HTML")
+
+
+@router.message(CategoryAddState.waiting_for_icon)
+async def handle_category_icon_received(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    icon = message.text.strip()[:4] if message.text else "📁"
+    await state.update_data(icon=icon)
+    await state.set_state(CategoryAddState.waiting_for_type)
+    
+    type_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🎓 কোর্স ক্যাটাগরি (Course)", callback_data="cat_type_sel:course"),
+            InlineKeyboardButton(text="⚡ ডিজিটাল একাউন্ট/টুল (Digital)", callback_data="cat_type_sel:digital")
+        ],
+        [InlineKeyboardButton(text="🔙 বাতিল", callback_data="admin_cats_menu")]
+    ])
+    await message.answer("⚙️ <b>ক্যাটাগরির ধরন (Type) নির্বাচন করুন:</b>", reply_markup=type_kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("cat_type_sel:"), CategoryAddState.waiting_for_type)
+async def handle_category_type_selected(call: CallbackQuery, state: FSMContext):
+    cat_type = call.data.split(":")[1]
+    data = await state.get_data()
+    return_to = data.get("return_to", "cats_menu")
+    await state.clear()
+    
+    name = data.get("name", "নতুন ক্যাটাগরি")
+    icon = data.get("icon", "📁")
+    
+    cat_id = db.add_category(name=name, icon=icon, cat_type=cat_type, parent_id=None)
+    await call.answer("✅ নতুন ক্যাটাগরি সফলভাবে তৈরি করা হয়েছে!", show_alert=True)
+    
+    if return_to == "add_prod":
+        await handle_start_add_prod(call, state)
+        return
+
+    # Back to category detail
+    await show_category_detail(call, cat_id)
+
+
+async def show_category_detail(call: CallbackQuery, cat_id: int):
+    cat = db.get_category(cat_id)
+    if not cat:
+        await call.answer("ক্যাটাগরি পাওয়া যায়নি!", show_alert=True)
+        await handle_admin_categories_menu(call)
+        return
+
+    subcats = db.get_subcategories(cat_id)
+    prods = db.get_products_by_category(cat_id)
+    
+    type_str = "🎓 কোর্স (Course)" if cat.get("type") == "course" else "⚡ ডিজিটাল টুলস/অ্যাকাউন্ট (Digital)"
+    icon = cat.get("icon") or "📁"
+    
+    text = (
+        f"📁 <b>ক্যাটাগরি ম্যানেজমেন্ট: {icon} {html.escape(cat['name'])}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"• <b>ধরন (Type):</b> {type_str}\n"
+        f"• <b>আইকন:</b> {icon}\n"
+        f"• <b>সাব-ক্যাটাগরি সংখ্যা:</b> <code>{len(subcats)} টি</code>\n"
+        f"• <b>যুক্ত আইটেম/কোর্স:</b> <code>{len(prods)} টি</code>\n\n"
+        "<i>সাব-ক্যাটাগরি যুক্ত বা পরিচালনা করতে নিচের বাটন ব্যবহার করুন:</i>"
+    )
+    kb = get_category_edit_kb(cat_id, cat.get("type", "course"))
+    try:
+        await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("edit_cat_select:"))
+async def handle_edit_cat_select(call: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    if not is_admin(call.from_user.id):
+        return
+    cat_id = int(call.data.split(":")[1])
+    await call.answer()
+    await show_category_detail(call, cat_id)
+
+
+# --- SUBCATEGORY WORKFLOW ---
+
+@router.callback_query(F.data.startswith("cat_add_sub:"))
+async def handle_start_add_subcategory(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    parent_cat_id = int(call.data.split(":")[1])
+    parent = db.get_category(parent_cat_id)
+    if not parent:
+        await call.answer("ক্যাটাগরি পাওয়া যায়নি!", show_alert=True)
+        return
+    await call.answer()
+    await state.set_state(SubcategoryAddState.waiting_for_name)
+    await state.update_data(parent_cat_id=parent_cat_id, return_to="subcat_list")
+
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 বাতিল (Cancel)", callback_data=f"cat_list_sub:{parent_cat_id}")]
+    ])
+    text = (
+        f"➕ <b>নতুন সাব-ক্যাটাগরি তৈরি করুন</b>\n"
+        f"📁 মূল ক্যাটাগরি: <b>{parent.get('icon', '📁')} {html.escape(parent['name'])}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "👇 <b>সাব-ক্যাটাগরির নাম লিখে পাঠান:</b>\n\n"
+        "<i>(যেমন: Adobe Premiere Pro, Python Masterclass, Canva Pro ইত্যাদি)</i>"
+    )
+    await call.message.edit_text(text, reply_markup=cancel_kb, parse_mode="HTML")
+
+
+@router.message(SubcategoryAddState.waiting_for_name)
+async def handle_subcategory_name_received(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    sub_name = message.text.strip()
+    if not sub_name or len(sub_name) < 2:
+        await message.answer("❌ সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):", reply_markup=get_cancel_fsm_kb())
+        return
+
+    await state.update_data(sub_name=sub_name)
+    await state.set_state(SubcategoryAddState.waiting_for_icon)
+
+    data = await state.get_data()
+    parent_cat_id = data.get("parent_cat_id")
+
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏩ Skip (ডিফল্ট 📁 আইকন রাখুন)", callback_data="subcat_skip_icon")]
+    ])
+    text = (
+        f"✅ সাব-ক্যাটাগরির নাম: <b>{html.escape(sub_name)}</b>\n\n"
+        "🎨 <b>এবার একটি ইমোজি বা আইকন পাঠান:</b>\n"
+        "<i>(অথবা ডিফল্ট রাখতে স্কিপ বাটনে ক্লিক করুন)</i>"
+    )
+    await message.answer(text, reply_markup=cancel_kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data == "subcat_skip_icon", SubcategoryAddState.waiting_for_icon)
+async def handle_subcategory_skip_icon(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    data = await state.get_data()
+    parent_cat_id = data.get("parent_cat_id")
+    sub_name = data.get("sub_name", "নতুন সাব-ক্যাটাগরি")
+    parent = db.get_category(parent_cat_id)
+    cat_type = parent.get("type", "course") if parent else "course"
+    return_to = data.get("return_to", "subcat_list")
+    await state.clear()
+
+    db.add_category(name=sub_name, icon="📁", cat_type=cat_type, parent_id=parent_cat_id)
+    await call.answer("✅ নতুন সাব-ক্যাটাগরি সফলভাবে যুক্ত হয়েছে!", show_alert=True)
+    
+    if return_to == "add_prod":
+        await handle_select_category_prod(call, state)
+        return
+
+    await show_subcategories_list(call, parent_cat_id)
+
+
+@router.message(SubcategoryAddState.waiting_for_icon)
+async def handle_subcategory_icon_received(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    icon = message.text.strip()[:4] if message.text else "📁"
+    data = await state.get_data()
+    parent_cat_id = data.get("parent_cat_id")
+    sub_name = data.get("sub_name", "নতুন সাব-ক্যাটাগরি")
+    parent = db.get_category(parent_cat_id)
+    cat_type = parent.get("type", "course") if parent else "course"
+    return_to = data.get("return_to", "subcat_list")
+    await state.clear()
+
+    db.add_category(name=sub_name, icon=icon, cat_type=cat_type, parent_id=parent_cat_id)
+    await message.answer("✅ নতুন সাব-ক্যাটাগরি সফলভাবে যুক্ত হয়েছে!")
+
+    subcats = db.get_subcategories(parent_cat_id)
+    kb = get_admin_subcategories_kb(subcats, parent_cat_id)
+    p_name = parent.get("name", "ক্যাটাগরি") if parent else "ক্যাটাগরি"
+    text = f"📂 <b>'{html.escape(p_name)}' এর সাব-ক্যাটাগরি সমূহ:</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nমোট: <code>{len(subcats)} টি</code>"
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("cat_list_sub:"))
+async def handle_cat_list_sub(call: CallbackQuery, state: FSMContext = None):
+    if state:
+        await state.clear()
+    if not is_admin(call.from_user.id):
+        return
+    parent_cat_id = int(call.data.split(":")[1])
+    await call.answer()
+    await show_subcategories_list(call, parent_cat_id)
+
+
+async def show_subcategories_list(call: CallbackQuery, parent_cat_id: int):
+    parent = db.get_category(parent_cat_id)
+    if not parent:
+        await call.answer("ক্যাটাগরি পাওয়া যায়নি!", show_alert=True)
+        return
+    subcats = db.get_subcategories(parent_cat_id)
+    text = (
+        f"📂 <b>'{html.escape(parent['name'])}' এর সাব-ক্যাটাগরি তালিকা:</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📊 <b>মোট সাব-ক্যাটাগরি:</b> <code>{len(subcats)} টি</code>\n\n"
+        "<i>যেকোনো সাব-ক্যাটাগরি এডিট বা ডিলিট করতে সিলেক্ট করুন অথবা নতুন সাব-ক্যাটাগরি যোগ করুন:</i>"
+    )
+    kb = get_admin_subcategories_kb(subcats, parent_cat_id)
+    try:
+        await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("edit_subcat_select:"))
+async def handle_edit_subcat_select(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    subcat_id = int(call.data.split(":")[1])
+    subcat = db.get_category(subcat_id)
+    if not subcat:
+        await call.answer("সাব-ক্যাটাগরি পাওয়া যায়নি!", show_alert=True)
+        return
+    await call.answer()
+    
+    parent_cat_id = subcat.get("parent_id") or 1
+    parent = db.get_category(parent_cat_id)
+    parent_name = parent.get("name", "মূল ক্যাটাগরি") if parent else "মূল ক্যাটাগরি"
+    prods = db.get_products_by_subcategory(subcat_id)
+    
+    icon = subcat.get("icon") or "📁"
+    text = (
+        f"📂 <b>সাব-ক্যাটাগরি সেটিংস: {icon} {html.escape(subcat['name'])}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"• <b>মূল ক্যাটাগরি:</b> {html.escape(parent_name)}\n"
+        f"• <b>আইকন:</b> {icon}\n"
+        f"• <b>যুক্ত প্রোডাক্ট/কোর্স:</b> <code>{len(prods)} টি</code>\n\n"
+        "<i>নিচের অ্যাকশন বাটন ব্যবহার করুন:</i>"
+    )
+    kb = get_subcategory_edit_kb(subcat_id, parent_cat_id)
+    await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+
+# --- EDIT CATEGORY ACTIONS ---
+
+@router.callback_query(F.data.startswith("cat_edit_name:"))
+async def handle_start_edit_cat_name(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    cat_id = int(call.data.split(":")[1])
+    cat = db.get_category(cat_id)
+    await call.answer()
+    await state.set_state(CategoryEditState.waiting_for_name)
+    await state.update_data(cat_id=cat_id)
+
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 বাতিল (Cancel)", callback_data=f"edit_cat_select:{cat_id}")]
+    ])
+    text = (
+        f"✏️ <b>ক্যাটাগরির নাম পরিবর্তন:</b>\n"
+        f"• বর্তমান নাম: <b>{html.escape(cat['name'] if cat else '')}</b>\n\n"
+        "👇 <b>নতুন নাম লিখে পাঠান:</b>"
+    )
+    await call.message.edit_text(text, reply_markup=cancel_kb, parse_mode="HTML")
+
+
+@router.message(CategoryEditState.waiting_for_name)
+async def handle_save_cat_name(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    new_name = message.text.strip()
+    data = await state.get_data()
+    cat_id = data.get("cat_id")
+    await state.clear()
+
+    cat = db.get_category(cat_id)
+    icon = cat.get("icon", "📁") if cat else "📁"
+    db.update_category(cat_id, new_name, icon)
+    await message.answer("✅ ক্যাটাগরির নাম সফলভাবে আপডেট করা হয়েছে!")
+    
+    categories = db.get_categories(parent_id=None)
+    kb = get_admin_categories_kb(categories)
+    await message.answer("📁 <b>ক্যাটাগরি তালিকা:</b>", reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("cat_edit_icon:"))
+async def handle_start_edit_cat_icon(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    cat_id = int(call.data.split(":")[1])
+    cat = db.get_category(cat_id)
+    await call.answer()
+    await state.set_state(CategoryEditState.waiting_for_icon)
+    await state.update_data(cat_id=cat_id)
+
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 বাতিল (Cancel)", callback_data=f"edit_cat_select:{cat_id}")]
+    ])
+    text = (
+        f"🎨 <b>ক্যাটাগরির আইকন পরিবর্তন:</b>\n"
+        f"• বর্তমান আইকন: <b>{cat.get('icon', '📁') if cat else '📁'}</b>\n\n"
+        "👇 <b>নতুন ইমোজি বা আইকন লিখে পাঠান:</b>"
+    )
+    await call.message.edit_text(text, reply_markup=cancel_kb, parse_mode="HTML")
+
+
+@router.message(CategoryEditState.waiting_for_icon)
+async def handle_save_cat_icon(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    new_icon = message.text.strip()[:4] if message.text else "📁"
+    data = await state.get_data()
+    cat_id = data.get("cat_id")
+    await state.clear()
+
+    cat = db.get_category(cat_id)
+    name = cat.get("name", "ক্যাটাগরি") if cat else "ক্যাটাগরি"
+    db.update_category(cat_id, name, new_icon)
+    await message.answer("✅ ক্যাটাগরির আইকন সফলভাবে আপডেট করা হয়েছে!")
+
+    categories = db.get_categories(parent_id=None)
+    kb = get_admin_categories_kb(categories)
+    await message.answer("📁 <b>ক্যাটাগরি তালিকা:</b>", reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("cat_toggle_type:"))
+async def handle_cat_toggle_type(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    cat_id = int(call.data.split(":")[1])
+    cat = db.get_category(cat_id)
+    if not cat:
+        await call.answer("ক্যাটাগরি পাওয়া যায়নি!", show_alert=True)
+        return
+    new_type = "digital" if cat.get("type") == "course" else "course"
+    db.update_category_type(cat_id, new_type)
+    await call.answer(f"✅ ক্যাটাগরির ধরন '{new_type}' এ পরিবর্তন হয়েছে!", show_alert=True)
+    await show_category_detail(call, cat_id)
+
+
+@router.callback_query(F.data.startswith("cat_delete:"))
+async def handle_cat_delete_prompt(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    cat_id = int(call.data.split(":")[1])
+    cat = db.get_category(cat_id)
+    if not cat:
+        await call.answer("ক্যাটাগরি পাওয়া যায়নি!", show_alert=True)
+        return
+    await call.answer()
+
+    confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🗑️ হ্যাঁ, নিশ্চিত মুছুন", callback_data=f"cat_del_conf:{cat_id}"),
+            InlineKeyboardButton(text="❌ বাতিল", callback_data=f"edit_cat_select:{cat_id}")
+        ]
+    ])
+    text = (
+        f"⚠️ <b>সতর্কতা: আপনি কি নিশ্চিত যে '{html.escape(cat['name'])}' ক্যাটাগরি মুছে ফেলতে চান?</b>\n\n"
+        "<i>এই ক্যাটাগরি মুছে ফেললে এর অধীনে থাকা সমস্ত সাব-ক্যাটাগরিও মুছে যাবে।</i>"
+    )
+    await call.message.edit_text(text, reply_markup=confirm_kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("cat_del_conf:"))
+async def handle_cat_delete_confirm(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    cat_id = int(call.data.split(":")[1])
+    db.delete_category(cat_id)
+    await call.answer("🗑️ ক্যাটাগরি সফলভাবে মুছে ফেলা হয়েছে!", show_alert=True)
+    await handle_admin_categories_menu(call)
+
+
+# --- EDIT SUBCATEGORY ACTIONS ---
+
+@router.callback_query(F.data.startswith("subcat_edit_name:"))
+async def handle_start_edit_subcat_name(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    subcat_id = int(call.data.split(":")[1])
+    subcat = db.get_category(subcat_id)
+    await call.answer()
+    await state.set_state(SubcategoryEditState.waiting_for_name)
+    await state.update_data(subcat_id=subcat_id)
+
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 বাতিল (Cancel)", callback_data=f"edit_subcat_select:{subcat_id}")]
+    ])
+    text = (
+        f"✏️ <b>সাব-ক্যাটাগরির নাম পরিবর্তন:</b>\n"
+        f"• বর্তমান নাম: <b>{html.escape(subcat['name'] if subcat else '')}</b>\n\n"
+        "👇 <b>নতুন নাম লিখে পাঠান:</b>"
+    )
+    await call.message.edit_text(text, reply_markup=cancel_kb, parse_mode="HTML")
+
+
+@router.message(SubcategoryEditState.waiting_for_name)
+async def handle_save_subcat_name(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    new_name = message.text.strip()
+    data = await state.get_data()
+    subcat_id = data.get("subcat_id")
+    await state.clear()
+
+    subcat = db.get_category(subcat_id)
+    icon = subcat.get("icon", "📁") if subcat else "📁"
+    parent_id = subcat.get("parent_id", 1) if subcat else 1
+    db.update_category(subcat_id, new_name, icon)
+    await message.answer("✅ সাব-ক্যাটাগরির নাম সফলভাবে আপডেট করা হয়েছে!")
+    
+    subcats = db.get_subcategories(parent_id)
+    kb = get_admin_subcategories_kb(subcats, parent_id)
+    await message.answer("📂 <b>সাব-ক্যাটাগরি সমূহ:</b>", reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("subcat_edit_icon:"))
+async def handle_start_edit_subcat_icon(call: CallbackQuery, state: FSMContext):
+    if not is_admin(call.from_user.id):
+        return
+    subcat_id = int(call.data.split(":")[1])
+    subcat = db.get_category(subcat_id)
+    await call.answer()
+    await state.set_state(SubcategoryEditState.waiting_for_icon)
+    await state.update_data(subcat_id=subcat_id)
+
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 বাতিল (Cancel)", callback_data=f"edit_subcat_select:{subcat_id}")]
+    ])
+    text = (
+        f"🎨 <b>সাব-ক্যাটাগরির আইকন পরিবর্তন:</b>\n"
+        f"• বর্তমান আইকন: <b>{subcat.get('icon', '📁') if subcat else '📁'}</b>\n\n"
+        "👇 <b>নতুন ইমোজি বা আইকন লিখে পাঠান:</b>"
+    )
+    await call.message.edit_text(text, reply_markup=cancel_kb, parse_mode="HTML")
+
+
+@router.message(SubcategoryEditState.waiting_for_icon)
+async def handle_save_subcat_icon(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    new_icon = message.text.strip()[:4] if message.text else "📁"
+    data = await state.get_data()
+    subcat_id = data.get("subcat_id")
+    await state.clear()
+
+    subcat = db.get_category(subcat_id)
+    name = subcat.get("name", "সাব-ক্যাটাগরি") if subcat else "সাব-ক্যাটাগরি"
+    parent_id = subcat.get("parent_id", 1) if subcat else 1
+    db.update_category(subcat_id, name, new_icon)
+    await message.answer("✅ সাব-ক্যাটাগরির আইকন সফলভাবে আপডেট করা হয়েছে!")
+
+    subcats = db.get_subcategories(parent_id)
+    kb = get_admin_subcategories_kb(subcats, parent_id)
+    await message.answer("📂 <b>সাব-ক্যাটাগরি সমূহ:</b>", reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("subcat_delete:"))
+async def handle_subcat_delete_prompt(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    subcat_id = int(call.data.split(":")[1])
+    subcat = db.get_category(subcat_id)
+    if not subcat:
+        await call.answer("সাব-ক্যাটাগরি পাওয়া যায়নি!", show_alert=True)
+        return
+    await call.answer()
+
+    confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🗑️ হ্যাঁ, নিশ্চিত মুছুন", callback_data=f"subcat_del_conf:{subcat_id}"),
+            InlineKeyboardButton(text="❌ বাতিল", callback_data=f"edit_subcat_select:{subcat_id}")
+        ]
+    ])
+    text = (
+        f"⚠️ <b>সতর্কতা: আপনি কি নিশ্চিত যে '{html.escape(subcat['name'])}' সাব-ক্যাটাগরি মুছে ফেলতে চান?</b>"
+    )
+    await call.message.edit_text(text, reply_markup=confirm_kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("subcat_del_conf:"))
+async def handle_subcat_delete_confirm(call: CallbackQuery):
+    if not is_admin(call.from_user.id):
+        return
+    subcat_id = int(call.data.split(":")[1])
+    subcat = db.get_category(subcat_id)
+    parent_id = subcat.get("parent_id", 1) if subcat else 1
+    db.delete_category(subcat_id)
+    await call.answer("🗑️ সাব-ক্যাটাগরি সফলভাবে মুছে ফেলা হয়েছে!", show_alert=True)
+    await show_subcategories_list(call, parent_id)
+

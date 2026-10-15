@@ -22,19 +22,22 @@ def get_admin_main_kb(stats: Dict[str, Any] = None, is_super: bool = True, permi
                 make_custom_button(text="Add Course / Item", callback_data="admin_add_prod", emoji_key="courses")
             ],
             [
-                make_custom_button(text="Upload Stock Keys", callback_data="admin_add_stock", emoji_key="box"),
+                make_custom_button(text="📁 Manage Categories", callback_data="admin_cats_menu", emoji_key="category"),
                 make_custom_button(text="Manage Courses", callback_data="admin_list_prods", emoji_key="catalog")
             ],
             [
-                make_custom_button(text="👥 Users Directory", callback_data="admin_users_dir:1:all", emoji_key="diamond"),
-                make_custom_button(text=res_label, callback_data="admin_resellers_menu", emoji_key="crown")
+                make_custom_button(text="Upload Stock Keys", callback_data="admin_add_stock", emoji_key="box"),
+                make_custom_button(text="👥 Users Directory", callback_data="admin_users_dir:1:all", emoji_key="diamond")
             ],
             [
-                make_custom_button(text="🔍 Smart Search", callback_data="admin_search_user_prompt", emoji_key="search"),
+                make_custom_button(text=res_label, callback_data="admin_resellers_menu", emoji_key="crown"),
                 make_custom_button(text=dep_label, callback_data="admin_pending_deps", emoji_key="deposit")
             ],
             [
-                make_custom_button(text="Live Order Ledger", callback_data="admin_recent_orders", emoji_key="orders"),
+                make_custom_button(text="🔍 Smart Search", callback_data="admin_search_user_prompt", emoji_key="search"),
+                make_custom_button(text="Live Order Ledger", callback_data="admin_recent_orders", emoji_key="orders")
+            ],
+            [
                 make_custom_button(text="Broadcast Studio", callback_data="admin_broadcast_hub", emoji_key="broadcast")
             ],
             [
@@ -133,9 +136,14 @@ def get_stock_hub_kb(products: List[Dict[str, Any]], page: int = 0, total_pages:
     for p in products:
         in_stock = bool(p.get("is_in_stock", 1) if p.get("is_in_stock") is not None else 1)
         btn_text = "🟢 ইন স্টক (ক্লিক: Out)" if in_stock else "🔴 আউট অব স্টক (ক্লিক: In)"
-        emoji_k = "check" if in_stock else "cross"
+        ch_p = float(p.get('price_channel_bdt') or 0)
+        acc_p = float(p.get('price_account_bdt') or 0)
+        raw_b = float(p.get('price_bdt', 0) or 0)
+        eff_p = ch_p if (ch_p > 0 and acc_p <= 0) else (acc_p if (acc_p > 0 and ch_p <= 0) else raw_b)
+        if eff_p <= 0 and (ch_p > 0 or acc_p > 0):
+            eff_p = ch_p if ch_p > 0 else acc_p
         buttons.append([
-            make_custom_button(text=f"📚 {p['title'][:22]} (৳{int(p.get('price_bdt', 0))})", callback_data=f"edit_p_select:{p['id']}", emoji_key="courses"),
+            make_custom_button(text=f"📚 {p['title'][:22]} (৳{int(eff_p)})", callback_data=f"edit_p_select:{p['id']}", emoji_key="courses"),
             make_custom_button(text=btn_text, callback_data=f"stk_hub_tgl:{p['id']}:{page}", emoji_key=emoji_k)
         ])
     
@@ -580,12 +588,15 @@ def get_admin_categories_kb(categories: List[Dict[str, Any]]) -> InlineKeyboardM
     """List of all categories with add and edit options."""
     buttons = []
     for c in categories:
-        type_badge = "Course" if c["type"] == "course" else "Digital"
-        btn_txt = f"{c['name']} [{type_badge}]"
+        type_badge = "🎓 কোর্স" if c["type"] == "course" else "⚡ ডিজিটাল"
+        icon = c.get('icon') or '📁'
+        btn_txt = f"{icon} {c['name']} [{type_badge}]"
         buttons.append([make_custom_button(text=btn_txt, callback_data=f"edit_cat_select:{c['id']}", emoji_key="category")])
     buttons.append([
-        make_custom_button(text="Add New Category", callback_data="cat_add_new", emoji_key="courses"),
-        make_custom_button(text="Back to Main Panel", callback_data="admin_main_dashboard", emoji_key="back")
+        make_custom_button(text="➕ নতুন ক্যাটাগরি যোগ করুন (New Category)", callback_data="cat_add_new", emoji_key="courses")
+    ])
+    buttons.append([
+        make_custom_button(text="🔙 মেইন অ্যাডমিন প্যানেল", callback_data="admin_main_dashboard", emoji_key="back")
     ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -964,18 +975,24 @@ def get_groq_preview_kb(data: Dict[str, Any]) -> InlineKeyboardMarkup:
     has_acc = "✅" if data.get("account_data") else "⚠️"
     cat_name = data.get("category_name", "কোর্স")[:12]
 
+    ch_btn_text = f"💰 Channel: ৳{ch_p}" if ch_p > 0 else "📢 Channel: 🔴 বন্ধ (OFF)"
+    acc_btn_text = f"💰 Account: ৳{acc_p}" if acc_p > 0 else "🔐 Account: 🔴 বন্ধ (OFF)"
+
+    ch_target_btn = make_custom_button(text=f"{has_ch} Set Channel ID/Link", callback_data="groq_edit:channel_target", emoji_key="channel") if ch_p > 0 else make_custom_button(text="📢 Channel বন্ধ (OFF)", callback_data="groq_edit:ch_price", emoji_key="cross")
+    acc_target_btn = make_custom_button(text=f"{has_acc} Set Account/Drive", callback_data="groq_edit:account_data", emoji_key="box") if acc_p > 0 else make_custom_button(text="🔐 Account বন্ধ (OFF)", callback_data="groq_edit:acc_price", emoji_key="cross")
+
     buttons = [
         [
-            make_custom_button(text=f"💰 Channel: ৳{ch_p}", callback_data="groq_edit:ch_price", emoji_key="channel"),
-            make_custom_button(text=f"💰 Account: ৳{acc_p}", callback_data="groq_edit:acc_price", emoji_key="box")
+            make_custom_button(text=ch_btn_text, callback_data="groq_edit:ch_price", emoji_key="channel" if ch_p > 0 else "cross"),
+            make_custom_button(text=acc_btn_text, callback_data="groq_edit:acc_price", emoji_key="box" if acc_p > 0 else "cross")
         ],
         [
-            make_custom_button(text=f"{has_ch} Set Channel ID/Link", callback_data="groq_edit:channel_target", emoji_key="channel"),
-            make_custom_button(text=f"{has_acc} Set Account/Drive", callback_data="groq_edit:account_data", emoji_key="box")
+            ch_target_btn,
+            acc_target_btn
         ]
     ]
 
-    if data.get("channel_target"):
+    if ch_p > 0 and data.get("channel_target"):
         buttons.append([
             make_custom_button(text="🧪 টেস্ট চ্যানেল ইনভাইট লিংক", callback_data="groq_test_channel", emoji_key="channel")
         ])

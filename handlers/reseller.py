@@ -266,7 +266,12 @@ async def handle_reseller_pricelist(call: CallbackQuery):
         )
         for idx, p in enumerate(products, start=1):
             clean_title = localize_item_name(p['title'], lang)
-            reg_bdt = int(p["price_bdt"])
+            ch_p = float(p.get("price_channel_bdt") or 0)
+            acc_p = float(p.get("price_account_bdt") or 0)
+            eff_bdt = ch_p if (ch_p > 0 and acc_p <= 0) else (acc_p if (acc_p > 0 and ch_p <= 0) else float(p.get("price_bdt") or 0))
+            if eff_bdt <= 0 and (ch_p > 0 or acc_p > 0):
+                eff_bdt = ch_p if ch_p > 0 else acc_p
+            reg_bdt = int(eff_bdt)
             res_bdt = int(p["reseller_price_bdt"]) if p.get("reseller_price_bdt") else int(reg_bdt * 0.70)
             profit = reg_bdt - res_bdt
             text += (
@@ -283,7 +288,12 @@ async def handle_reseller_pricelist(call: CallbackQuery):
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         )
         for idx, p in enumerate(products, start=1):
-            reg_bdt = int(p["price_bdt"])
+            ch_p = float(p.get("price_channel_bdt") or 0)
+            acc_p = float(p.get("price_account_bdt") or 0)
+            eff_bdt = ch_p if (ch_p > 0 and acc_p <= 0) else (acc_p if (acc_p > 0 and ch_p <= 0) else float(p.get("price_bdt") or 0))
+            if eff_bdt <= 0 and (ch_p > 0 or acc_p > 0):
+                eff_bdt = ch_p if ch_p > 0 else acc_p
+            reg_bdt = int(eff_bdt)
             res_bdt = int(p["reseller_price_bdt"]) if p.get("reseller_price_bdt") else int(reg_bdt * 0.70)
             profit = reg_bdt - res_bdt
             text += (

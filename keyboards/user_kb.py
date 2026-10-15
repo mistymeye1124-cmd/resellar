@@ -343,14 +343,38 @@ def get_products_kb(products: List[Dict[str, Any]], category_id: int, subcategor
     buttons = []
     for prod in products:
         clean_title = localize_item_name(prod.get('title') or prod.get('name', 'Course'), lang)
-        bdt_val = int(prod.get('price_bdt') or 0)
-        usd_val = prod.get('price_usd')
-        if not usd_val:
-            from config import get_live_usd_rate
-            usd_val = round(bdt_val / get_live_usd_rate(), 2)
+        # Calculate robust effective price avoiding 0 when any tier is available
+        ch_p = float(prod.get('price_channel_bdt') or 0)
+        acc_p = float(prod.get('price_account_bdt') or 0)
+        raw_bdt = float(prod.get('price_bdt') or 0)
+        
+        eff_bdt = ch_p if (ch_p > 0 and acc_p <= 0) else (acc_p if (acc_p > 0 and ch_p <= 0) else raw_bdt)
+        if eff_bdt <= 0 and (ch_p > 0 or acc_p > 0):
+            eff_bdt = ch_p if ch_p > 0 else acc_p
             
-        # Clean price tag formatted for mobile viewport
-        if lang in ["en", "hi", "ur"]:
+        bdt_val = int(eff_bdt)
+        
+        from config import get_live_usd_rate
+        live_rate = get_live_usd_rate()
+        
+        eff_usd = 0.0
+        if ch_p > 0 and acc_p <= 0:
+            eff_usd = float(prod.get('price_channel_usd') or 0)
+        elif acc_p > 0 and ch_p <= 0:
+            eff_usd = float(prod.get('price_account_usd') or 0)
+        else:
+            eff_usd = float(prod.get('price_usd') or 0)
+            
+        if eff_usd <= 0 and bdt_val > 0:
+            eff_usd = round(bdt_val / live_rate, 2)
+            
+        usd_val = eff_usd
+            
+        # Clean price tag formatted for mobile viewport (never show ৳0)
+        if bdt_val <= 0:
+            price_tag = "FREE" if lang in ["en", "hi", "ur"] else "ফ্রি"
+            max_title_len = 22
+        elif lang in ["en", "hi", "ur"]:
             price_tag = f"৳{bdt_val} (${usd_val})"
             max_title_len = 18
         else:
@@ -404,12 +428,16 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
                 pass
 
         has_dual = (float(product.get("price_channel_bdt") or 0) > 0 and float(product.get("price_account_bdt") or 0) > 0)
+        ch_p = float(product.get("price_channel_bdt") or 0)
+        acc_p = float(product.get("price_account_bdt") or 0)
+        main_p = float(product.get("price_bdt") or 0)
+        from config import get_live_usd_rate
+        live_rate = get_live_usd_rate()
+
         if has_dual:
-            from config import get_live_usd_rate
-            live_rate = get_live_usd_rate()
-            ch_bdt = int(product.get("price_channel_bdt") or 0)
+            ch_bdt = int(ch_p)
             ch_usd = product.get("price_channel_usd") or round(ch_bdt / live_rate, 2)
-            acc_bdt = int(product.get("price_account_bdt") or 0)
+            acc_bdt = int(acc_p)
             acc_usd = product.get("price_account_usd") or round(acc_bdt / live_rate, 2)
             
             ch_label = f"📢 VIP Channel Access (৳{ch_bdt} / ${ch_usd})"
@@ -450,12 +478,54 @@ def get_product_detail_kb(product: Dict[str, Any], in_stock: bool, lang: str = "
                         emoji_key="cross"
                     )
                 ])
+        elif ch_p > 0 and acc_p <= 0:
+            ch_bdt = int(ch_p)
+            ch_usd = product.get("price_channel_usd") or round(ch_bdt / live_rate, 2)
+            ch_label = f"📢 VIP Channel Access (৳{ch_bdt} / ${ch_usd})" if lang in ["en", "hi", "ur"] else f"📢 ভিআইপি চ্যানেল অ্যাক্সেস (৳{ch_bdt} / ${ch_usd})"
+            if can_ch:
+                buttons.append([
+                    make_custom_button(
+                        text=ch_label,
+                        callback_data=f"buy_tier:{product['id']}:channel",
+                        emoji_key="channel"
+                    )
+                ])
+            else:
+                locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi", "ur"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
+                buttons.append([
+                    make_custom_button(
+                        text=locked_ch,
+                        callback_data=f"locked_channel_tier:{product['id']}",
+                        emoji_key="cross"
+                    )
+                ])
+        elif acc_p > 0 and ch_p <= 0:
+            acc_bdt = int(acc_p)
+            acc_usd = product.get("price_account_usd") or round(acc_bdt / live_rate, 2)
+            acc_label = f"🔐 Account / Drive Access (৳{acc_bdt} / ${acc_usd})" if lang in ["en", "hi", "ur"] else f"🔐 অ্যাকাউন্ট / ড্রাইভ অ্যাক্সেস (৳{acc_bdt} / ${acc_usd})"
+            if can_acc:
+                buttons.append([
+                    make_custom_button(
+                        text=acc_label,
+                        callback_data=f"buy_tier:{product['id']}:account",
+                        emoji_key="box"
+                    )
+                ])
+            else:
+                locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi", "ur"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
+                buttons.append([
+                    make_custom_button(
+                        text=locked_acc,
+                        callback_data=f"locked_account_tier:{product['id']}",
+                        emoji_key="cross"
+                    )
+                ])
         else:
-            bdt_val = int(product.get('price_bdt') or 0)
+            eff_bdt = ch_p if ch_p > 0 else (acc_p if acc_p > 0 else main_p)
+            bdt_val = int(eff_bdt)
             usd_val = product.get('price_usd')
-            if not usd_val:
-                from config import get_live_usd_rate
-                usd_val = round(bdt_val / get_live_usd_rate(), 2)
+            if not usd_val or bdt_val != int(main_p):
+                usd_val = round(bdt_val / live_rate, 2)
             if lang in ["en", "hi", "ur"]:
                 buy_text = f"🚀 Buy Now (৳{bdt_val} / ${usd_val})"
             else:
@@ -535,41 +605,43 @@ def get_access_tier_selection_kb(product_id: int, ch_bdt: float, ch_usd: float, 
     acc_text = f"🔐 Personal Account / Drive — ৳{int(acc_bdt)} (${acc_usd})"
     
     buttons = []
-    if can_ch:
-        buttons.append([
-            make_custom_button(
-                text=ch_text,
-                callback_data=f"buy_tier:{product_id}:channel",
-                emoji_key="channel"
-            )
-        ])
-    else:
-        locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi", "ur"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
-        buttons.append([
-            make_custom_button(
-                text=locked_ch,
-                callback_data=f"locked_channel_tier:{product_id}",
-                emoji_key="cross"
-            )
-        ])
+    if ch_bdt > 0:
+        if can_ch:
+            buttons.append([
+                make_custom_button(
+                    text=ch_text,
+                    callback_data=f"buy_tier:{product_id}:channel",
+                    emoji_key="channel"
+                )
+            ])
+        else:
+            locked_ch = "🔒 Channel Access (Disabled)" if lang in ["en", "hi", "ur"] else "🔒 চ্যানেল অ্যাক্সেস বন্ধ"
+            buttons.append([
+                make_custom_button(
+                    text=locked_ch,
+                    callback_data=f"locked_channel_tier:{product_id}",
+                    emoji_key="cross"
+                )
+            ])
 
-    if can_acc:
-        buttons.append([
-            make_custom_button(
-                text=acc_text,
-                callback_data=f"buy_tier:{product_id}:account",
-                emoji_key="box"
-            )
-        ])
-    else:
-        locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi", "ur"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
-        buttons.append([
-            make_custom_button(
-                text=locked_acc,
-                callback_data=f"locked_account_tier:{product_id}",
-                emoji_key="cross"
-            )
-        ])
+    if acc_bdt > 0:
+        if can_acc:
+            buttons.append([
+                make_custom_button(
+                    text=acc_text,
+                    callback_data=f"buy_tier:{product_id}:account",
+                    emoji_key="box"
+                )
+            ])
+        else:
+            locked_acc = "🔒 Account Access (Elite VIP Only)" if lang in ["en", "hi", "ur"] else "🔒 পার্সোনাল অ্যাকাউন্ট (Elite VIP Only)"
+            buttons.append([
+                make_custom_button(
+                    text=locked_acc,
+                    callback_data=f"locked_account_tier:{product_id}",
+                    emoji_key="cross"
+                )
+            ])
 
     buttons.append([
         make_custom_button(text=t("btn_back", lang), callback_data=f"prod:{product_id}", emoji_key="back"),
@@ -1150,12 +1222,34 @@ def get_course_search_results_kb(products: List[Dict[str, Any]], query: str, lan
     buttons = []
     for prod in products[:6]:
         c_title = localize_item_name(prod['title'], lang)
-        bdt_val = int(prod.get('price_bdt') or 0)
-        usd_val = prod.get('price_usd')
-        if not usd_val:
-            from config import get_live_usd_rate
-            usd_val = round(bdt_val / get_live_usd_rate(), 2)
-        price_tag = f"৳{bdt_val} (${usd_val})"
+        ch_p = float(prod.get('price_channel_bdt') or 0)
+        acc_p = float(prod.get('price_account_bdt') or 0)
+        raw_bdt = float(prod.get('price_bdt') or 0)
+        
+        eff_bdt = ch_p if (ch_p > 0 and acc_p <= 0) else (acc_p if (acc_p > 0 and ch_p <= 0) else raw_bdt)
+        if eff_bdt <= 0 and (ch_p > 0 or acc_p > 0):
+            eff_bdt = ch_p if ch_p > 0 else acc_p
+            
+        bdt_val = int(eff_bdt)
+        
+        from config import get_live_usd_rate
+        live_rate = get_live_usd_rate()
+        
+        eff_usd = 0.0
+        if ch_p > 0 and acc_p <= 0:
+            eff_usd = float(prod.get('price_channel_usd') or 0)
+        elif acc_p > 0 and ch_p <= 0:
+            eff_usd = float(prod.get('price_account_usd') or 0)
+        else:
+            eff_usd = float(prod.get('price_usd') or 0)
+            
+        if eff_usd <= 0 and bdt_val > 0:
+            eff_usd = round(bdt_val / live_rate, 2)
+            
+        if bdt_val <= 0:
+            price_tag = "FREE" if lang in ["en", "hi", "ur"] else "ফ্রি"
+        else:
+            price_tag = f"৳{bdt_val} (${usd_val})"
         max_len = 24 if len(price_tag) <= 14 else 20
         short_t = c_title[:max_len].strip() + ("…" if len(c_title) > max_len else "")
         btn_text = f"🎓 {short_t} — {price_tag}"

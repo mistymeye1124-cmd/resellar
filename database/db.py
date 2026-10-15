@@ -524,6 +524,46 @@ class Database:
                     default_categories
                 )
 
+            # Auto-heal products where price_bdt is 0 but tier prices exist
+            cursor.execute("""
+                UPDATE products 
+                SET price_bdt = CASE 
+                        WHEN price_channel_bdt > 0 AND price_account_bdt > 0 THEN price_channel_bdt
+                        WHEN price_channel_bdt > 0 THEN price_channel_bdt
+                        WHEN price_account_bdt > 0 THEN price_account_bdt
+                        ELSE price_bdt 
+                    END,
+                    price_usd = CASE 
+                        WHEN price_channel_usd > 0 THEN price_channel_usd
+                        WHEN price_account_usd > 0 THEN price_account_usd
+                        ELSE price_usd 
+                    END
+                WHERE (price_bdt IS NULL OR price_bdt <= 0) 
+                  AND (price_channel_bdt > 0 OR price_account_bdt > 0)
+            """)
+            cursor.execute("""
+                UPDATE products
+                SET reseller_price_bdt = CASE
+                        WHEN reseller_price_channel_bdt > 0 THEN reseller_price_channel_bdt
+                        WHEN reseller_price_account_bdt > 0 THEN reseller_price_account_bdt
+                        ELSE reseller_price_bdt
+                    END
+                WHERE (reseller_price_bdt IS NULL OR reseller_price_bdt <= 0)
+                  AND (reseller_price_channel_bdt > 0 OR reseller_price_account_bdt > 0)
+            """)
+            cursor.execute("""
+                UPDATE products
+                SET product_type = 'channel_link'
+                WHERE price_channel_bdt > 0 AND (price_account_bdt IS NULL OR price_account_bdt <= 0)
+                  AND (product_type IS NULL OR product_type = 'both' OR product_type = 'dual_access')
+            """)
+            cursor.execute("""
+                UPDATE products
+                SET product_type = 'stock_account'
+                WHERE price_account_bdt > 0 AND (price_channel_bdt IS NULL OR price_channel_bdt <= 0)
+                  AND (product_type IS NULL OR product_type = 'both' OR product_type = 'dual_access')
+            """)
+
             conn.commit()
 
     # --- USER METHODS ---
@@ -878,6 +918,14 @@ class Database:
                     subcategory_id: Optional[int] = None,
                     channel_title: Optional[str] = None,
                     channel_verified: int = 0) -> int:
+        if price_bdt <= 0:
+            if price_channel_bdt > 0:
+                price_bdt = price_channel_bdt
+                price_usd = price_channel_usd
+            elif price_account_bdt > 0:
+                price_bdt = price_account_bdt
+                price_usd = price_account_usd
+
         if reseller_price_bdt <= 0 and price_bdt > 0:
             reseller_price_bdt = round(price_bdt * 0.70, 2) # default 30% discount for resellers
         if reseller_price_usd <= 0 and price_usd > 0:
@@ -1401,16 +1449,57 @@ class Database:
             reseller_price_channel_bdt = round(price_channel_bdt * 0.70, 2)
         if reseller_price_account_bdt <= 0 and price_account_bdt > 0:
             reseller_price_account_bdt = round(price_account_bdt * 0.70, 2)
+
+        if price_channel_bdt > 0 and price_account_bdt > 0:
+            primary_bdt = price_channel_bdt
+            primary_usd = price_channel_usd
+            r_bdt = reseller_price_channel_bdt
+            r_usd = round(price_channel_usd * 0.70, 2)
+            ptype = 'dual_access'
+        elif price_channel_bdt > 0:
+            primary_bdt = price_channel_bdt
+            primary_usd = price_channel_usd
+            r_bdt = reseller_price_channel_bdt
+            r_usd = round(price_channel_usd * 0.70, 2)
+            ptype = 'channel_link'
+        elif price_account_bdt > 0:
+            primary_bdt = price_account_bdt
+            primary_usd = price_account_usd
+            r_bdt = reseller_price_account_bdt
+            r_usd = round(price_account_usd * 0.70, 2)
+            ptype = 'drive_link'
+        else:
+            primary_bdt = 0.0
+            primary_usd = 0.0
+            r_bdt = 0.0
+            r_usd = 0.0
+            ptype = ''
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-            UPDATE products 
-            SET price_channel_bdt = ?, price_channel_usd = ?,
-                price_account_bdt = ?, price_account_usd = ?,
-                reseller_price_channel_bdt = ?, reseller_price_account_bdt = ?
-            WHERE id = ?
-            """, (price_channel_bdt, price_channel_usd, price_account_bdt, price_account_usd,
-                  reseller_price_channel_bdt, reseller_price_account_bdt, product_id))
+            if primary_bdt > 0:
+                cursor.execute("""
+                UPDATE products 
+                SET price_channel_bdt = ?, price_channel_usd = ?,
+                    price_account_bdt = ?, price_account_usd = ?,
+                    reseller_price_channel_bdt = ?, reseller_price_account_bdt = ?,
+                    price_bdt = ?, price_usd = ?,
+                    reseller_price_bdt = ?, reseller_price_usd = ?,
+                    product_type = CASE WHEN ? != '' THEN ? ELSE product_type END
+                WHERE id = ?
+                """, (price_channel_bdt, price_channel_usd, price_account_bdt, price_account_usd,
+                      reseller_price_channel_bdt, reseller_price_account_bdt,
+                      primary_bdt, primary_usd, r_bdt, r_usd,
+                      ptype, ptype, product_id))
+            else:
+                cursor.execute("""
+                UPDATE products 
+                SET price_channel_bdt = ?, price_channel_usd = ?,
+                    price_account_bdt = ?, price_account_usd = ?,
+                    reseller_price_channel_bdt = ?, reseller_price_account_bdt = ?
+                WHERE id = ?
+                """, (price_channel_bdt, price_channel_usd, price_account_bdt, price_account_usd,
+                      reseller_price_channel_bdt, reseller_price_account_bdt, product_id))
             conn.commit()
             return cursor.rowcount > 0
 

@@ -18,7 +18,7 @@ from keyboards.user_kb import (
     make_custom_button,
     get_force_sub_kb
 )
-from config import ADMIN_USERNAME, OFFICIAL_CHANNEL, ADMIN_IDS
+from config import ADMIN_USERNAME, OFFICIAL_CHANNEL, ADMIN_IDS, get_live_usd_rate
 from utils.i18n import t, LANGUAGES
 from utils.emojis import em_tag
 from utils.ui_nav import render_screen
@@ -292,8 +292,13 @@ async def handle_start(message: Message, state: FSMContext = None):
             prod = db.get_product(prod_id)
             if prod:
                 in_stock = (prod.get("is_in_stock", 1) == 1)
-                reg_bdt = int(prod["price_bdt"])
-                reg_usd = prod["price_usd"]
+                ch_p = float(prod.get("price_channel_bdt") or 0)
+                acc_p = float(prod.get("price_account_bdt") or 0)
+                eff_bdt = ch_p if (ch_p > 0 and acc_p <= 0) else (acc_p if (acc_p > 0 and ch_p <= 0) else float(prod.get("price_bdt") or 0))
+                if eff_bdt <= 0 and (ch_p > 0 or acc_p > 0):
+                    eff_bdt = ch_p if ch_p > 0 else acc_p
+                reg_bdt = int(eff_bdt)
+                reg_usd = prod["price_usd"] if float(prod.get("price_usd") or 0) > 0 else round(eff_bdt / get_live_usd_rate(), 2)
                 em_crs = em_tag("courses", "🎓")
                 from utils.i18n import localize_item_name
                 from utils.ui_nav import render_safe_html_text
