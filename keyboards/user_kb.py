@@ -210,7 +210,7 @@ def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admi
         post_label = "📢 Marketing Posts"
         order_label = "🛍️ Wholesale Catalog"
         race_label = "🏁 Live Sales Race"
-        apply_label = "📝 Apply as Reseller"
+        apply_label = "⏳ Apply as Reseller (Updating Soon)"
         knock_label = "⚡ Quick Activation"
     elif lang == "hi":
         price_label = "💎 थोक मूल्य सूची"
@@ -218,7 +218,7 @@ def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admi
         post_label = "📢 मार्केटिंग पोस्ट"
         order_label = "🛍️ थोक स्टोर"
         race_label = "🏁 लाइव सेल्स रेस"
-        apply_label = "📝 रीसेलर आवेदन"
+        apply_label = "⏳ रीसेलर आवेदन (अपडेट जारी)"
         knock_label = "⚡ त्वरित संपर्क"
     elif lang == "ur":
         price_label = "💎 ہول سیل قیمت کی فہرست"
@@ -226,7 +226,7 @@ def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admi
         post_label = "📢 مارکیٹنگ پوسٹس"
         order_label = "🛍️ ہول سیل کیٹلاگ"
         race_label = "🏁 لائیو سیلز مقابلہ"
-        apply_label = "📝 بطور ری سیلر درخواست دیں"
+        apply_label = "⏳ بطور ری سیلر درخواست دیں (اپ ڈیٹ)"
         knock_label = "⚡ فوری رابطہ"
     else:
         price_label = "💎 পাইকারি মূল্য তালিকা"
@@ -234,7 +234,7 @@ def get_reseller_hub_kb(is_reseller: bool = False, is_banned: bool = False, admi
         post_label = "📢 মার্কেটিং পোস্ট"
         order_label = "🛍️ পাইকারি ক্যাটালগ"
         race_label = "🏁 লাইভ সেলস রেস"
-        apply_label = "📝 রিসেলার আবেদন"
+        apply_label = "⏳ রিসেলার আবেদন (আপডেট চলছে)"
         knock_label = "⚡ দ্রুত অ্যাক্টিভেশন নক"
 
     buttons = [

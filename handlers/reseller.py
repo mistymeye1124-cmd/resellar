@@ -186,7 +186,7 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
                 "৩. অবশিষ্ট ব্যালেন্স সম্পূর্ণ আপনার ওয়ালেটে থাকবে (যা দিয়ে সাথে সাথে পাইকারি রেটে কোর্স কিনবেন)।\n"
                 f"৪. প্রতি মাসে ন্যূনতম <code>{quota_info['target']}টি</code> সফল সেল সম্পন্ন করতে হবে।\n"
                 "৫. আপনার মার্কেটিং পেজ/গ্রুপ বা অডিয়েন্সের লিংক দিতে হবে।\n\n"
-                "👇 বিস্তারিত প্যাকেজ দেখতে ও আবেদন করতে নিচে <b>📝 রিসেলার আবেদন</b> বাটনে ক্লিক করুন:"
+                "⏳ <b>রিসেলার আবেদন সিস্টেমের আপডেট চলছে। ভেরিফাইড রিসেলার হতে সরাসরি অ্যাডমিনের সাথে যোগাযোগ করুন:</b>"
             ),
             "en": (
                 "🤝 <b>VIP Reseller Program — Unlimited Earning Potential!</b>\n\n"
@@ -209,7 +209,7 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
                 "3. Usable wholesale shopping balance remains in your wallet for purchasing courses.\n"
                 f"4. Complete at least <code>{quota_info['target']}</code> sales per month.\n"
                 "5. Provide marketing channel/community proof.\n\n"
-                "👇 Click below to choose a package and apply:"
+                "⏳ <b>Reseller application system is currently being updated. Contact Admin for verified onboarding:</b>"
             ),
             "hi": (
                 "🤝 <b>वीआईपी रीसेलर प्रोग्राम — घर बैठे असीमित कमाई!</b>\n\n"
@@ -226,7 +226,7 @@ async def get_reseller_hub_data(user_id: int, bot: Bot, username: str = None, fi
                 "3. शेष राशि आपकी थोक खरीदारी के लिए वॉलेट में उपलब्ध रहेगी।\n"
                 f"4. प्रति माह न्यूनतम <code>{quota_info['target']}</code> बिक्री करनी होगी।\n"
                 "5. मार्केटिंग पेज/ग्रुप का प्रमाण देना होगा।\n\n"
-                "👇 आवेदन करने या पैकेज चुनने के लिए नीचे क्लिक करें:"
+                "⏳ <b>रीसेलर आवेदन प्रणाली वर्तमान में अपडेट की जा रही है। व्यवस्थापक से संपर्क करें:</b>"
             )
         }
         return pitch_texts.get(lang, pitch_texts["en"]), get_reseller_hub_kb(is_reseller=False, lang=lang)
@@ -553,7 +553,22 @@ async def handle_reseller_live_race(call: CallbackQuery):
 async def handle_start_apply(call: CallbackQuery, state: FSMContext):
     if state:
         await state.clear()
-    await call.answer()
+    lang = db.get_user_language(call.from_user.id)
+    if lang in ["en", "hi", "ur"]:
+        update_notice = (
+            "⏳ Reseller Application Update\n\n"
+            "The reseller application system is currently undergoing a planned update.\n"
+            "Public registration is temporarily paused. For verified manual onboarding, please contact Admin directly!"
+        )
+    else:
+        update_notice = (
+            "⏳ রিসেলার আবেদন আপডেট চলছে\n\n"
+            "রিসেলার আবেদন ব্যবস্থা বর্তমানে আপগ্রেড করা হচ্ছে এবং সাময়িক বন্ধ আছে।\n"
+            "ভেরিফাইড রিসেলার পার্টনারশিপ অ্যাক্টিভেশনের জন্য সরাসরি অ্যাডমিনের সাথে যোগাযোগ করুন!"
+        )
+    await call.answer(update_notice, show_alert=True)
+    return
+
     user_id = call.from_user.id
     lang = db.get_user_language(user_id)
     user = db.get_user(user_id)
@@ -615,6 +630,16 @@ async def handle_start_apply(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("apply_reseller_tier:"))
 async def handle_start_apply_tier(call: CallbackQuery, state: FSMContext):
+    if state:
+        await state.clear()
+    lang = db.get_user_language(call.from_user.id)
+    if lang in ["en", "hi", "ur"]:
+        update_notice = "⏳ Reseller application is temporarily closed for maintenance & updates."
+    else:
+        update_notice = "⏳ রিসেলার আবেদন ব্যবস্থা বর্তমানে আপডেটের জন্য সাময়িক বন্ধ রয়েছে।"
+    await call.answer(update_notice, show_alert=True)
+    return
+
     user_id = call.from_user.id
     lang = db.get_user_language(user_id)
     user = db.get_user(user_id)
