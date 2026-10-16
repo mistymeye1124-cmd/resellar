@@ -553,20 +553,41 @@ async def handle_reseller_live_race(call: CallbackQuery):
 async def handle_start_apply(call: CallbackQuery, state: FSMContext):
     if state:
         await state.clear()
-    lang = db.get_user_language(call.from_user.id)
+    await call.answer("⏳ রিসেলার আবেদন বর্তমানে আপডেট চলছে")
+    user_id = call.from_user.id
+    lang = db.get_user_language(user_id)
+    
     if lang in ["en", "hi", "ur"]:
-        update_notice = (
-            "⏳ Reseller Application Update\n\n"
-            "The reseller application system is currently undergoing a planned update.\n"
-            "Public registration is temporarily paused. For verified manual onboarding, please contact Admin directly!"
+        msg = (
+            "⏳ <b>Reseller Application System — Under Update</b>\n\n"
+            "Our reseller registration and onboarding system is currently undergoing a planned system upgrade.\n\n"
+            "📌 <b>Public automated applications are temporarily paused.</b>\n\n"
+            "If you are an active course reseller or verified partner, you may contact our Admin directly for manual verification.\n\n"
+            f"👤 <b>Admin Contact:</b> @{ADMIN_USERNAME}"
         )
+        btn_contact = "⚡ Contact Admin"
+        btn_back = "🔙 Back to Hub"
     else:
-        update_notice = (
-            "⏳ রিসেলার আবেদন আপডেট চলছে\n\n"
-            "রিসেলার আবেদন ব্যবস্থা বর্তমানে আপগ্রেড করা হচ্ছে এবং সাময়িক বন্ধ আছে।\n"
-            "ভেরিফাইড রিসেলার পার্টনারশিপ অ্যাক্টিভেশনের জন্য সরাসরি অ্যাডমিনের সাথে যোগাযোগ করুন!"
+        msg = (
+            "⏳ <b>রিসেলার আবেদন ব্যবস্থা — সিস্টেম আপডেট চলছে</b>\n\n"
+            "সম্মানিত গ্রাহক,\n"
+            "আমাদের রিসেলার পার্টনারশিপ সিস্টেমটি বর্তমানে নতুন পলিসি ও অটোমেশন আপগ্রেডের জন্য সাময়িক বন্ধ রয়েছে।\n\n"
+            "📌 <b>পাবলিক অটোমেটিক আবেদন সাময়িক বন্ধ আছে।</b>\n\n"
+            "আপনি যদি অভিজ্ঞ রিসেলার বা সেলস চ্যানেল ওনার হয়ে থাকেন এবং অফিশিয়াল ভেরিফাইড রিসেলার হতে চান, "
+            "তবে সরাসরি প্রধান অ্যাডমিনের সাথে যোগাযোগ করে ম্যানুয়ালি ভেরিফিকেশন ও অ্যাক্টিভেশন নিতে পারেন।\n\n"
+            f"👤 <b>প্রধান অ্যাডমিন:</b> @{ADMIN_USERNAME}"
         )
-    await call.answer(update_notice, show_alert=True)
+        btn_contact = "⚡ অ্যাডমিনের সাথে যোগাযোগ"
+        btn_back = "🔙 ফিরে যান"
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [make_custom_button(text=btn_contact, url=f"https://t.me/{ADMIN_USERNAME}", emoji_key="zap")],
+        [
+            make_custom_button(text=btn_back, callback_data="back_reseller_hub", emoji_key="back"),
+            make_custom_button(text=t("btn_home", lang), callback_data="main_menu", emoji_key="home")
+        ]
+    ])
+    await render_screen(call, msg, reply_markup=kb, parse_mode="HTML")
     return
 
     user_id = call.from_user.id
@@ -630,15 +651,7 @@ async def handle_start_apply(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("apply_reseller_tier:"))
 async def handle_start_apply_tier(call: CallbackQuery, state: FSMContext):
-    if state:
-        await state.clear()
-    lang = db.get_user_language(call.from_user.id)
-    if lang in ["en", "hi", "ur"]:
-        update_notice = "⏳ Reseller application is temporarily closed for maintenance & updates."
-    else:
-        update_notice = "⏳ রিসেলার আবেদন ব্যবস্থা বর্তমানে আপডেটের জন্য সাময়িক বন্ধ রয়েছে।"
-    await call.answer(update_notice, show_alert=True)
-    return
+    return await handle_start_apply(call, state)
 
     user_id = call.from_user.id
     lang = db.get_user_language(user_id)
